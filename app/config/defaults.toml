@@ -1,0 +1,21 @@
+[analysis]
+mode = "fast"
+max_hypotheses = 3
+max_tool_calls = 8
+max_critic_cycles = 1
+minimum_sample_size = 20
+
+[performance]
+timeout_seconds = 15
+parallel_tools = true
+
+[llm]
+provider = "disabled"
+temperature = 0.0
+max_retries = 2
+
+[evaluation]
+repetitions = 3
+
+[persistence]
+database_url = "sqlite:///:memory:"

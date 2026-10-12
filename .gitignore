@@ -1,0 +1,33 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage.xml
+# Local configuration and runtime artifacts
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+*.log
+datasets/*
+!datasets/.gitkeep
+data_dictionaries/*
+!data_dictionaries/.gitkeep
+experiments/*
+!experiments/.gitkeep
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

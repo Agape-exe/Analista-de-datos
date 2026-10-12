@@ -1,0 +1,5 @@
+{
+  "entries": [
+    {"column_name": "age", "description": "Age in years", "unit": "years", "source": "manual"}
+  ]
+}

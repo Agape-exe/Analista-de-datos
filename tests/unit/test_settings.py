@@ -1,0 +1,38 @@
+from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
+
+from app.config.settings import Settings, load_settings
+
+
+def test_defaults() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.analysis.max_tool_calls == 8
+    assert settings.llm.provider == "disabled"
+    assert settings.llm.model is None
+
+
+def test_environment_and_constructor_precedence(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MDA_ANALYSIS__MAX_TOOL_CALLS", "4")
+    assert Settings(_env_file=None).analysis.max_tool_calls == 4
+    assert Settings(analysis={"max_tool_calls": 2}, _env_file=None).analysis.max_tool_calls == 2
+    monkeypatch.setenv("MDA_PERFORMANCE__TIMEOUT_SECONDS", "-1")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
+def test_external_toml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = tmp_path / "settings.toml"
+    config.write_text("[analysis]\nmax_tool_calls = 5\n", encoding="utf-8")
+    assert load_settings(config).analysis.max_tool_calls == 5
+    monkeypatch.setenv("MDA_ANALYSIS__MAX_TOOL_CALLS", "6")
+    assert load_settings(config).analysis.max_tool_calls == 6
+
+
+def test_dotenv_precedence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    dotenv = tmp_path / "local.env"
+    dotenv.write_text("MDA_ANALYSIS__MAX_TOOL_CALLS=7\n", encoding="utf-8")
+    assert Settings(_env_file=dotenv).analysis.max_tool_calls == 7
+    monkeypatch.setenv("MDA_ANALYSIS__MAX_TOOL_CALLS", "5")
+    assert Settings(_env_file=dotenv).analysis.max_tool_calls == 5
