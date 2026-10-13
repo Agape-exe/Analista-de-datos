@@ -32,6 +32,7 @@ class AgentContext(DomainModel):
 class AgentUpdate(DomainModel):
     """Only explicitly set fields are applied to the orchestration state."""
 
+    dataset_id: str | None = None
     dataset_profile: DatasetProfile | None = None
     data_dictionary: DataDictionary | None = None
     associations: list[AssociationResult] | None = None
@@ -40,6 +41,7 @@ class AgentUpdate(DomainModel):
     evidence: list[Evidence] | None = None
     relationship_assessments: list[RelationshipAssessment] | None = None
     insights: list[Insight] | None = None
+    metrics: ExperimentMetrics | None = None
 
 
 class AgentResult(DomainModel):

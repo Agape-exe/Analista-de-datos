@@ -1,0 +1,4 @@
+customer_id	amount	created_at	segment	active
+001	10.5	2026-01-01	A	true
+002	20.5	2026-01-02	B	false
+003		2026-01-03	A	true

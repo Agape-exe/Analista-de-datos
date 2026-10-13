@@ -4,7 +4,34 @@ Base inicial en Python 3.12+ para un sistema multiagente de análisis de datos.
 El objetivo es comprender datasets, planificar análisis, ejecutar herramientas
 determinísticas, criticar evidencias y producir insights y reportes trazables.
 
-**Estado: esqueleto arquitectónico, no producto analítico terminado.**
+**Estado: Data Intake & Understanding funcional con interfaz web; análisis completo en desarrollo.**
+
+## Probar tus datasets desde el navegador
+
+La interfaz React vive en `frontend/`, junto al backend. Incluye **New Analysis** y
+**Dataset Overview**, basadas en el diseño: carga CSV/TSV, diccionario JSON opcional,
+separador/encoding, métricas reales, tabla de columnas, advertencias y descargas JSON.
+
+Desde la raíz, en una terminal:
+
+```powershell
+uv sync --locked
+uv run python run.py
+```
+
+En otra terminal, dentro de `frontend/` (Node 20.19+):
+
+```powershell
+npm ci
+npm run dev
+```
+
+Abre **http://localhost:5173**. Vite reenvía `/api` a FastAPI en el puerto 8000.
+El backend procesa los archivos en su entorno local Python; los archivos subidos
+son temporales y se eliminan después del intake. El navegador no necesita conocer
+rutas locales del servidor.
+
+Guía de interfaz, contratos y tests: [docs/frontend.md](docs/frontend.md).
 
 ## Principios
 
@@ -21,7 +48,7 @@ determinísticas, criticar evidencias y producir insights y reportes trazables.
 | `app/domain` | Modelos, enums e invariantes, sin infraestructura |
 | `app/application` | DTO, configuración efectiva y caso de uso |
 | `app/ports` | Protocols para agentes, fuentes, tools, LLM y workflow |
-| `app/adapters` | CSV local, LLM desactivado y factorías SQLAlchemy |
+| `app/adapters` | CSV/TSV locales, LLM desactivado y factorías SQLAlchemy |
 | `app/agents` | DataUnderstanding, Planner, Analysis, Critic e Insight |
 | `app/analytics` | Registry y espacios para tools determinísticas |
 | `app/orchestration` | Estado serializable y grafo LangGraph |
@@ -30,8 +57,10 @@ determinísticas, criticar evidencias y producir insights y reportes trazables.
 | `app/observability` | Logging con identificadores de ejecución |
 | `app/api` | FastAPI y adaptación HTTP |
 | `app/bootstrap.py` | Inyección de dependencias |
+| `frontend` | React/TypeScript, navegación y presentación de resultados |
 
 Detalles y límites de dependencia: [docs/architecture.md](docs/architecture.md).
+Guía del intake: [docs/data-intake.md](docs/data-intake.md).
 
 ## Flujo conceptual
 
@@ -91,6 +120,8 @@ uv run uvicorn app.api.main:app --reload
 - API: `http://127.0.0.1:8000`
 - OpenAPI: `http://127.0.0.1:8000/docs`
 - `GET /health`: `200 {"status": "ok"}`; indica liveness.
+- `POST /intake`: recibe archivo CSV/TSV y diccionario JSON opcional mediante multipart;
+  devuelve perfil, resumen, completitud, advertencias y tiempo. Errores: 400/413/422.
 - `POST /analysis`: valida la entrada y devuelve **501** con
   `ANALYSIS_WORKFLOW_NOT_ENABLED`. Entrada inválida: **422**.
 - Cada respuesta incluye `X-Request-ID` para correlación HTTP.
@@ -111,7 +142,8 @@ Ejemplo de cuerpo válido para `/analysis`:
 }
 ```
 
-La API todavía no lee esa ruta ni ejecuta el grafo.
+El endpoint `/analysis` todavía no lee esa ruta ni ejecuta el grafo. La interfaz
+usa `/intake`, que sí procesa archivos subidos para comprender su estructura.
 
 ## Configuración
 
@@ -133,7 +165,7 @@ El timeout se aplica al workflow skeleton. Los presupuestos, tamaño mínimo,
 reintentos LLM, repeticiones y flag de paralelismo quedan preparados para sus
 implementaciones futuras; no implican capacidades ya habilitadas.
 
-## Ejecutar el skeleton desde Python
+## Ejecutar el workflow desde Python
 
 ```python
 import asyncio
@@ -149,24 +181,30 @@ async def main() -> None:
         AnalysisInput(source={"kind": "csv", "path": "tests/fixtures/sample.csv"})
     )
     print(report.model_dump_json(indent=2))
+    if report.dataset_profile is not None and report.data_dictionary is not None:
+        print(report.dataset_profile.summary(report.data_dictionary).model_dump_json(indent=2))
 
 
 asyncio.run(main())
 ```
 
-Obtendrás `SKIPPED`, etapas omitidas explícitamente y tiempos reales de ejecución.
-Resultados analíticos e insights estarán vacíos. El intake CSV funciona por
-separado mediante `CsvDataSource.read`; aún no está conectado al grafo.
+DataUnderstanding lee el CSV/TSV y devuelve `SUCCESS` con perfil y diccionario.
+El reporte global conserva `SKIPPED` porque las siguientes cuatro etapas aún son
+skeletons; resultados analíticos e insights estarán vacíos. Una fuente inválida
+devuelve `FAILED` y detiene el grafo antes de Planner. Los tiempos son mediciones
+reales, incluido `profiling_time` (lectura, validación y perfilado básico).
 
 ## Estado actual
 
-Implementado: contratos de dominio, entrada CSV/TSV/TXT/SQL, diccionario estándar,
-registry, cinco agentes invocables, grafo lineal, tiempos, trazabilidad, API mínima,
-factorías SQLAlchemy y contratos de evaluación.
+Implementado: contratos de dominio y fuentes, lectura validada CSV/TSV, clasificación
+de columnas, conteos/nulos/valores únicos, diccionario suministrado o inferido,
+registry, cinco agentes invocables, grafo con intake real, tiempos, trazabilidad,
+API mínima, factorías SQLAlchemy y contratos de evaluación.
 
-Pendiente: profiling y EDA, algoritmos estadísticos, LLM real y prompts, ejecución
-de planes, critic loop, paralelismo, detección espuria, generación de insights,
-renderizadores, repositorios concretos y evaluación experimental completa.
+Pendiente: adaptadores SQL/TXT, EDA y profiling estadístico avanzado, algoritmos
+estadísticos, LLM real y prompts, ejecución de planes, critic loop, paralelismo,
+detección espuria, generación de insights, renderizadores, repositorios concretos
+y evaluación experimental completa.
 
 El registry de producción comienza vacío. `DisabledLLMProvider` lanza un error
 comprensible si se intenta usar. No hay respuestas analíticas simuladas.
