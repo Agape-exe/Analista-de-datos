@@ -46,17 +46,26 @@ def _agent_node(agent: Agent) -> Node:
     return node
 
 
+def _stage_route(agent_name: str) -> Callable[[AgentState], str]:
+    def route(state: AgentState) -> str:
+        return "failed" if state["stage_statuses"][agent_name] == AnalysisStatus.FAILED else "next"
+
+    return route
+
+
 def build_graph(agents: Sequence[Agent]) -> CompiledStateGraph:
-    """Build a linear skeleton; bounded critic feedback is a future extension."""
+    """Linear workflow with fail-fast routing; critic feedback is a future extension."""
     if not agents or len({agent.name for agent in agents}) != len(agents):
         raise ValueError("Graph requires agents with unique names")
     graph = StateGraph(AgentState)
-    previous = START
     for agent in agents:
         graph.add_node(agent.name, _agent_node(agent))
-        graph.add_edge(previous, agent.name)
-        previous = agent.name
-    graph.add_edge(previous, END)
+    graph.add_edge(START, agents[0].name)
+    for current, following in zip(agents, agents[1:], strict=False):
+        graph.add_conditional_edges(
+            current.name, _stage_route(current.name), {"failed": END, "next": following.name}
+        )
+    graph.add_edge(agents[-1].name, END)
     return graph.compile()
 
 
@@ -84,7 +93,7 @@ def initial_state(analysis_input: AnalysisInput, settings: Settings) -> AgentSta
 
 
 class LangGraphWorkflow:
-    """Skeleton executor: no source loading, reasoning, or analytics yet."""
+    """Run actual data intake followed by explicit skeleton stages."""
 
     def __init__(self, settings: Settings, agents: Sequence[Agent]) -> None:
         self.settings = settings
@@ -104,11 +113,14 @@ class LangGraphWorkflow:
             except Exception as error:
                 # Recover at the workflow boundary; cancellations remain propagating.
                 failure = f"Workflow execution failed: {error}"
-        metrics = ExperimentMetrics(
-            total_response_time=recorder.durations["total"],
-            llm_calls=0,
-            tool_calls=0,
-            iterations=1,
+        recorded_metrics: ExperimentMetrics = completed.get("metrics", state["metrics"])
+        metrics = recorded_metrics.model_copy(
+            update={
+                "total_response_time": recorder.durations["total"],
+                "llm_calls": 0,
+                "tool_calls": 0,
+                "iterations": 1,
+            }
         )
         if failure is not None:
             log_stage(
@@ -126,6 +138,8 @@ class LangGraphWorkflow:
         return AnalysisReport(
             run_id=state["run_id"],
             status=AnalysisStatus.FAILED if failed else AnalysisStatus.SKIPPED,
+            dataset_profile=completed["dataset_profile"],
+            data_dictionary=completed["data_dictionary"],
             analysis_results=completed["analysis_results"],
             insights=completed["insights"],
             metrics=metrics,

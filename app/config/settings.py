@@ -10,6 +10,7 @@ from pydantic_settings import (
 )
 
 from app.domain.models.base import DomainModel
+from app.domain.models.dataset import ProfilingOptions
 
 
 class AnalysisSettings(DomainModel):
@@ -40,6 +41,15 @@ class PersistenceSettings(DomainModel):
     database_url: str = Field(min_length=1)
 
 
+class UploadSettings(DomainModel):
+    max_dataset_bytes: int = Field(
+        ge=0, description="Dataset upload limit in bytes; 0 is unlimited"
+    )
+    max_dictionary_bytes: int = Field(gt=0)
+    chunk_size_bytes: int = Field(gt=0)
+    temporary_directory: Path | None = None
+
+
 class Settings(BaseSettings):
     """Defaults < external TOML < dotenv < environment < constructor."""
 
@@ -55,6 +65,8 @@ class Settings(BaseSettings):
     llm: LLMSettings
     evaluation: EvaluationSettings
     persistence: PersistenceSettings
+    data_intake: ProfilingOptions
+    uploads: UploadSettings
 
     @classmethod
     def settings_customise_sources(

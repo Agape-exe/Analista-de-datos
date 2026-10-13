@@ -1,11 +1,44 @@
-from app.agents.base import SkeletonAgent
+from time import perf_counter
+
 from app.application.dto.agent import AgentContext, AgentResult, AgentUpdate
+from app.application.errors import DataSourceError
+from app.domain.enums.statuses import AnalysisStatus
+from app.ports.data_understanding import DataUnderstanding
 
 
-class DataUnderstandingAgent(SkeletonAgent):
+class DataUnderstandingAgent:
+    """Deterministic intake stage; only metadata crosses the agent boundary."""
+
     name = "DataUnderstanding"
 
+    def __init__(self, understanding: DataUnderstanding) -> None:
+        self.understanding = understanding
+
     async def run(self, context: AgentContext) -> AgentResult:
-        if context.input.data_dictionary is not None:
-            return self.skipped(AgentUpdate(data_dictionary=context.input.data_dictionary))
-        return self.skipped()
+        started = perf_counter()
+        try:
+            result = await self.understanding.understand(context.input)
+        except DataSourceError as error:
+            return AgentResult(
+                agent_name=self.name,
+                status=AnalysisStatus.FAILED,
+                errors=[str(error)],
+                update=AgentUpdate(
+                    metrics=context.metrics.model_copy(
+                        update={"profiling_time": perf_counter() - started}
+                    )
+                ),
+            )
+        return AgentResult(
+            agent_name=self.name,
+            status=AnalysisStatus.SUCCESS,
+            update=AgentUpdate(
+                dataset_id=result.dataset.dataset_id,
+                dataset_profile=result.profile,
+                data_dictionary=result.data_dictionary,
+                metrics=context.metrics.model_copy(
+                    update={"profiling_time": result.profiling_time}
+                ),
+            ),
+            warnings=result.warnings,
+        )

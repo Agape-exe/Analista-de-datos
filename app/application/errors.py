@@ -12,3 +12,11 @@ class WorkflowUnavailableError(Exception):
 
 class ToolRegistryError(Exception):
     """A tool registration or lookup failed."""
+
+
+class UploadValidationError(Exception):
+    """Invalid file or dictionary in an intake request."""
+
+
+class UploadTooLargeError(UploadValidationError):
+    """Configured upload size limit was exceeded."""

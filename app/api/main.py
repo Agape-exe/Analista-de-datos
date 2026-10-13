@@ -6,6 +6,8 @@ from fastapi import FastAPI, Request, Response
 
 from app.api.routes.analysis import router as analysis_router
 from app.api.routes.health import router as health_router
+from app.api.routes.intake import router as intake_router
+from app.bootstrap import build_intake_use_case
 from app.config.settings import Settings, load_settings
 
 
@@ -13,6 +15,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Composition root for HTTP; no analytics or persistence operations here."""
     application = FastAPI(title="Multiagent Data Analyst", version="0.1.0")
     application.state.settings = settings if settings is not None else load_settings()
+    application.state.intake_use_case = build_intake_use_case(application.state.settings)
 
     @application.middleware("http")
     async def request_trace(
@@ -29,6 +32,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application.include_router(health_router)
     application.include_router(analysis_router)
+    application.include_router(intake_router)
     return application
 
 

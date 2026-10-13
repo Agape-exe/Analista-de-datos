@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field, model_validator
 
 from app.domain.enums.statuses import DictionarySource
@@ -12,6 +14,10 @@ class DataDictionaryEntry(DomainModel):
     unit: str | None = None
     source: DictionarySource
     confidence: float | None = Field(default=None, ge=0, le=1)
+    inferred_fields: list[Literal["description", "data_type", "semantic_type"]] = Field(
+        default_factory=list
+    )
+    inference_reason: str | None = None
 
 
 class DataDictionary(DomainModel):
