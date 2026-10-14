@@ -14,6 +14,10 @@ class ToolRegistryError(Exception):
     """A tool registration or lookup failed."""
 
 
+class DatasetRegistryError(Exception):
+    """A local dataset registration or lookup failed."""
+
+
 class UploadValidationError(Exception):
     """Invalid file or dictionary in an intake request."""
 

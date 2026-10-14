@@ -35,8 +35,9 @@ tools ni proveedor LLM activo.
 
 - `AnalysisAgent` está en `app/agents/analyst.py`.
 - Recibe un `ToolRegistry` explícito además del proveedor LLM.
-- El registry permite registrar instancias, consultar nombres y obtener una tool
-  por nombre; rechaza nombres vacíos y registros duplicados.
+- El registry permite registrar instancias, consultar nombres, resolver una
+  solicitud compatible y ejecutar solo tools autorizadas; rechaza nombres vacíos,
+  registros duplicados, tools desconocidas y solicitudes no compatibles.
 - `AnalyticsTool` define `name`, `supports(request)` y `execute(request)`.
 
 ### Propuesto para una implementación posterior
@@ -81,9 +82,17 @@ sesión de persistencia ni filas crudas.
 
 El intake local usa `LoadedDataset` y `LocalTable` en
 `app/application/dto/datasource.py`; `PandasLocalTable` vive en
-`app/adapters/datasource/delimited_source.py`. La arquitectura prevé conservar
-una referencia local al dataset e inyectar ese acceso a la ejecución de tools,
-pero todavía no existe ese registry de datasets.
+`app/adapters/datasource/delimited_source.py`. `DatasetRegistry`, en
+`app/application/services/dataset_registry.py`, mantiene por instancia las
+referencias de datasets ya validados. Registra IDs únicos, verifica que cada
+columna declarada esté disponible con el número de filas esperado y permite
+recuperar, liberar o limpiar referencias. No es serializable ni global, por lo
+que cada ejecución puede usar una instancia aislada y liberar sus datos al final.
+
+El intake existente no se conecta todavía a ese registry: las cargas HTTP usan
+archivos temporales que se eliminan al terminar el intake. Conectar el registry al
+workflow requiere acordar el ciclo de vida de los datos locales sin retener rutas
+temporales inválidas.
 
 Tras la ejecución futura, `analysis_results` quedará en `AgentState` y será visible
 para Critic mediante el siguiente `AgentContext`. `Evidence` y
@@ -96,6 +105,11 @@ El repositorio tiene espacios para `profiling`, `association`, `statistics`,
 `anomalies` y `clustering` en `app/analytics/`, pero sus implementaciones de
 producción aún no están registradas. La primera integración debe coordinarse con
 Integrante 2 y usar el contrato `AnalyticsTool`.
+
+`ToolRegistry.execute(request)` resuelve la tool por el método de `ToolRequest` y
+exige que `supports(request)` sea verdadero antes de delegar la ejecución. No hay
+tools productivas registradas ni algoritmos estadísticos implementados en esta
+sesión.
 
 Como alcance previsto, sujeto a aprobación, el MVP puede comenzar con profiling
 estadístico básico y asociación/correlación, seguido por las tools determinísticas
@@ -136,13 +150,14 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
 - `AnalyticsTool` y `AnalysisResult` como frontera determinística.
 - `AgentState`, `_agent_node` y `build_graph` para integración LangGraph.
 - `EffectiveConfiguration` para overrides allowlisted por ejecución.
-- `DataSourceRouter`, lectores CSV/TSV y `LocalTable` para cálculo local.
+- `DataSourceRouter`, lectores CSV/TSV, `LocalTable` y `DatasetRegistry` para
+  cálculo local aislado.
 - Logging de etapas y `TimingRecorder` para trazabilidad y tiempos.
 
 ## 10. Cambios o decisiones pendientes de aprobación
 
-- Cómo se registra y resuelve una referencia durable al dataset local durante una
-  ejecución, sin serializar filas en `AgentState`.
+- Cómo conectar el ciclo de vida de `DatasetRegistry` al workflow y a las cargas
+  temporales sin serializar filas en `AgentState` ni retener rutas inválidas.
 - Catálogo inicial, nombres y esquemas de parámetros de las tools con Integrante 2.
 - Política de dependencias entre `AnalysisStep` y comportamiento ante ciclos o
   solicitudes no soportadas.
