@@ -38,3 +38,8 @@ node_modules/
 frontend/coverage/
 frontend/test-results/
 frontend/playwright-report/
+
+# Integrante 5 local outputs
+*.db
+experiments/integrante5-demo/
+frontend/test-results/

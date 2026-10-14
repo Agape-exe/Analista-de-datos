@@ -1,10 +1,11 @@
-from pydantic import Field
+from pydantic import Field, JsonValue
 
 from app.domain.enums.statuses import AnalysisStatus
 from app.domain.models.analysis import AnalysisResult
 from app.domain.models.base import DomainModel
 from app.domain.models.data_dictionary import DataDictionary
 from app.domain.models.dataset import DatasetProfile
+from app.domain.models.evidence import Evidence, RelationshipAssessment
 from app.domain.models.insight import Insight
 from app.domain.models.metrics import Duration, ExperimentMetrics
 
@@ -21,3 +22,8 @@ class AnalysisReport(DomainModel):
     warnings: list[str] = Field(default_factory=list)
     stage_statuses: dict[str, AnalysisStatus] = Field(default_factory=dict)
     stage_durations: dict[str, Duration] = Field(default_factory=dict)
+
+    evidence: list[Evidence] = Field(default_factory=list)
+    relationship_assessments: list[RelationshipAssessment] = Field(default_factory=list)
+    configuration: dict[str, JsonValue] = Field(default_factory=dict)
+    execution_trace: list[dict[str, JsonValue]] = Field(default_factory=list)

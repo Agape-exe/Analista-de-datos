@@ -61,3 +61,18 @@ def build_agents(
 def build_use_case(settings: Settings) -> AnalyzeDataset:
     agents = build_agents(build_llm(settings), ToolRegistry(), build_data_understanding(settings))
     return AnalyzeDataset(LangGraphWorkflow(settings, agents))
+
+
+def build_repository(settings: Settings):
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import StaticPool
+
+    from app.adapters.persistence.report_repository import SqlAlchemyAnalysisRepository
+
+    url = settings.persistence.database_url
+    options = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite") else {}
+    if url in {"sqlite://", "sqlite:///:memory:"}:
+        options["poolclass"] = StaticPool
+    repository = SqlAlchemyAnalysisRepository(create_engine(url, **options))
+    repository.initialize()
+    return repository

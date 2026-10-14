@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Awaitable, Callable, Mapping, Sequence
+from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
@@ -8,12 +9,14 @@ from langgraph.graph.state import CompiledStateGraph
 
 from app.application.dto.agent import AgentContext
 from app.application.dto.analysis_input import AnalysisInput, resolve_configuration
+from app.application.services.reporting import assemble_report
 from app.config.settings import Settings
 from app.domain.enums.statuses import AnalysisStatus
 from app.domain.models.metrics import ExperimentMetrics
 from app.domain.models.report import AnalysisReport
 from app.evaluation.metrics import TimingRecorder
 from app.observability.logging import log_stage
+from app.observability.telemetry import telemetry_scope
 from app.orchestration.state import AgentState
 from app.ports.agent import Agent
 
@@ -35,6 +38,10 @@ def _agent_node(agent: Agent) -> Node:
         updates: dict[str, Any] = {
             field: getattr(result.update, field) for field in result.update.model_fields_set
         }
+        if result.update.insights and state["metrics"].time_to_first_insight is None:
+            measured = updates.get("metrics", state["metrics"]).model_copy(deep=True)
+            measured.time_to_first_insight = perf_counter() - state["started_monotonic"]
+            updates["metrics"] = measured
         updates.update(
             stage_statuses=state["stage_statuses"] | {agent.name: result.status},
             stage_durations=state["stage_durations"] | {agent.name: duration},
@@ -71,6 +78,7 @@ def build_graph(agents: Sequence[Agent]) -> CompiledStateGraph:
 
 def initial_state(analysis_input: AnalysisInput, settings: Settings) -> AgentState:
     return AgentState(
+        started_monotonic=perf_counter(),
         run_id=str(uuid4()),
         input=analysis_input,
         configuration=resolve_configuration(settings, analysis_input.configuration),
@@ -104,7 +112,7 @@ class LangGraphWorkflow:
         recorder = TimingRecorder()
         failure: str | None = None
         completed: Mapping[str, Any] = {}
-        with recorder.measure("total"):
+        with telemetry_scope() as telemetry, recorder.measure("total"):
             try:
                 async with asyncio.timeout(state["configuration"].performance.timeout_seconds):
                     completed = await self.graph.ainvoke(state)
@@ -117,11 +125,22 @@ class LangGraphWorkflow:
         metrics = recorded_metrics.model_copy(
             update={
                 "total_response_time": recorder.durations["total"],
-                "llm_calls": 0,
-                "tool_calls": 0,
-                "iterations": 1,
+                "llm_calls": recorded_metrics.llm_calls
+                if recorded_metrics.llm_calls is not None
+                else 0,
+                "tool_calls": recorded_metrics.tool_calls
+                if recorded_metrics.tool_calls is not None
+                else 0,
+                "iterations": recorded_metrics.iterations
+                if recorded_metrics.iterations is not None
+                else 1,
             }
         )
+        if telemetry.llm_calls:
+            metrics.llm_calls = telemetry.llm_calls
+            metrics.tokens_used = None if telemetry.missing_token_usage else telemetry.tokens_used
+        if telemetry.tool_calls:
+            metrics.tool_calls = telemetry.tool_calls
         if failure is not None:
             log_stage(
                 state["run_id"], "workflow", AnalysisStatus.FAILED, recorder.durations["total"]
@@ -131,20 +150,8 @@ class LangGraphWorkflow:
                 status=AnalysisStatus.FAILED,
                 errors=[failure],
                 metrics=metrics,
+                execution_trace=telemetry.events,
             )
-        failed = completed["errors"] or any(
-            status == AnalysisStatus.FAILED for status in completed["stage_statuses"].values()
-        )
-        return AnalysisReport(
-            run_id=state["run_id"],
-            status=AnalysisStatus.FAILED if failed else AnalysisStatus.SKIPPED,
-            dataset_profile=completed["dataset_profile"],
-            data_dictionary=completed["data_dictionary"],
-            analysis_results=completed["analysis_results"],
-            insights=completed["insights"],
-            metrics=metrics,
-            errors=completed["errors"],
-            warnings=completed["warnings"],
-            stage_statuses=completed["stage_statuses"],
-            stage_durations=completed["stage_durations"],
-        )
+        report = assemble_report(completed, metrics)
+        report.execution_trace = telemetry.events
+        return report
