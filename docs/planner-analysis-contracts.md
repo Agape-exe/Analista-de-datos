@@ -14,20 +14,43 @@ tools ni proveedor LLM activo.
 
 ### Existente
 
-- `PlannerAgent` está en `app/agents/planner.py` y hereda de `SkeletonAgent`.
-- Recibe `AgentContext` y puede devolver `AgentResult` mediante el puerto común.
-- El contexto ya expone pregunta de usuario, perfil, diccionario, asociaciones,
-  configuración y un posible `AnalysisPlan`.
+- `PlannerAgent` está en `app/agents/planner.py`, conserva el puerto LLM para
+  compatibilidad futura y no lo invoca mientras el proveedor siga deshabilitado.
+- `DeterministicAnalysisPlanner`, en
+  `app/application/services/analysis_planning.py`, construye planes reproducibles
+  sólo a partir de `AgentContext`, perfil, diccionario y configuración efectiva.
+- Genera hipótesis exploratorias sin conclusiones causales y devuelve
+  `AnalysisPlan` mediante `AgentUpdate.analysis_plan` cuando tiene pasos válidos.
+- Prioriza columnas mencionadas en la pregunta; los empates se resuelven por tipo
+  y nombre de columna para mantener orden estable.
+- En FAST MODE limita la exploración a una hipótesis por familia compatible
+  (numérica, categórica o ANOVA), además de respetar `max_hypotheses` y
+  `max_tool_calls`.
+- Antes de formar pares, el Planner usa un pool acotado por tipo: cuatro columnas
+  en FAST MODE y entre cuatro y doce en otros modos, según `max_hypotheses`.
+  Las coincidencias exactas de la pregunta se colocan antes del orden alfabético;
+  así una variable mencionada al final del nombre no queda desplazada por el
+  recorte. Esta política evita materializar combinaciones cuadráticas de perfiles
+  amplios.
+
+Reglas implementadas: dos numéricas proponen `pearson` y `spearman`; dos
+categóricas proponen `chi_square` y `cramers_v`; una categórica seguida de una
+numérica propone `anova_one_way`. `partial_correlation` se añade sólo si la
+pregunta nombra exactamente una única variable numérica de control después de un
+indicador de control/ajuste. No se aceptan subcadenas dentro de otras palabras ni
+referencias ambiguas. El plan nunca ejecuta una tool ni accede a filas.
+
+El Planner devuelve `SKIPPED` con advertencia si faltan metadatos, no hay variables
+compatibles, el presupuesto de tools es cero o el perfil tiene menos filas que
+`minimum_sample_size`. Un identificador inconsistente entre contexto y perfil se
+trata como fallo real de planificación.
 
 ### Propuesto para una implementación posterior
 
-- Priorizar hipótesis representadas por `Hypothesis`.
-- Producir un `AnalysisPlan` con pasos ordenados (`AnalysisStep`) y solicitudes
-  `ToolRequest` válidas para el registry.
-- Respetar `max_hypotheses`, `max_tool_calls`, el modo `fast` y las variables
-  disponibles en el perfil/diccionario.
-- Mantener el razonamiento del LLM resumido; las filas completas no forman parte
-  del contexto enviado al proveedor.
+- Incorporar un proveedor LLM inyectado para enriquecer propuestas, manteniendo el
+  plan determinístico como fallback y sin enviar filas completas.
+- Coordinar la selección de análisis adicionales con Critic y la ejecución real
+  con Analysis Agent.
 
 ## 3. Responsabilidades de Analysis Agent
 
@@ -161,10 +184,11 @@ Los límites ya modelados son `max_hypotheses`, `max_tool_calls`,
 `parallel_tools`. Los defaults empaquetados están en
 `app/config/defaults.toml`; el modo por defecto es `fast`.
 
-Actualmente estos valores solo configuran el skeleton: el grafo aplica el timeout
-global, pero no ejecuta tools, no hace fan-out paralelo y no consume presupuestos
-de hipótesis o llamadas. La implementación futura debe hacer cumplir esos límites
-en la frontera de Planner/Analysis y mantener contadores reales en métricas.
+Planner ya consume `minimum_sample_size`, `max_hypotheses`, `max_tool_calls` y
+`mode` para construir un plan acotado; no incrementa métricas porque no ejecuta
+tools ni llama al LLM. El grafo aún no ejecuta tools, no hace fan-out paralelo ni
+consume presupuestos durante Analysis. La implementación futura debe mantener esos
+límites en la frontera de ejecución e instrumentar operaciones reales.
 
 ## 8. Dependencias con los demás integrantes
 
@@ -206,6 +230,8 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
   Agent, manteniendo el aislamiento de `DatasetRegistry`.
 - Registro por ejecución de las tools mixtas y decisión de Planner sobre cuándo
   una variable codificada puede tratarse como categoría o resultado numérico.
+- Integración de `AnalysisPlan` con Analysis Agent, registro por ejecución de tools
+  y validación final de muestras efectivas después de excluir faltantes.
 - Política de dependencias entre `AnalysisStep` y comportamiento ante ciclos o
   solicitudes no soportadas.
 - Semántica de ejecución paralela, límites por tool y cancelación bajo FAST MODE.
