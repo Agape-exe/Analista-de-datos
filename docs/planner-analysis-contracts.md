@@ -124,6 +124,27 @@ resultados no finitos. En esos casos devuelven `AnalysisResult` con `FAILED`, si
 estadísticos calculados. Los resultados exitosos incluyen una advertencia explícita:
 asociación estadística no demuestra causalidad.
 
+Las tools estadísticas mixtas están en `app/analytics/statistics/mixed.py` y usan
+la misma inyección local de `DatasetRegistry`. Sus métodos autorizados son:
+
+- `chi_square`: dos variables categóricas distintas en `variables`. Construye una
+  tabla de contingencia y devuelve estadístico Chi-cuadrado, valor p, grados de
+  libertad, dimensiones y tamaño muestral. Usa `chi2_contingency` sin corrección
+  de continuidad; advierte si hay frecuencias esperadas menores de cinco.
+- `cramers_v`: dos variables categóricas distintas en `variables`. Reutiliza la
+  misma tabla y Chi-cuadrado sin corrección de continuidad, y devuelve V de Cramér
+  estándar (sin corrección por sesgo), valor p y dimensiones de la tabla.
+- `anova_one_way`: `variables[0]` es la categoría de grupo y `variables[1]` el
+  resultado numérico. Devuelve F, valor p, eta cuadrado, número de grupos y grados
+  de libertad entre y dentro de grupos.
+
+Las categorías admitidas son texto no vacío o códigos enteros; no se discretizan
+variables continuas automáticamente. Las tres tools excluyen observaciones con
+valores faltantes. También rechazan etiquetas ambiguas, tablas/categorías
+insuficientes, valores numéricos no finitos, muestras insuficientes y resultados
+degenerados. ANOVA exige al menos dos observaciones por grupo válido, no realiza
+post-hoc y advierte que sus supuestos no se evalúan automáticamente.
+
 `ToolRegistry.execute(request)` resuelve la tool por el método de `ToolRequest` y
 exige que `supports(request)` sea verdadero antes de delegar la ejecución. No hay
 registro global ni conexión al workflow: las tools se registrarán por ejecución
@@ -172,6 +193,8 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
   cálculo local aislado.
 - `PearsonCorrelationTool`, `SpearmanCorrelationTool` y
   `PartialCorrelationTool` para asociación numérica determinística con SciPy.
+- `ChiSquareIndependenceTool`, `CramersVTool` y `OneWayAnovaTool` para
+  asociaciones categóricas y comparación unifactorial de medias con SciPy.
 - Logging de etapas y `TimingRecorder` para trazabilidad y tiempos.
 
 ## 10. Cambios o decisiones pendientes de aprobación
@@ -181,6 +204,8 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
 - Catálogo inicial, nombres y esquemas de parámetros de las tools con Integrante 2.
 - Registro por ejecución de las tools de correlación cuando se integre Analysis
   Agent, manteniendo el aislamiento de `DatasetRegistry`.
+- Registro por ejecución de las tools mixtas y decisión de Planner sobre cuándo
+  una variable codificada puede tratarse como categoría o resultado numérico.
 - Política de dependencias entre `AnalysisStep` y comportamiento ante ciclos o
   solicitudes no soportadas.
 - Semántica de ejecución paralela, límites por tool y cancelación bajo FAST MODE.
