@@ -31,9 +31,77 @@ export interface paths {
         put?: never;
         /**
          * Analysis
-         * @description Validate the public contract; execution will be wired in a later increment.
+         * @description Local development contract. Pending stages remain explicitly SKIPPED.
          */
         post: operations["analysis_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analysis/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Analysis Upload */
+        post: operations["analysis_upload_analysis_upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report */
+        get: operations["report_reports__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/{run_id}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report Metrics */
+        get: operations["report_metrics_reports__run_id__metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/{run_id}/markdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report Markdown */
+        get: operations["report_markdown_reports__run_id__markdown_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -116,6 +184,18 @@ export interface components {
             stage_durations?: {
                 [key: string]: number;
             };
+            /** Evidence */
+            evidence?: components["schemas"]["Evidence"][];
+            /** Relationship Assessments */
+            relationship_assessments?: components["schemas"]["RelationshipAssessment"][];
+            /** Configuration */
+            configuration?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Execution Trace */
+            execution_trace?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[];
         };
         /** AnalysisResult */
         AnalysisResult: {
@@ -150,6 +230,25 @@ export interface components {
          * @enum {string}
          */
         AnalysisStatus: "SUCCESS" | "FAILED" | "SKIPPED";
+        /** Body_analysis_upload_analysis_upload_post */
+        Body_analysis_upload_analysis_upload_post: {
+            /** File */
+            file: string;
+            /**
+             * Delimiter
+             * @default ,
+             */
+            delimiter: string;
+            /**
+             * Encoding
+             * @default utf-8
+             */
+            encoding: string;
+            /** Data Dictionary */
+            data_dictionary?: string | null;
+            /** User Question */
+            user_question?: string | null;
+        };
         /** Body_intake_intake_post */
         Body_intake_intake_post: {
             /** File */
@@ -296,6 +395,17 @@ export interface components {
          * @enum {string}
          */
         DictionarySource: "official" | "manual" | "schema" | "inferred";
+        /** Evidence */
+        Evidence: {
+            /** Evidence Id */
+            evidence_id: string;
+            /** Analysis Id */
+            analysis_id: string;
+            /** Description */
+            description: string;
+            /** Limitations */
+            limitations?: string[];
+        };
         /** ExperimentMetrics */
         ExperimentMetrics: {
             /** Precision */
@@ -398,6 +508,19 @@ export interface components {
             timeout_seconds?: number | null;
             /** Parallel Tools */
             parallel_tools?: boolean | null;
+        };
+        /** RelationshipAssessment */
+        RelationshipAssessment: {
+            /** Variables */
+            variables: string[];
+            /** Evidence Ids */
+            evidence_ids?: string[];
+            /** Potentially Spurious */
+            potentially_spurious?: boolean | null;
+            /** Rationale */
+            rationale?: string | null;
+            /** Limitations */
+            limitations?: string[];
         };
         /**
          * SemanticType
@@ -527,12 +650,129 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Complete analysis workflow not enabled */
-            501: {
+        };
+    };
+    analysis_upload_analysis_upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_analysis_upload_analysis_upload_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_reports__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_metrics_reports__run_id__metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperimentMetrics"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_markdown_reports__run_id__markdown_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
