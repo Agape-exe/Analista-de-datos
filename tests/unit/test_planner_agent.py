@@ -118,6 +118,45 @@ async def test_planner_selects_partial_correlation() -> None:
     assert partial.request.parameters == {"control_variable": "age"}
 
 
+async def test_planner_detects_exact_numeric_control_variable() -> None:
+    result = await PlannerAgent(MustNotCallLLM()).run(
+        context(
+            [
+                ("income", SemanticType.NUMERIC),
+                ("spend", SemanticType.NUMERIC),
+                ("age", SemanticType.NUMERIC),
+            ],
+            question="Evaluar income y spend, ajustando por age.",
+        )
+    )
+
+    assert result.update.analysis_plan is not None
+    partial = next(
+        step
+        for step in result.update.analysis_plan.steps
+        if step.request.method == "partial_correlation"
+    )
+    assert partial.request.parameters == {"control_variable": "age"}
+
+
+async def test_planner_rejects_partial_control_name_match() -> None:
+    result = await PlannerAgent(MustNotCallLLM()).run(
+        context(
+            [
+                ("income", SemanticType.NUMERIC),
+                ("spend", SemanticType.NUMERIC),
+                ("age", SemanticType.NUMERIC),
+            ],
+            question="Evaluar income y spend controlando por ageless.",
+        )
+    )
+
+    assert result.update.analysis_plan is not None
+    assert all(
+        step.request.method != "partial_correlation" for step in result.update.analysis_plan.steps
+    )
+
+
 async def test_planner_prioritizes_user_question() -> None:
     result = await PlannerAgent(MustNotCallLLM()).run(
         context(
@@ -133,6 +172,46 @@ async def test_planner_prioritizes_user_question() -> None:
     assert result.status == "SUCCESS"
     assert result.update.analysis_plan is not None
     assert result.update.analysis_plan.hypotheses[0].variables == ["income", "spend"]
+
+
+async def test_planner_bounds_large_numeric_candidate_selection() -> None:
+    columns = [(f"metric_{number:03}", SemanticType.NUMERIC) for number in range(100)] + [
+        ("zeta_income", SemanticType.NUMERIC),
+        ("zeta_spend", SemanticType.NUMERIC),
+    ]
+    value = context(
+        columns,
+        question="Evaluar la asociación entre zeta_income y zeta_spend.",
+        configuration={"analysis": {"max_hypotheses": 1, "max_tool_calls": 2}},
+    )
+    planner = PlannerAgent(MustNotCallLLM())
+
+    first = await planner.run(value)
+    second = await planner.run(value)
+
+    assert first.update.analysis_plan is not None
+    assert first.update.analysis_plan == second.update.analysis_plan
+    assert len(first.update.analysis_plan.hypotheses) == 1
+    assert len(first.update.analysis_plan.steps) == 2
+
+
+async def test_planner_prioritizes_late_explicit_columns_in_bounded_pool() -> None:
+    columns = [(f"metric_{number:03}", SemanticType.NUMERIC) for number in range(100)] + [
+        ("zeta_income", SemanticType.NUMERIC),
+        ("zeta_spend", SemanticType.NUMERIC),
+    ]
+    result = await PlannerAgent(MustNotCallLLM()).run(
+        context(
+            columns,
+            question="Evaluar la asociación entre zeta_income y zeta_spend.",
+        )
+    )
+
+    assert result.update.analysis_plan is not None
+    assert result.update.analysis_plan.hypotheses[0].variables == [
+        "zeta_income",
+        "zeta_spend",
+    ]
 
 
 async def test_planner_respects_fast_mode_limits() -> None:

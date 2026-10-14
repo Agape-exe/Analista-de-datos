@@ -26,12 +26,19 @@ tools ni proveedor LLM activo.
 - En FAST MODE limita la exploración a una hipótesis por familia compatible
   (numérica, categórica o ANOVA), además de respetar `max_hypotheses` y
   `max_tool_calls`.
+- Antes de formar pares, el Planner usa un pool acotado por tipo: cuatro columnas
+  en FAST MODE y entre cuatro y doce en otros modos, según `max_hypotheses`.
+  Las coincidencias exactas de la pregunta se colocan antes del orden alfabético;
+  así una variable mencionada al final del nombre no queda desplazada por el
+  recorte. Esta política evita materializar combinaciones cuadráticas de perfiles
+  amplios.
 
 Reglas implementadas: dos numéricas proponen `pearson` y `spearman`; dos
 categóricas proponen `chi_square` y `cramers_v`; una categórica seguida de una
 numérica propone `anova_one_way`. `partial_correlation` se añade sólo si la
-pregunta nombra explícitamente una variable numérica de control después de un
-indicador de control/ajuste. El plan nunca ejecuta una tool ni accede a filas.
+pregunta nombra exactamente una única variable numérica de control después de un
+indicador de control/ajuste. No se aceptan subcadenas dentro de otras palabras ni
+referencias ambiguas. El plan nunca ejecuta una tool ni accede a filas.
 
 El Planner devuelve `SKIPPED` con advertencia si faltan metadatos, no hay variables
 compatibles, el presupuesto de tools es cero o el perfil tiene menos filas que

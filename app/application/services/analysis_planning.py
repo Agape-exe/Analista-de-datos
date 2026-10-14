@@ -7,7 +7,13 @@ from app.domain.enums.semantic_type import SemanticType
 from app.domain.models.analysis import AnalysisPlan, AnalysisStep, Hypothesis, ToolRequest
 from app.domain.models.dataset import ColumnProfile
 
-CONTROL_TERMS = ("control", "ajust")
+FAST_COLUMN_POOL_SIZE = 4
+MAX_COLUMN_POOL_SIZE = 12
+CONTROL_PATTERN = re.compile(
+    r"(?<!\w)(?:control(?:ar|ando|ado|ada|es)?|ajust(?:ar|ando|ado|ada|e)?)"
+    r"(?!\w)"
+)
+CONTROL_WINDOW_CHARACTERS = 80
 
 
 @dataclass(frozen=True)
@@ -51,7 +57,12 @@ class DeterministicAnalysisPlanner:
             )
 
         typed_columns, warnings = self._typed_columns(context)
-        candidates = self._candidates(typed_columns, context.input.user_question)
+        candidates = self._candidates(
+            typed_columns,
+            context.input.user_question,
+            configuration.mode,
+            configuration.max_hypotheses,
+        )
         if not candidates:
             return PlanningOutcome(
                 None, warnings + ["No compatible variables were available for planning."]
@@ -93,10 +104,17 @@ class DeterministicAnalysisPlanner:
         return columns, warnings
 
     def _candidates(
-        self, columns: dict[SemanticType, list[str]], question: str | None
+        self,
+        columns: dict[SemanticType, list[str]],
+        question: str | None,
+        mode: str,
+        max_hypotheses: int,
     ) -> list[_Candidate]:
-        numeric = columns[SemanticType.NUMERIC]
-        categorical = columns[SemanticType.CATEGORICAL]
+        pool_size = _column_pool_size(mode, max_hypotheses)
+        numeric = _prioritized_column_pool(columns[SemanticType.NUMERIC], question, pool_size)
+        categorical = _prioritized_column_pool(
+            columns[SemanticType.CATEGORICAL], question, pool_size
+        )
         candidates: list[_Candidate] = []
         control = _explicit_control(question, numeric)
         for first, second in combinations(numeric, 2):
@@ -226,30 +244,48 @@ def _effective_semantic_type(
 def _question_priority(question: str | None, variables: tuple[str | None, ...]) -> int:
     if not question:
         return 0
-    normalized = _normalize(question)
-    return sum(1 for variable in variables if variable and _mentioned(normalized, variable))
+    return sum(1 for variable in variables if variable and _mentioned(question, variable))
+
+
+def _column_pool_size(mode: str, max_hypotheses: int) -> int:
+    if mode == "fast":
+        return FAST_COLUMN_POOL_SIZE
+    return min(MAX_COLUMN_POOL_SIZE, max(FAST_COLUMN_POOL_SIZE, max_hypotheses + 1))
+
+
+def _prioritized_column_pool(columns: list[str], question: str | None, pool_size: int) -> list[str]:
+    """Keep a bounded deterministic pool, with exact question mentions first."""
+    mentioned = [column for column in columns if question and _mentioned(question, column)]
+    unmentioned = [column for column in columns if column not in mentioned]
+    return (mentioned + unmentioned)[:pool_size]
 
 
 def _explicit_control(question: str | None, numeric_columns: list[str]) -> str | None:
     if not question:
         return None
-    normalized = _normalize(question)
-    control_positions = [normalized.find(term) for term in CONTROL_TERMS if term in normalized]
-    control_positions = [position for position in control_positions if position >= 0]
-    if not control_positions:
+    control_matches = list(CONTROL_PATTERN.finditer(question.casefold()))
+    if not control_matches:
         return None
-    candidates = [
+    candidates = {
         column
         for column in numeric_columns
-        if (position := normalized.find(_normalize(column))) >= min(control_positions)
-        and position - min(control_positions) <= 80
-    ]
-    return candidates[0] if len(candidates) == 1 else None
+        if any(
+            control.end() <= mention.start()
+            and mention.start() - control.end() <= CONTROL_WINDOW_CHARACTERS
+            for control in control_matches
+            for mention in _column_mentions(question, column)
+        )
+    }
+    return next(iter(candidates)) if len(candidates) == 1 else None
 
 
 def _mentioned(question: str, column: str) -> bool:
-    return bool(re.search(rf"\b{re.escape(_normalize(column))}\b", question))
+    return bool(_column_mentions(question, column))
 
 
-def _normalize(value: str) -> str:
-    return value.casefold().replace("_", " ")
+def _column_mentions(question: str, column: str) -> list[re.Match[str]]:
+    parts = [part for part in re.split(r"[_\s]+", column.casefold()) if part]
+    if not parts:
+        return []
+    pattern = r"(?<!\w)" + r"[\s_]+".join(map(re.escape, parts)) + r"(?!\w)"
+    return list(re.finditer(pattern, question.casefold()))
