@@ -99,21 +99,39 @@ para Critic mediante el siguiente `AgentContext`. `Evidence` y
 `RelationshipAssessment` ya existen para la salida del crítico, pero el loop de
 solicitudes adicionales aún no está implementado.
 
-## 6. Herramientas estadísticas previstas para el MVP
+## 6. Herramientas estadísticas para el MVP
 
-El repositorio tiene espacios para `profiling`, `association`, `statistics`,
-`anomalies` y `clustering` en `app/analytics/`, pero sus implementaciones de
-producción aún no están registradas. La primera integración debe coordinarse con
-Integrante 2 y usar el contrato `AnalyticsTool`.
+Las tools determinísticas de correlación están en
+`app/analytics/statistics/correlation.py` y reciben un `DatasetRegistry` por
+inyección. Sus métodos autorizados son:
+
+- `pearson`: dos variables numéricas distintas en `ToolRequest.variables`.
+- `spearman`: dos variables numéricas distintas en `ToolRequest.variables`; SciPy
+  calcula rangos y maneja empates.
+- `partial_correlation`: dos variables numéricas distintas en `variables` y una
+  variable de control numérica en
+  `parameters={"control_variable": "nombre_columna"}`.
+
+Cada tool obtiene únicamente las columnas requeridas desde el dataset local por
+`dataset_id`. Trabaja con observaciones completas, registra tamaño muestral,
+coeficiente, valor p y tiempo de ejecución. La correlación parcial calcula
+residuos lineales frente a una única variable de control e informa esa variable y
+los grados de libertad en metadatos.
+
+Las tools rechazan datasets o columnas desconocidos, valores no numéricos o
+infinitos, muestras insuficientes, columnas constantes, controles sin variación y
+resultados no finitos. En esos casos devuelven `AnalysisResult` con `FAILED`, sin
+estadísticos calculados. Los resultados exitosos incluyen una advertencia explícita:
+asociación estadística no demuestra causalidad.
 
 `ToolRegistry.execute(request)` resuelve la tool por el método de `ToolRequest` y
 exige que `supports(request)` sea verdadero antes de delegar la ejecución. No hay
-tools productivas registradas ni algoritmos estadísticos implementados en esta
-sesión.
+registro global ni conexión al workflow: las tools se registrarán por ejecución
+cuando se acuerde el ciclo de vida del dataset.
 
-Como alcance previsto, sujeto a aprobación, el MVP puede comenzar con profiling
-estadístico básico y asociación/correlación, seguido por las tools determinísticas
-que el equipo acuerde. No se agregan aquí algoritmos ni agentes por técnica.
+El repositorio conserva espacios para `profiling`, `association`, `anomalies` y
+`clustering`; no se implementan aquí otras técnicas estadísticas ni agentes por
+técnica.
 
 ## 7. Límites de ejecución y FAST MODE
 
@@ -152,6 +170,8 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
 - `EffectiveConfiguration` para overrides allowlisted por ejecución.
 - `DataSourceRouter`, lectores CSV/TSV, `LocalTable` y `DatasetRegistry` para
   cálculo local aislado.
+- `PearsonCorrelationTool`, `SpearmanCorrelationTool` y
+  `PartialCorrelationTool` para asociación numérica determinística con SciPy.
 - Logging de etapas y `TimingRecorder` para trazabilidad y tiempos.
 
 ## 10. Cambios o decisiones pendientes de aprobación
@@ -159,6 +179,8 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
 - Cómo conectar el ciclo de vida de `DatasetRegistry` al workflow y a las cargas
   temporales sin serializar filas en `AgentState` ni retener rutas inválidas.
 - Catálogo inicial, nombres y esquemas de parámetros de las tools con Integrante 2.
+- Registro por ejecución de las tools de correlación cuando se integre Analysis
+  Agent, manteniendo el aislamiento de `DatasetRegistry`.
 - Política de dependencias entre `AnalysisStep` y comportamiento ante ciclos o
   solicitudes no soportadas.
 - Semántica de ejecución paralela, límites por tool y cancelación bajo FAST MODE.
