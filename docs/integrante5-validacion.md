@@ -36,3 +36,19 @@ npm run test:e2e
 
 La compilación y las pruebas de interfaz con DOM simulado sí pasaron. La demo usa
 fixtures explícitos y no constituye un benchmark estadístico real del sistema completo.
+
+## Validación de la presentación de evidencia — 16/10/2026
+
+Se mejoró la presentación de los resultados estadísticos en los insights,
+conservando los valores recibidos y la clasificación del módulo crítico.
+
+Verificaciones realizadas:
+- Ruff: sin errores.
+- Suite de backend: 149 pruebas aprobadas.
+- Compatibilidad con los campos correlation y coefficient.
+- Presentación de la variable de control en correlación parcial.
+- Conservación de una correlación igual a cero.
+- Conservación de la advertencia sobre ausencia de evidencia causal.
+
+Estas pruebas verifican el comportamiento del software. No constituyen
+una validación experimental del sistema multiagente completo.
