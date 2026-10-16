@@ -7,6 +7,62 @@ from app.domain.models.evidence import Evidence, RelationshipAssessment
 from app.domain.models.insight import Insight
 
 
+def describe_result(result: AnalysisResult) -> str:
+    """Present calculated results without changing their interpretation."""
+    names = " y ".join(result.variables)
+    values = result.result
+    detail = ""
+
+    if isinstance(values, dict):
+        if result.method in {"pearson", "spearman", "partial_correlation"}:
+            coefficient = values.get("correlation")
+            if coefficient is None:
+                coefficient = values.get("coefficient")
+
+            if coefficient is not None:
+                labels = {
+                    "pearson": "La correlación de Pearson",
+                    "spearman": "La correlación de Spearman",
+                    "partial_correlation": "La correlación parcial",
+                }
+                detail = f"{labels[result.method]} entre {names} fue de {coefficient}."
+
+                if result.method == "partial_correlation":
+                    control = result.metadata.get("control_variable")
+                    if control is not None:
+                        detail += f" Variable de control: {control}."
+
+        elif result.method == "chi_square" and "chi_square" in values:
+            detail = (
+                f"La prueba de chi-cuadrado entre {names} "
+                f"obtuvo un estadístico de {values['chi_square']}."
+            )
+
+        elif result.method == "cramers_v" and "cramers_v" in values:
+            detail = f"La V de Cramér entre {names} fue de {values['cramers_v']}."
+
+        elif result.method == "anova_one_way" and "f_statistic" in values:
+            detail = (
+                f"El ANOVA de una vía para {names} "
+                f"obtuvo un estadístico F de {values['f_statistic']}."
+            )
+
+    if not detail:
+        serialized = json.dumps(values, ensure_ascii=False, sort_keys=True)
+        detail = f"Resultado de {result.method} para {names}: {serialized}."
+
+    if result.sample_size is not None:
+        detail += f" Muestra utilizada: {result.sample_size} observaciones."
+
+    if result.effect_size is not None:
+        detail += f" Tamaño del efecto reportado: {result.effect_size}."
+
+    if result.p_value is not None:
+        detail += f" Valor p reportado: {result.p_value}."
+
+    return detail
+
+
 def generate_insights(
     results: list[AnalysisResult],
     evidence: list[Evidence],
@@ -58,17 +114,7 @@ def generate_insights(
                 f"La evaluación de la relación entre {names} es indeterminada; "
                 "no existe una clasificación concluyente."
             )
-        measurements = []
-        for result in relevant:
-            values = json.dumps(result.result, ensure_ascii=False, sort_keys=True)
-            detail = f"{result.method}: {values}"
-            if result.sample_size is not None:
-                detail += f"; muestra utilizada: {result.sample_size}"
-            if result.effect_size is not None:
-                detail += f"; tamaño del efecto: {result.effect_size}"
-            if result.p_value is not None:
-                detail += f"; p-value: {result.p_value}"
-            measurements.append(detail)
+        measurements = [describe_result(result) for result in relevant]
         rationale = (
             f" Justificación del módulo crítico: {assessment.rationale}"
             if assessment.rationale
@@ -90,7 +136,7 @@ def generate_insights(
                 insight_id=f"insight_{index + 1}",
                 statement=interpretation
                 + " Evidencia calculada: "
-                + " | ".join(measurements)
+                + " ".join(measurements)
                 + rationale,
                 evidence_ids=list(dict.fromkeys(assessment.evidence_ids)),
                 limitations=list(dict.fromkeys(limitations)),

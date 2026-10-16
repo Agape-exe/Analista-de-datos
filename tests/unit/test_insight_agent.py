@@ -86,3 +86,52 @@ async def test_indeterminate_assessment_stays_indeterminate():
     value.relationship_assessments[0].potentially_spurious = None
     result = await InsightAgent(Provider()).run(value)
     assert "indeterminada" in result.update.insights[0].statement
+
+
+@pytest.mark.parametrize("key", ["correlation", "coefficient"])
+async def test_correlation_is_presented_with_readable_values(key):
+    value = context()
+    value.analysis_results[0].result = {key: 0.72}
+    value.analysis_results[0].p_value = 0.001
+
+    result = await InsightAgent(Provider()).run(value)
+
+    statement = result.update.insights[0].statement
+    assert "La correlación de Pearson entre x y y fue de 0.72." in statement
+    assert "Muestra utilizada: 20 observaciones." in statement
+    assert "Valor p reportado: 0.001." in statement
+    assert result.update.insights[0].evidence_ids == ["e1"]
+
+
+async def test_partial_correlation_identifies_supplied_control():
+    value = context()
+    analysis = value.analysis_results[0]
+    analysis.method = "partial_correlation"
+    analysis.result = {"correlation": 0.16}
+    analysis.metadata = {"control_variable": "campania"}
+
+    result = await InsightAgent(Provider()).run(value)
+
+    statement = result.update.insights[0].statement
+    assert "La correlación parcial entre x y y fue de 0.16." in statement
+    assert "Variable de control: campania." in statement
+
+
+async def test_zero_correlation_is_preserved():
+    value = context()
+    value.analysis_results[0].result = {"correlation": 0.0}
+
+    result = await InsightAgent(Provider()).run(value)
+
+    assert "fue de 0.0." in result.update.insights[0].statement
+
+
+async def test_negative_assessment_is_not_presented_as_causal():
+    value = context()
+    value.relationship_assessments[0].potentially_spurious = False
+
+    result = await InsightAgent(Provider()).run(value)
+
+    statement = result.update.insights[0].statement
+    assert "no marcó" in statement
+    assert "Esto no demuestra causalidad." in statement
