@@ -16,10 +16,14 @@ from app.domain.services.column_classification import classify_column
         ("customerId", ["A1", "A2", "A3"], "identifier"),
         ("id", [1.2, 2.3, 3.4], "numeric"),
         ("code", ["001", "002", "003"], "identifier"),
+        ("Nº predio", [14789670, 14789671], "identifier"),
+        ("N° persona", [3107568924, 3107568924], "identifier"),
+        ("Nº de pagos", [1, 2, 1], "numeric"),
         ("uuid", ["d8b619d7-9a2d-40f4-9f26-7a2431ddde2f"], "identifier"),
         ("created_at", ["2026-01-01", "2026-01-02"], "temporal"),
         ("event", [datetime(2026, 1, 1)], "temporal"),
-        ("ambiguous_date", ["01/02/2026", "02/03/2026"], "categorical"),
+        ("day_first_date", ["01/02/2026", "31/03/2026"], "temporal"),
+        ("month_first_date", ["02/13/2026", "02/14/2026"], "categorical"),
         ("broken_date", ["2026-01-01", "2026-13-50"], "categorical"),
         ("segment", ["A", "B", "A"], "categorical"),
         ("active", [True, False, None], "categorical"),
@@ -61,6 +65,8 @@ def test_configurable_policies() -> None:
     assert classify_column(schema, ["01/02/2026"], options).semantic_type == "temporal"
     options.temporal_parse_ratio = 0.5
     assert classify_column(schema, ["01/02/2026", "invalid"], options).semantic_type == "temporal"
+    assert classify_column(schema, ["invalid", "01/02/2026"], options).semantic_type == "temporal"
+    assert classify_column(schema, ["x", "y", "01/02/2026"], options).semantic_type != "temporal"
 
 
 def test_inferred_dictionary_field_is_not_promoted_to_official() -> None:

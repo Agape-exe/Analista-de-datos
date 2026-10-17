@@ -44,6 +44,7 @@ from app.application.errors import LLMDisabledError
 from app.application.services.data_understanding import DataUnderstandingService
 from app.application.services.dataset_registry import DatasetRegistry
 from app.application.services.registering_understanding import RegisteringDataUnderstanding
+from app.application.services.stored_understanding import StoredDataUnderstanding
 from app.application.use_cases.analyze_dataset import AnalyzeDataset
 from app.application.use_cases.explore_dataset import ExploreDataset
 from app.application.use_cases.intake_uploaded_dataset import IntakeUploadedDataset
@@ -150,16 +151,20 @@ def build_exploration_use_case(settings: Settings, datasets: DatasetProvider) ->
     return ExploreDataset(datasets, build_tool_registry(settings, datasets))
 
 
-def build_use_case(settings: Settings) -> AnalyzeDataset:
+def build_use_case(settings: Settings, stored: DatasetProvider | None = None) -> AnalyzeDataset:
+    """With a provider, analyses can reuse datasets already understood by intake."""
     build_llm(settings)
 
     def build_run() -> tuple[list[Agent], Callable[[], None]]:
         datasets = DatasetRegistry()
+        understanding = build_data_understanding(settings)
+        if stored is not None:
+            understanding = StoredDataUnderstanding(understanding, stored)
         return (
             build_agents(
                 build_llm(settings),
                 build_statistical_tool_registry(datasets),
-                build_data_understanding(settings),
+                understanding,
                 datasets,
                 settings.eda,
             ),

@@ -10,14 +10,14 @@ export function DatasetHeader() {
   return <header className="dataset-header">
     <div className="dataset-context">
       <FileText size={16} className="muted" />
-      <span className="dataset-filename">{result?.filename || draft.file?.name || "No dataset uploaded"}</span>
-      {loading ? <Badge tone="info"><LoaderCircle size={12} className="spin" />Processing intake</Badge>
-        : result ? <><Badge>INTAKE</Badge><Badge tone="success"><Check size={12} />Intake completed</Badge>
-          <span className="elapsed">{result.profiling_time.toFixed(2)}s</span></>
-          : <Badge tone={error ? "warning" : "neutral"}>{error ? "Needs correction" : "Not started"}</Badge>}
+      <span className="dataset-filename">{result?.filename || draft.file?.name || "Ningún dataset cargado"}</span>
+      {loading ? <Badge tone="info"><LoaderCircle size={12} className="spin" />Procesando ingesta</Badge>
+        : result ? <><Badge>INGESTA</Badge><Badge tone="success"><Check size={12} />Ingesta completada</Badge>
+          <span className="elapsed">{result.profiling_time.toFixed(2)} s</span></>
+          : <Badge tone={error ? "warning" : "neutral"}>{error ? "Requiere corrección" : "Sin iniciar"}</Badge>}
     </div>
     <Button variant="outline" size="small" disabled={loading} onClick={() => { reset(); navigate("/"); }}>
-      <Plus size={13} /><span>New Analysis</span>
+      <Plus size={13} /><span>Nuevo análisis</span>
     </Button>
   </header>;
 }

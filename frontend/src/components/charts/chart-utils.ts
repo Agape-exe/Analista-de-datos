@@ -25,8 +25,8 @@ export function niceDomain(min: number, max: number, count = 5): [number, number
   return [Math.floor(min / step) * step, Math.ceil(max / step) * step];
 }
 
-const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
-const precise = new Intl.NumberFormat("en-US", { maximumFractionDigits: 3 });
+const compact = new Intl.NumberFormat("es-PE", { notation: "compact", maximumFractionDigits: 1 });
+const precise = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 3 });
 
 export function formatTick(value: number): string {
   return Math.abs(value) >= 1000 ? compact.format(value) : precise.format(value);
@@ -35,7 +35,7 @@ export function formatTick(value: number): string {
 export function formatValue(value: number | null | undefined, digits = 3): string {
   if (value == null || !Number.isFinite(value)) return "—";
   if (Math.abs(value) >= 1e5) return compact.format(value);
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: digits }).format(value);
+  return new Intl.NumberFormat("es-PE", { maximumFractionDigits: digits }).format(value);
 }
 
 export function formatPValue(value: number | null | undefined): string {

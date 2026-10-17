@@ -6,52 +6,52 @@ import { useIntake } from "../../features/data-intake/IntakeProvider";
 import { Button } from "../ui/button";
 
 const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: string }[] }[] = [
-  { links: [{ label: "Overview", icon: LayoutDashboard }] },
-  { label: "Data", links: [
+  { links: [{ label: "Resumen", icon: LayoutDashboard }] },
+  { label: "Datos", links: [
     { label: "Dataset", icon: Database, to: "/dataset" },
-    { label: "Data Quality", icon: ShieldCheck }, { label: "Data Dictionary", icon: BookOpen },
+    { label: "Calidad de datos", icon: ShieldCheck }, { label: "Diccionario de datos", icon: BookOpen },
   ] },
-  { label: "Exploration", links: [
-    { label: "Associations", icon: ScanSearch, to: "/associations" }, { label: "Patterns", icon: Layers },
-    { label: "Anomalies", icon: TriangleAlert },
+  { label: "Exploración", links: [
+    { label: "Asociaciones", icon: ScanSearch, to: "/associations" }, { label: "Patrones", icon: Layers },
+    { label: "Anomalías", icon: TriangleAlert },
   ] },
-  { label: "Analysis", links: [
-    { label: "Relationships", icon: GitBranch }, { label: "Insights", icon: Sparkles, to: "/report" },
+  { label: "Análisis", links: [
+    { label: "Relaciones", icon: GitBranch }, { label: "Hallazgos", icon: Sparkles, to: "/report" },
   ] },
-  { label: "Evaluation", links: [
-    { label: "Trace", icon: ListChecks }, { label: "Metrics", icon: Activity },
+  { label: "Evaluación", links: [
+    { label: "Traza", icon: ListChecks }, { label: "Métricas", icon: Activity },
   ] },
-  { label: "Assistant", links: [{ label: "Chat", icon: MessageSquare }] },
+  { label: "Asistente", links: [{ label: "Chat", icon: MessageSquare }] },
 ];
 
 export function Sidebar() {
   const { reset, loading } = useIntake();
   const navigate = useNavigate();
   return <aside className="sidebar">
-    <a className="brand" href="/" aria-label="AI Data Analyst home">
+    <a className="brand" href="/" aria-label="Inicio de Analista de Datos IA">
       <span className="brand-icon"><ChartNoAxesCombined size={17} /></span>
-      <span className="sidebar-label">AI Data Analyst</span>
+      <span className="sidebar-label">Analista de Datos IA</span>
     </a>
-    <Button className="new-analysis" aria-label="New Analysis" disabled={loading} onClick={() => { reset(); navigate("/"); }}>
-      <Plus size={15} /><span className="sidebar-label">New Analysis</span>
+    <Button className="new-analysis" aria-label="Nuevo análisis" disabled={loading} onClick={() => { reset(); navigate("/"); }}>
+      <Plus size={15} /><span className="sidebar-label">Nuevo análisis</span>
     </Button>
-    <nav aria-label="Main navigation">
+    <nav aria-label="Navegación principal">
       {groups.map((group, index) => <div className="nav-group" key={group.label || index}>
         {group.label && <p className="nav-group-label">{group.label}</p>}
         {group.links.map(({ label, icon: Icon, to }) => to
           ? <NavLink key={label} to={to} title={label} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
             <Icon size={15} /><span className="sidebar-label">{label}</span>
           </NavLink>
-          : <button key={label} className="nav-item unavailable" disabled title={`${label} — Coming Soon`}>
-            <Icon size={15} /><span className="sidebar-label">{label}</span><span className="soon">Soon</span>
+          : <button key={label} className="nav-item unavailable" disabled title={`${label} — Próximamente`}>
+            <Icon size={15} /><span className="sidebar-label">{label}</span><span className="soon">Pronto</span>
           </button>)}
       </div>)}
     </nav>
     <div className="sidebar-footer">
-      <div className="evidence-note"><CircleHelp size={14} /><strong>Understand before analyzing</strong>
-        <p>Review the detected schema, then explore candidate associations.</p>
+      <div className="evidence-note"><CircleHelp size={14} /><strong>Comprende antes de analizar</strong>
+        <p>Revisa el esquema detectado y luego explora las asociaciones candidatas.</p>
       </div>
-      <p>Data intake · v0.1<br /><span>Soon = Coming Soon</span></p>
+      <p>Ingesta de datos · v0.1<br /><span>Pronto = Próximamente</span></p>
     </div>
   </aside>;
 }

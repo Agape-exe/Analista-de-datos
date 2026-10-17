@@ -42,8 +42,16 @@ class SqlSourceSpec(DomainModel):
     table: str = Field(min_length=1)
 
 
+class StoredSourceSpec(DomainModel):
+    """A dataset already read and understood by intake, resolved from the dataset store."""
+
+    kind: Literal["stored"] = "stored"
+    dataset_id: str = Field(min_length=1)
+
+
 SourceSpec = Annotated[
-    CsvSourceSpec | TsvSourceSpec | TextSourceSpec | SqlSourceSpec, Field(discriminator="kind")
+    CsvSourceSpec | TsvSourceSpec | TextSourceSpec | SqlSourceSpec | StoredSourceSpec,
+    Field(discriminator="kind"),
 ]
 
 

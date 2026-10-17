@@ -67,3 +67,22 @@ async def test_full_precision_decimals_stay_numeric(tmp_path: Path) -> None:
     path.write_text("income\n14173.124078682275\n-0.5\n1e-5\n\n", encoding="utf-8")
     dataset = await CsvDataSource().read(CsvSourceSpec(path=path))
     assert dataset.table.column("income") == [14173.124078682275, -0.5, 1e-5]
+
+
+async def test_report_style_numbers_become_numbers_only_in_numeric_columns(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "accounting.csv"
+    path.write_text(
+        "sales,units,note,code,ambiguous\n"
+        '"(0.17)",(2),(draft),(01),"1,035"\n'
+        '"1,035.50",5,ok,02,2\n'
+        ',"(1,200.00)",(x),03,3\n',
+        encoding="utf-8",
+    )
+    dataset = await CsvDataSource().read(CsvSourceSpec(path=path))
+    assert dataset.table.column("sales") == [-0.17, 1035.5, None]
+    assert dataset.table.column("units") == [-2.0, 5.0, -1200.0]
+    assert dataset.table.column("note") == ["(draft)", "ok", "(x)"]
+    assert dataset.table.column("code") == ["(01)", "02", "03"]
+    assert dataset.table.column("ambiguous") == ["1,035", "2", "3"]

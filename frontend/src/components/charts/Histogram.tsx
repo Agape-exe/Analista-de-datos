@@ -28,7 +28,7 @@ export function Histogram({ chart, stale }: { chart: HistogramChart; stale?: boo
   const total = chart.counts.reduce((sum, count) => sum + count, 0);
 
   return <ChartFrame frame={frame} onLeave={hide} stale={stale}
-    label={`Histogram of ${chart.column}, ${chart.counts.length} bins`}>
+    label={`Histograma de ${chart.column}, ${chart.counts.length} intervalos`}>
     <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg">
       {yTicks.map((tick) => <g key={tick}>
         <line x1={M.left} x2={W - M.right} y1={sy(tick)} y2={sy(tick)} className="gridline" />
@@ -38,9 +38,9 @@ export function Histogram({ chart, stale }: { chart: HistogramChart; stale?: boo
         const x0 = sx(chart.edges[index]) + GAP / 2;
         const width = Math.max(sx(chart.edges[index + 1]) - sx(chart.edges[index]) - GAP, 1);
         const range = `${formatValue(chart.edges[index])} – ${formatValue(chart.edges[index + 1])}`;
-        const rows = [{ label: "rows", value: formatValue(count, 0) },
-          { label: "of observed", value: `${formatValue((100 * count) / (total || 1), 1)}%` }];
-        return <g key={index} className="bar-mark" tabIndex={0} aria-label={`${range}: ${count} rows`}
+        const rows = [{ label: "filas", value: formatValue(count, 0) },
+          { label: "de lo observado", value: `${formatValue((100 * count) / (total || 1), 1)}%` }];
+        return <g key={index} className="bar-mark" tabIndex={0} aria-label={`${range}: ${count} filas`}
           onPointerMove={(event) => fromPointer(event, range, rows)}
           onFocus={(event) => fromFocus(event, range, rows)}>
           <rect x={x0 - GAP / 2} y={M.top} width={width + GAP} height={baseline - M.top} fill="transparent" />

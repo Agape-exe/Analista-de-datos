@@ -41,7 +41,7 @@ def column_array(data: RegisteredDataset, name: str) -> np.ndarray:
 def present(values: np.ndarray) -> np.ndarray:
     """Boolean mask of observed (non-missing) entries for numeric or label arrays."""
     if values.dtype == object:
-        return np.asarray([value is not None for value in values], dtype=bool)
+        return np.not_equal(values, None)
     return ~np.isnan(values)
 
 

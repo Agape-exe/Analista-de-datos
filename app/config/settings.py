@@ -65,6 +65,7 @@ class EdaSettings(DomainModel):
     max_outlier_examples: int = Field(ge=0)
     normality_alpha: float = Field(gt=0, lt=1)
     mutual_information_neighbors: int = Field(ge=1)
+    mutual_information_max_rows: int = Field(ge=2)
     max_scatter_points: int = Field(ge=2)
     max_box_outliers: int = Field(ge=0)
     random_seed: int = Field(ge=0)

@@ -6,9 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
+  return new Intl.NumberFormat("es-PE").format(value);
 }
 
 export function formatPercentage(value: number) {
-  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)}%`;
+  return `${new Intl.NumberFormat("es-PE", { maximumFractionDigits: 2 }).format(value)}%`;
 }

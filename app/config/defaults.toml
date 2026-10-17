@@ -6,7 +6,7 @@ max_critic_cycles = 1
 minimum_sample_size = 20
 
 [performance]
-timeout_seconds = 15
+timeout_seconds = 120
 parallel_tools = true
 
 [llm]
@@ -21,14 +21,14 @@ repetitions = 3
 database_url = "sqlite:///:memory:"
 
 [data_intake]
-identifier_name_tokens = ["id", "identifier", "uuid", "identificador"]
+identifier_name_tokens = ["id", "identifier", "uuid", "identificador", "nº"]
 identifier_unique_ratio = 0.95
 identifier_max_length = 128
 categorical_max_unique = 20
 categorical_unique_ratio = 0.1
 categorical_max_length = 64
 temporal_parse_ratio = 1.0
-temporal_formats = ["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S%z"]
+temporal_formats = ["%Y-%m-%d", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S%z"]
 text_name_tokens = ["description", "comment", "notes", "descripcion", "comentario"]
 
 [uploads]
@@ -50,6 +50,8 @@ outlier_mad_threshold = 3.5
 max_outlier_examples = 20
 normality_alpha = 0.05
 mutual_information_neighbors = 3
+# kNN mutual information samples complete pairs beyond this many rows.
+mutual_information_max_rows = 10000
 max_scatter_points = 2000
 max_box_outliers = 200
 random_seed = 0

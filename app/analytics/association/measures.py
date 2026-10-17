@@ -11,6 +11,7 @@ import warnings
 from dataclasses import dataclass, field
 
 import numpy as np
+import pandas as pd
 from scipy import stats
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 
@@ -138,13 +139,24 @@ def cramers_v(x: np.ndarray, y: np.ndarray) -> Measure:
     )
 
 
+def _label_groups(values: np.ndarray, labels: np.ndarray) -> dict[str, np.ndarray]:
+    """Numeric values per label after pairwise deletion, sorted by label, row order kept."""
+    mask = present(labels) & ~np.isnan(values)
+    if not mask.any():
+        return {}
+    # Hash-based factorization avoids sorting every label string of large tables.
+    codes, keys = pd.factorize(labels[mask].astype(str), sort=True)
+    order = np.argsort(codes, kind="stable")
+    bounds = np.cumsum(np.bincount(codes, minlength=len(keys)))[:-1]
+    grouped = np.split(values[mask][order].astype(float), bounds)
+    return dict(zip(keys.tolist(), grouped, strict=True))
+
+
 def numeric_groups(values: np.ndarray, labels: np.ndarray) -> dict[str, np.ndarray]:
     """Group numeric values by label after pairwise deletion; groups need 2+ values."""
-    groups: dict[str, list[float]] = {}
-    for value, label in zip(values, labels, strict=True):
-        if label is not None and not np.isnan(value):
-            groups.setdefault(str(label), []).append(float(value))
-    usable = {label: np.asarray(items) for label, items in groups.items() if len(items) >= 2}
+    usable = {
+        label: items for label, items in _label_groups(values, labels).items() if len(items) >= 2
+    }
     if len(usable) < 2:
         raise AnalysisNotApplicableError("At least 2 groups with 2+ observations are required.")
     if np.ptp(np.concatenate(list(usable.values()))) == 0:
@@ -153,12 +165,7 @@ def numeric_groups(values: np.ndarray, labels: np.ndarray) -> dict[str, np.ndarr
 
 
 def _excluded_groups(values: np.ndarray, labels: np.ndarray, used: int) -> list[str]:
-    observed = {
-        str(label)
-        for value, label in zip(values, labels, strict=True)
-        if label is not None and not np.isnan(value)
-    }
-    excluded = len(observed) - used
+    excluded = len(_label_groups(values, labels)) - used
     return (
         [f"{excluded} group(s) with fewer than 2 observations were excluded."] if excluded else []
     )
@@ -234,11 +241,24 @@ def _encode(values: np.ndarray) -> tuple[np.ndarray, bool]:
     return values.astype(float), False
 
 
-def mutual_information(x: np.ndarray, y: np.ndarray, neighbors: int, seed: int) -> Measure:
-    """kNN mutual information in nats; no p-value, so it is supporting evidence only."""
+def mutual_information(
+    x: np.ndarray, y: np.ndarray, neighbors: int, seed: int, max_rows: int | None = None
+) -> Measure:
+    """kNN mutual information in nats; no p-value, so it is supporting evidence only.
+
+    The kNN estimator dominates screening cost on large tables, so complete pairs beyond
+    max_rows are reduced to a reproducible random sample.
+    """
     mask = present(x) & present(y)
-    features, x_discrete = _encode(x[mask])
-    target, y_discrete = _encode(y[mask])
+    x, y = x[mask], y[mask]
+    observed = len(x)
+    details: dict[str, Detail] = {"unit": "nats"}
+    if max_rows is not None and observed > max_rows:
+        keep = np.sort(np.random.default_rng(seed).choice(observed, max_rows, replace=False))
+        x, y = x[keep], y[keep]
+        details["observed_rows"] = observed
+    features, x_discrete = _encode(x)
+    target, y_discrete = _encode(y)
     n = len(target)
     if n <= neighbors + 1:
         raise AnalysisNotApplicableError(
@@ -265,7 +285,7 @@ def mutual_information(x: np.ndarray, y: np.ndarray, neighbors: int, seed: int) 
         effect_size=mi,
         score=_clip_score(math.sqrt(1 - math.exp(-2 * mi))),
         sample_size=n,
-        details={"unit": "nats"},
+        details=details,
     )
 
 

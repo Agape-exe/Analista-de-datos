@@ -29,7 +29,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(instance):
         repository = build_repository(instance.state.settings)
         instance.state.report_repository = repository
-        workflow = build_use_case(instance.state.settings).workflow
+        workflow = build_use_case(instance.state.settings, instance.state.datasets).workflow
         instance.state.analysis_use_case = AnalyzeDataset(workflow, repository)
         uploads = instance.state.settings.uploads
         instance.state.upload_analysis = AnalyzeUploadedDataset(
@@ -46,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application = FastAPI(title="Multiagent Data Analyst", version="0.1.0", lifespan=lifespan)
     application.state.settings = settings if settings is not None else load_settings()
     datasets = build_dataset_store(application.state.settings)
+    application.state.datasets = datasets
     application.state.intake_use_case = build_intake_use_case(application.state.settings, datasets)
     application.state.exploration_use_case = build_exploration_use_case(
         application.state.settings, datasets
