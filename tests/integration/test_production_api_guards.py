@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from app.api.main import create_app
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
 
 
 def test_cors_allows_explicit_origin_and_preflight() -> None:

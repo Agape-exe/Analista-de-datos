@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from app.analytics.association import measures
-from app.application.errors import AnalysisNotApplicableError
+from app.modules.exploration.adapters.analytics.association import measures
+from app.shared.application.errors import AnalysisNotApplicableError
 
 RNG = np.random.default_rng(3)
 

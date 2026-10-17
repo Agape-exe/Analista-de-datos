@@ -2,14 +2,14 @@ from pathlib import Path
 
 import pytest
 
-from app.adapters.datasource.csv_source import CsvDataSource
-from app.adapters.datasource.router import DataSourceRouter
-from app.adapters.datasource.tsv_source import TsvDataSource
-from app.application.dto.analysis_input import AnalysisInput
-from app.application.errors import DataSourceError
-from app.application.services.data_understanding import DataUnderstandingService
-from app.config.settings import Settings
-from app.domain.models.data_dictionary import DataDictionary
+from app.modules.data_intake.adapters.datasource.csv_source import CsvDataSource
+from app.modules.data_intake.adapters.datasource.router import DataSourceRouter
+from app.modules.data_intake.adapters.datasource.tsv_source import TsvDataSource
+from app.modules.data_intake.application.services.data_understanding import DataUnderstandingService
+from app.shared.application.errors import DataSourceError
+from app.shared.config.settings import Settings
+from app.shared.contracts.analysis_input import AnalysisInput
+from app.shared.domain.models.data_dictionary import DataDictionary
 
 
 def service() -> DataUnderstandingService:

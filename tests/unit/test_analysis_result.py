@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.domain.models.analysis import AnalysisResult
+from app.shared.domain.models.analysis import AnalysisResult
 
 
 def test_success_json_and_skipped_without_statistics() -> None:

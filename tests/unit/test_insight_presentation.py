@@ -1,5 +1,5 @@
-from app.application.services.insights import _limitations, describe_result
-from app.domain.models.analysis import AnalysisResult
+from app.modules.reporting.application.services.insights import _limitations, describe_result
+from app.shared.domain.models.analysis import AnalysisResult
 
 
 def test_subgroups_are_summarized_without_raw_json():

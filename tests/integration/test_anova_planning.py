@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from app.application.dto.analysis_input import AnalysisInput
 from app.bootstrap import build_use_case
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
+from app.shared.contracts.analysis_input import AnalysisInput
 
 
 def input_for(path: Path, categories: list[str], outcomes: list[object]) -> AnalysisInput:

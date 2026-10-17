@@ -6,15 +6,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.adapters.datasource.upload_storage import TemporaryUploadStorage
-from app.api.protection import build_operation_capacity, build_request_limiter
-from app.api.routes.analysis import local_router as local_analysis_router
-from app.api.routes.analysis import router as analysis_router
-from app.api.routes.exploration import router as exploration_router
 from app.api.routes.health import router as health_router
-from app.api.routes.intake import router as intake_router
-from app.application.use_cases.analyze_dataset import AnalyzeDataset
-from app.application.use_cases.analyze_uploaded_dataset import AnalyzeUploadedDataset
 from app.bootstrap import (
     build_dataset_store,
     build_exploration_use_case,
@@ -22,7 +14,18 @@ from app.bootstrap import (
     build_repository,
     build_use_case,
 )
-from app.config.settings import Settings, load_settings
+from app.modules.analysis.adapters.http.routes import local_router as local_analysis_router
+from app.modules.analysis.adapters.http.routes import router as analysis_router
+from app.modules.analysis.application.use_cases.analyze_dataset import AnalyzeDataset
+from app.modules.analysis.application.use_cases.analyze_uploaded_dataset import (
+    AnalyzeUploadedDataset,
+)
+from app.modules.data_intake.adapters.datasource.upload_storage import TemporaryUploadStorage
+from app.modules.data_intake.adapters.http.routes import router as intake_router
+from app.modules.exploration.adapters.http.routes import router as exploration_router
+from app.modules.reporting.adapters.http.routes import router as reporting_router
+from app.shared.adapters.http.protection import build_operation_capacity, build_request_limiter
+from app.shared.config.settings import Settings, load_settings
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -82,6 +85,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application.include_router(health_router)
     application.include_router(analysis_router)
+    application.include_router(reporting_router)
     if deployment.allow_local_analysis:
         application.include_router(local_analysis_router)
     application.include_router(intake_router)

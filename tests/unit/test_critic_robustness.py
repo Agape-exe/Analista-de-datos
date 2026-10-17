@@ -1,6 +1,6 @@
 import pytest
 
-from app.analytics.statistics.robustness import (
+from app.modules.critical_review.domain.robustness import (
     calculate_correlation_disagreement,
     calculate_outlier_impact,
     calculate_subgroup_heterogeneity,

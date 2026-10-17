@@ -3,13 +3,15 @@ from pathlib import Path
 import pytest
 from eda_support import make_dataset
 
-from app.adapters.datasource.dataset_store import InMemoryDatasetStore
-from app.application.dto.analysis_input import AnalysisInput
-from app.application.errors import DatasetNotFoundError
-from app.application.services.registering_understanding import RegisteringDataUnderstanding
 from app.bootstrap import build_data_understanding
-from app.config.settings import Settings
-from app.domain.enums.semantic_type import SemanticType
+from app.modules.data_intake.adapters.datasource.dataset_store import InMemoryDatasetStore
+from app.modules.data_intake.application.services.registering_understanding import (
+    RegisteringDataUnderstanding,
+)
+from app.shared.application.errors import DatasetNotFoundError
+from app.shared.config.settings import Settings
+from app.shared.contracts.analysis_input import AnalysisInput
+from app.shared.domain.enums.semantic_type import SemanticType
 
 
 def dataset(dataset_id: str):

@@ -2,8 +2,8 @@ import os
 
 import uvicorn
 
-from app.config.settings import load_settings
-from app.observability.logging import configure_logging
+from app.shared.adapters.observability.logging import configure_logging
+from app.shared.config.settings import load_settings
 
 
 def main() -> None:

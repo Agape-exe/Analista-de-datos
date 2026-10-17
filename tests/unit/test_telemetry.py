@@ -1,7 +1,7 @@
 import asyncio
 
-from app.application.dto.llm import LLMRequest, LLMResponse
-from app.observability.telemetry import InstrumentedLLMProvider, telemetry_scope
+from app.shared.adapters.observability.telemetry import InstrumentedLLMProvider, telemetry_scope
+from app.shared.contracts.llm import LLMRequest, LLMResponse
 
 
 class Provider:

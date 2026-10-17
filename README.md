@@ -51,21 +51,19 @@ Guía de interfaz, contratos y tests: [docs/frontend.md](docs/frontend.md).
 
 ## Arquitectura y módulos
 
-| Módulo | Responsabilidad |
+| Módulo/capa | Responsabilidad |
 |---|---|
-| `app/domain` | Modelos, enums e invariantes, sin infraestructura |
-| `app/application` | DTO, configuración efectiva y caso de uso |
-| `app/ports` | Protocols para agentes, fuentes, tools, LLM y workflow |
-| `app/adapters` | CSV/TSV locales, store de datasets, datos de gráficos, LLM desactivado y factorías SQLAlchemy |
-| `app/agents` | DataUnderstanding, Planner, Analysis, Critic e Insight |
-| `app/analytics` | Registry y tools determinísticas de profiling y asociación |
-| `app/orchestration` | Estado serializable y grafo LangGraph |
-| `app/evaluation` | Contratos experimentales y registro monotónico de tiempos |
-| `app/config` | Settings y defaults TOML |
-| `app/observability` | Logging con identificadores de ejecución |
-| `app/api` | FastAPI y adaptación HTTP |
-| `app/bootstrap.py` | Inyección de dependencias |
-| `frontend` | React/TypeScript, navegación y presentación de resultados |
+| app/modules/data_intake | Lectura, validación, comprensión, diccionario y datasets |
+| app/modules/exploration | Perfilado, asociaciones, ranking, gráficos y exploración |
+| app/modules/analysis | Planner, Analysis, screening mediante puerto y orquestación |
+| app/modules/critical_review | Critic, evidencia y reglas de robustez |
+| app/modules/reporting | Insight, reportes, evaluación y persistencia |
+| app/shared | Modelos/contratos, puertos transversales y configuración |
+| app/api y app/bootstrap.py | Composición HTTP e inyección de implementaciones |
+| frontend/src/features | Adaptador web organizado por funcionalidad |
+
+Comprobar límites con `uv run python scripts/check_architecture.py` y
+`uv run pytest tests/architecture -q`. Ver [mapa de migración](docs/architecture-path-map.json).
 
 Detalles y límites de dependencia: [docs/architecture.md](docs/architecture.md).
 Guía del intake: [docs/data-intake.md](docs/data-intake.md).
@@ -82,7 +80,7 @@ Data Understanding → Planner → Analysis → Critic
 ```
 
 El grafo inicial implementa el recorrido lineal
-`START → DataUnderstanding → Planner → Analysis → Critic → Insight → END`.
+`START → DataUnderstanding → Association → Planner → Analysis → Critic → Insight → END`.
 El ciclo del crítico y los análisis paralelos son extensiones futuras.
 
 ## Instalación
@@ -189,9 +187,9 @@ $env:MDA_PERSISTENCE__DATABASE_URL = "sqlite:///./analysis_reports.db"
 ```python
 import asyncio
 
-from app.application.dto.analysis_input import AnalysisInput
+from app.shared.contracts.analysis_input import AnalysisInput
 from app.bootstrap import build_use_case
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
 
 
 async def main() -> None:
@@ -218,7 +216,7 @@ incluido `profiling_time`; las métricas sin medición permanecen null.
 ## Estado actual
 
 Implementado: lectura estricta CSV/TSV y clasificación de columnas, EDA y gráficos,
-planificación determinista, seis herramientas estadísticas autorizadas, registros
+planificación determinista, nueve herramientas estadísticas autorizadas, registros
 por ejecución con liberación de recursos, Critic basado en evidencia, InsightAgent,
 reportes Markdown/JSON, persistencia SQLite, telemetría, evaluación y API.
 

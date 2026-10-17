@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from app.adapters.datasource.csv_source import CsvDataSource
-from app.adapters.datasource.router import DataSourceRouter
-from app.adapters.datasource.tsv_source import TsvDataSource
-from app.application.dto.analysis_input import CsvSourceSpec, SqlSourceSpec, TsvSourceSpec
-from app.application.errors import DataSourceError
+from app.modules.data_intake.adapters.datasource.csv_source import CsvDataSource
+from app.modules.data_intake.adapters.datasource.router import DataSourceRouter
+from app.modules.data_intake.adapters.datasource.tsv_source import TsvDataSource
+from app.shared.application.errors import DataSourceError
+from app.shared.contracts.analysis_input import CsvSourceSpec, SqlSourceSpec, TsvSourceSpec
 
 
 async def test_tsv_preserves_codes_and_missing_values() -> None:

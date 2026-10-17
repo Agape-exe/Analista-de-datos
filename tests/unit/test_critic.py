@@ -1,14 +1,14 @@
 from pathlib import Path
 
-from app.agents.critic import CriticAgent
-from app.application.dto.agent import AgentContext
-from app.application.dto.analysis_input import (
+from app.modules.critical_review.application.agents.critic import CriticAgent
+from app.shared.config.settings import Settings
+from app.shared.contracts.agent import AgentContext
+from app.shared.contracts.analysis_input import (
     AnalysisInput,
     resolve_configuration,
 )
-from app.config.settings import Settings
-from app.domain.enums.statuses import AnalysisStatus
-from app.domain.models.analysis import (
+from app.shared.domain.enums.statuses import AnalysisStatus
+from app.shared.domain.models.analysis import (
     AnalysisResult,
     AssociationResult,
 )

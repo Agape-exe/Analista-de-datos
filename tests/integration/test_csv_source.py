@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from app.adapters.datasource.csv_source import CsvDataSource
-from app.application.dto.analysis_input import CsvSourceSpec, TsvSourceSpec
-from app.application.errors import DataSourceError
+from app.modules.data_intake.adapters.datasource.csv_source import CsvDataSource
+from app.shared.application.errors import DataSourceError
+from app.shared.contracts.analysis_input import CsvSourceSpec, TsvSourceSpec
 
 
 async def test_small_csv() -> None:

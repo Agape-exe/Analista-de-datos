@@ -3,11 +3,11 @@ import json
 import pytest
 from eda_support import make_dataset, planted_dataset, store_with
 
-from app.analytics.registry import ToolRegistry
 from app.bootstrap import EDA_TOOLS, build_tool_registry
-from app.config.settings import Settings
-from app.domain.enums.semantic_type import SemanticType
-from app.domain.models.analysis import AnalysisResult, RankedRelationship, ToolRequest
+from app.shared.application.tool_registry import ToolRegistry
+from app.shared.config.settings import Settings
+from app.shared.domain.enums.semantic_type import SemanticType
+from app.shared.domain.models.analysis import AnalysisResult, RankedRelationship, ToolRequest
 
 
 @pytest.fixture

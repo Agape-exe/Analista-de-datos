@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.application.dto.analysis_input import AnalysisInput, resolve_configuration
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
+from app.shared.contracts.analysis_input import AnalysisInput, resolve_configuration
 
 
 def test_source_discrimination_schema_alias_and_overrides() -> None:

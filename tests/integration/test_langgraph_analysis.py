@@ -1,14 +1,14 @@
 import asyncio
 from pathlib import Path
 
-from app.agents.data_understanding import DataUnderstandingAgent
-from app.analytics.registry import ToolRegistry
-from app.application.dto.analysis_input import AnalysisInput
-from app.application.services.dataset_registry import DatasetRegistry
 from app.bootstrap import build_agents, build_data_understanding, build_llm, build_use_case
-from app.config.settings import Settings
-from app.domain.enums.statuses import AnalysisStatus
-from app.orchestration.graph import LangGraphWorkflow
+from app.modules.analysis.adapters.orchestration.graph import LangGraphWorkflow
+from app.modules.data_intake.application.agents.data_understanding import DataUnderstandingAgent
+from app.shared.application.dataset_registry import DatasetRegistry
+from app.shared.application.tool_registry import ToolRegistry
+from app.shared.config.settings import Settings
+from app.shared.contracts.analysis_input import AnalysisInput
+from app.shared.domain.enums.statuses import AnalysisStatus
 
 
 def write_dataset(path: Path, rows: int = 30, offset: int = 0) -> None:

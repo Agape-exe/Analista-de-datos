@@ -2,11 +2,11 @@ from dataclasses import dataclass
 
 import pytest
 
-from app.analytics.factory import build_statistical_tool_registry
-from app.application.dto.datasource import LoadedDataset
-from app.application.services.dataset_registry import DatasetRegistry
-from app.domain.models.analysis import ToolRequest
-from app.domain.models.dataset import DatasetSchema
+from app.modules.analysis.adapters.analytics.factory import build_statistical_tool_registry
+from app.shared.application.dataset_registry import DatasetRegistry
+from app.shared.contracts.datasource import LoadedDataset
+from app.shared.domain.models.analysis import ToolRequest
+from app.shared.domain.models.dataset import DatasetSchema
 
 
 @dataclass

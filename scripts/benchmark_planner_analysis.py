@@ -13,9 +13,9 @@ import tempfile
 from pathlib import Path
 from time import perf_counter
 
-from app.application.dto.analysis_input import AnalysisInput
 from app.bootstrap import build_use_case
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
+from app.shared.contracts.analysis_input import AnalysisInput
 
 ROWS = (50, 500, 5_000)
 REPETITIONS = 3

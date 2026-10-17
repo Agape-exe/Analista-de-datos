@@ -1,15 +1,15 @@
 from pathlib import Path
 
-from app.agents.planner import PlannerAgent
-from app.application.dto.agent import AgentContext
-from app.application.dto.analysis_input import AnalysisInput, resolve_configuration
-from app.application.dto.llm import LLMRequest, LLMResponse
-from app.config.settings import Settings
-from app.domain.enums.semantic_type import SemanticType
-from app.domain.enums.statuses import DictionarySource
-from app.domain.models.analysis import AssociationResult
-from app.domain.models.data_dictionary import DataDictionary, DataDictionaryEntry
-from app.domain.models.dataset import ColumnProfile, DatasetProfile
+from app.modules.analysis.application.agents.planner import PlannerAgent
+from app.shared.config.settings import Settings
+from app.shared.contracts.agent import AgentContext
+from app.shared.contracts.analysis_input import AnalysisInput, resolve_configuration
+from app.shared.contracts.llm import LLMRequest, LLMResponse
+from app.shared.domain.enums.semantic_type import SemanticType
+from app.shared.domain.enums.statuses import DictionarySource
+from app.shared.domain.models.analysis import AssociationResult
+from app.shared.domain.models.data_dictionary import DataDictionary, DataDictionaryEntry
+from app.shared.domain.models.dataset import ColumnProfile, DatasetProfile
 
 
 class MustNotCallLLM:

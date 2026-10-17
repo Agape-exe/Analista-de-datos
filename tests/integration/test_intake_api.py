@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.main import create_app
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
 
 
 def test_csv_upload_with_dictionary(client: TestClient) -> None:

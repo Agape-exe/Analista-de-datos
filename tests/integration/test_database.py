@@ -1,6 +1,6 @@
 from sqlalchemy import text
 
-from app.adapters.persistence.database import build_engine, build_session_factory
+from app.modules.reporting.adapters.persistence.database import build_engine, build_session_factory
 
 
 def test_explicit_sqlite_session() -> None:

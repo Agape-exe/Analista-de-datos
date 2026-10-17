@@ -1,11 +1,12 @@
 from pathlib import Path
 
-from app.agents.association import AssociationAgent
-from app.application.dto.agent import AgentContext
-from app.application.dto.analysis_input import AnalysisInput, resolve_configuration
-from app.application.services.dataset_registry import DatasetRegistry
 from app.bootstrap import build_data_understanding
-from app.config.settings import Settings
+from app.modules.analysis.application.agents.association import AssociationAgent
+from app.modules.exploration.adapters.relationship_screening import RelationshipScreeningAdapter
+from app.shared.application.dataset_registry import DatasetRegistry
+from app.shared.config.settings import Settings
+from app.shared.contracts.agent import AgentContext
+from app.shared.contracts.analysis_input import AnalysisInput, resolve_configuration
 
 
 def write_dataset(path: Path, rows: int = 60) -> None:
@@ -40,7 +41,9 @@ async def test_association_agent_ranks_strongest_pair_first(tmp_path: Path) -> N
     write_dataset(path)
     context, datasets = await screened_context(path)
 
-    result = await AssociationAgent(datasets, Settings(_env_file=None).eda).run(context)
+    result = await AssociationAgent(
+        RelationshipScreeningAdapter(datasets, Settings(_env_file=None).eda)
+    ).run(context)
 
     assert result.status == "SUCCESS"
     associations = result.update.associations
@@ -57,7 +60,9 @@ async def test_association_agent_skips_without_registered_dataset(tmp_path: Path
     write_dataset(path)
     context, _ = await screened_context(path)
 
-    result = await AssociationAgent(DatasetRegistry(), Settings(_env_file=None).eda).run(context)
+    result = await AssociationAgent(
+        RelationshipScreeningAdapter(DatasetRegistry(), Settings(_env_file=None).eda)
+    ).run(context)
 
     assert result.status == "SKIPPED"
     assert result.update.associations is None

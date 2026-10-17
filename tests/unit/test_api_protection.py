@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from app.api.protection import (
+from app.shared.adapters.http.protection import (
     InMemoryRequestLimiter,
     OperationCapacity,
     OperationCapacityExceeded,

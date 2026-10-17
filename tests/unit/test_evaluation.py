@@ -1,9 +1,16 @@
 import pytest
 from pydantic import ValidationError
 
-from app.evaluation.benchmark import BenchmarkDataset, ExperimentRun, GroundTruth
-from app.evaluation.consistency import ConsistencyRun
-from app.evaluation.rubric import HumanEvaluationRubric, RubricCriterion
+from app.modules.reporting.application.evaluation.benchmark import (
+    BenchmarkDataset,
+    ExperimentRun,
+    GroundTruth,
+)
+from app.modules.reporting.application.evaluation.consistency import ConsistencyRun
+from app.modules.reporting.application.evaluation.rubric import (
+    HumanEvaluationRubric,
+    RubricCriterion,
+)
 
 
 def test_evaluation_contracts_do_not_invent_metrics() -> None:
