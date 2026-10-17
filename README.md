@@ -247,3 +247,8 @@ análisis. El proveedor LLM está deshabilitado y no genera respuestas simuladas
 
 Estas convenciones documentan el flujo de trabajo; el scaffolding no crea ramas
 ni commits automáticamente.
+
+
+## Revisión con evidencia calculada
+
+Consulta [Critic e Insight con evidencia calculada](docs/critic-evidence-pipeline.md) para el catálogo ampliado, planificación automática, clasificación indeterminada y condiciones de omisión.

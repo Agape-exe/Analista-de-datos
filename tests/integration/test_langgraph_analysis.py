@@ -34,9 +34,9 @@ async def test_langgraph_executes_planner_analysis_with_csv(tmp_path: Path) -> N
 
     report = await build_use_case(Settings(_env_file=None)).execute(input_for(path))
 
-    assert report.status == AnalysisStatus.SKIPPED
-    assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
-    assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+    assert report.status == AnalysisStatus.SUCCESS
+    assert report.stage_statuses["Critic"] == AnalysisStatus.SUCCESS
+    assert report.stage_statuses["Insight"] == AnalysisStatus.SUCCESS
     assert {result.method for result in report.analysis_results} >= {"pearson", "spearman"}
     assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
     assert report.stage_statuses["DataUnderstanding"] == AnalysisStatus.SUCCESS
@@ -80,7 +80,9 @@ async def test_workflow_respects_fast_mode_limits(tmp_path: Path) -> None:
     assert zero.status == AnalysisStatus.SKIPPED
     assert zero.analysis_results == []
     assert zero.metrics.tool_calls == 0
-    assert one.status == AnalysisStatus.SKIPPED
+    assert one.status == AnalysisStatus.SUCCESS
+    assert one.insights and one.relationship_assessments
+    assert all(item.potentially_spurious is None for item in one.relationship_assessments)
     assert one.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
     assert one.analysis_results[0].status == AnalysisStatus.SUCCESS
     assert len(one.analysis_results) == one.metrics.tool_calls == 1
@@ -128,10 +130,10 @@ async def test_workflow_isolates_sequential_and_concurrent_runs(tmp_path: Path) 
     )
 
     for report in (first, second, concurrent_first, concurrent_second):
-        assert report.status == AnalysisStatus.SKIPPED
+        assert report.status == AnalysisStatus.SUCCESS
         assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
-        assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
-        assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+        assert report.stage_statuses["Critic"] == AnalysisStatus.SUCCESS
+        assert report.stage_statuses["Insight"] == AnalysisStatus.SUCCESS
         assert report.analysis_results
         assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
 
@@ -195,4 +197,4 @@ async def test_workflow_serializes_analysis_report_without_raw_rows(tmp_path: Pa
     report = await build_use_case(Settings(_env_file=None)).execute(input_for(path))
 
     assert type(report).model_validate_json(report.model_dump_json()) == report
-    assert "table" not in report.model_dump_json()
+    assert '"table":' not in report.model_dump_json()

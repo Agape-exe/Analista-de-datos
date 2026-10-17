@@ -14,7 +14,12 @@ def describe_result(result: AnalysisResult) -> str:
     detail = ""
 
     if isinstance(values, dict):
-        if result.method in {"pearson", "spearman", "partial_correlation"}:
+        if result.method in {
+            "pearson",
+            "spearman",
+            "partial_correlation",
+            "correlation_without_outliers",
+        }:
             coefficient = values.get("correlation")
             if coefficient is None:
                 coefficient = values.get("coefficient")
@@ -24,6 +29,7 @@ def describe_result(result: AnalysisResult) -> str:
                     "pearson": "La correlación de Pearson",
                     "spearman": "La correlación de Spearman",
                     "partial_correlation": "La correlación parcial",
+                    "correlation_without_outliers": "La correlación de Pearson tras el filtro IQR",
                 }
                 detail = f"{labels[result.method]} entre {names} fue de {coefficient}."
 
@@ -32,6 +38,17 @@ def describe_result(result: AnalysisResult) -> str:
                     if control is not None:
                         detail += f" Variable de control: {control}."
 
+        elif result.method == "additive_identity" and len(result.variables) == 3:
+            confirmed = values.get("identity_confirmed")
+            detail = (
+                f"La suma propuesta {result.variables[0]} + {result.variables[1]} = "
+                f"{result.variables[2]} "
+                + ("se verificó" if confirmed is True else "no se verificó en todas las filas")
+                + f" en {values.get('matched_rows')} de {values.get('complete_rows')} "
+                + "observaciones, "
+                + f"con tolerancia absoluta {values.get('absolute_tolerance')}. "
+                + "Una relación aritmética observada no es un hallazgo causal independiente."
+            )
         elif result.method == "chi_square" and "chi_square" in values:
             detail = (
                 f"La prueba de chi-cuadrado entre {names} "

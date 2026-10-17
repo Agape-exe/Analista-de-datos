@@ -349,12 +349,15 @@ async def test_analysis_agent_tracks_execution_metrics() -> None:
     assert "table" not in result.update.model_dump_json()
 
 
-def test_statistical_tool_registry_registers_six_tools() -> None:
+def test_statistical_tool_registry_registers_all_authorized_tools() -> None:
     tools = build_statistical_tool_registry(registry())
 
     assert tools.names() == (
+        "additive_identity",
+        "analyze_subgroups",
         "anova_one_way",
         "chi_square",
+        "correlation_without_outliers",
         "cramers_v",
         "partial_correlation",
         "pearson",

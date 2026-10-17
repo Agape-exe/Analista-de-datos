@@ -68,8 +68,11 @@ async def test_statistical_registry_executes_six_supported_methods() -> None:
     results = [await tools.execute(request) for request in requests]
 
     assert tools.names() == (
+        "additive_identity",
+        "analyze_subgroups",
         "anova_one_way",
         "chi_square",
+        "correlation_without_outliers",
         "cramers_v",
         "partial_correlation",
         "pearson",
