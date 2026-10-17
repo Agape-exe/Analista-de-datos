@@ -350,13 +350,44 @@ async def test_final_planner_analysis_is_reproducible(tmp_path: Path) -> None:
     second_results = [
         (item.method, item.variables, item.result, item.p_value) for item in second.analysis_results
     ]
-    assert first.status == second.status == AnalysisStatus.SKIPPED
+
+    assert first.status == second.status == AnalysisStatus.SUCCESS
     for report in (first, second):
         assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
-        assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
-        assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+        assert report.stage_statuses["Critic"] == AnalysisStatus.SUCCESS
+        assert report.stage_statuses["Insight"] == AnalysisStatus.SUCCESS
         assert report.analysis_results
         assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
+
+        assert report.evidence
+        assert report.relationship_assessments
+        assert report.insights
+
+        result_ids = {result.analysis_id for result in report.analysis_results}
+        evidence_ids = {item.evidence_id for item in report.evidence}
+
+        assert all(item.analysis_id in result_ids for item in report.evidence)
+        for assessment in report.relationship_assessments:
+            assert assessment.evidence_ids
+            assert set(assessment.evidence_ids).issubset(evidence_ids)
+        for insight in report.insights:
+            assert insight.evidence_ids
+            assert set(insight.evidence_ids).issubset(evidence_ids)
+
+        assert report.evidence
+        assert report.relationship_assessments
+        assert report.insights
+
+        result_ids = {result.analysis_id for result in report.analysis_results}
+        evidence_ids = {item.evidence_id for item in report.evidence}
+
+        assert all(item.analysis_id in result_ids for item in report.evidence)
+        for assessment in report.relationship_assessments:
+            assert assessment.evidence_ids
+            assert set(assessment.evidence_ids).issubset(evidence_ids)
+        for insight in report.insights:
+            assert insight.evidence_ids
+            assert set(insight.evidence_ids).issubset(evidence_ids)
     assert first_results == pytest.approx(second_results, nan_ok=False)
     assert first.metrics.tool_calls == second.metrics.tool_calls
     assert first.metrics.iterations == second.metrics.iterations == 1
