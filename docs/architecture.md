@@ -1,23 +1,22 @@
-# Arquitectura inicial
+# Arquitectura
 
-> Actualización del integrante 5: ver [guía de integración](integrante5-integracion.md).
-> Las descripciones del skeleton de análisis reflejan la base original; la API de
-> análisis y reporting se extendió en esta entrega.
+La integración conserva intake, EDA, Planner/Analysis, Critic, Insight, persistencia
+y reportes dentro del mismo monolito. Ver [validación final](integracion-main-final.md)
+y [contratos de Planner/Analysis](planner-analysis-contracts.md).
 
 ## Cliente web
 
-`frontend/` contiene el cliente React/TypeScript del mismo sistema. Consume FastAPI
-por HTTP y presenta los contratos Pydantic expuestos en OpenAPI. Los tipos de API
-se generan para TypeScript; las reglas de lectura y clasificación siguen en Python.
-New Analysis y Dataset Overview se conectan a `/intake`, separado del futuro
-workflow completo de `/analysis`. Detalles en [frontend.md](frontend.md).
+El cliente React/TypeScript consume FastAPI y usa tipos generados desde OpenAPI.
+New Analysis y Dataset Overview usan intake; Associations consume herramientas EDA;
+Report ejecuta análisis por carga y recupera reportes por run_id. Las reglas de
+lectura, estadística y clasificación permanecen en Python.
 
 ## Límites
 
-Dominio depende únicamente de Pydantic y biblioteca estándar. Los Protocols en
-`ports` dependen de DTO y modelos. Los adaptadores implementan esos Protocols.
-La aplicación invoca `AnalysisWorkflow`, sin importar LangGraph. Los agentes
-reciben `AgentContext` y devuelven `AgentResult`, sin importar CSV ni SQLAlchemy.
+El dominio depende únicamente de Pydantic y biblioteca estándar. Los Protocols en
+ports dependen de DTO y modelos; los adaptadores implementan esos Protocols.
+La aplicación invoca AnalysisWorkflow sin importar LangGraph. Los agentes reciben
+AgentContext y devuelven AgentResult sin importar CSV ni SQLAlchemy.
 
 ```text
 API → Application → Ports ← Adapters / Orchestration
@@ -26,82 +25,79 @@ API → Application → Ports ← Adapters / Orchestration
 Bootstrap → construcción de implementaciones y dependencias
 ```
 
-`application/dto/analysis_input.py` usa los modelos tipados de opciones de
-`config/settings.py`. Es una dependencia explícita del esqueleto para compartir
-validación; los modelos del dominio no importan Settings.
+application/dto/analysis_input.py comparte validación de configuración con
+config/settings.py. Los modelos de dominio no importan Settings.
 
-## Datos y fuentes
+## Datos y recursos
 
-`AnalysisInput.source` discrimina CSV, TSV, TXT delimitado y SQL. CSV y TSV tienen
-adaptadores seleccionados mediante `DataSourceRouter`. SQL referencia una conexión
-y una tabla; su adaptador y el de TXT están pendientes.
+CSV y TSV usan DataSourceRouter y el lector delimitado estricto. SQL y TXT tienen
+contratos de entrada, pero sus adaptadores siguen pendientes. Se validan encabezados,
+anchura de filas y tipos antes de construir el perfil; no se omiten filas inválidas.
 
-`LoadedDataset` es un dataclass local con `LocalTable` como interfaz de acceso a
-columnas. `PandasLocalTable` vive en el lector delimitado compartido. No se serializa en el estado
-del grafo y no se pasa al LLM. El puerto `DatasetProvider` resuelve un `dataset_id` a
-un `RegisteredDataset` (datos locales y perfil) para las tools; `InMemoryDatasetStore`
-es su adaptador LRU. Detalles en [eda-association.md](eda-association.md).
+LoadedDataset y LocalTable contienen datos locales y no se serializan en el contexto,
+el estado ni el reporte. Las clasificaciones inferidas son roles estructurales, no
+significado de negocio confirmado.
 
-Los lectores validan encabezados y anchura de filas antes de inferir tipos físicos.
-El servicio local aplica reglas puras de clasificación y genera un perfil básico
-con conteos de nulos/únicos. Las reglas infieren roles estructurales, no significado
-de negocio confirmado. Las rutas se reciben por contrato.
+Hay dos ciclos de vida independientes:
 
-## Contratos
+- EDA: RegisteringDataUnderstanding publica un RegisteredDataset en el almacén LRU
+  InMemoryDatasetStore. Intake, herramientas EDA y gráficos comparten ese almacén.
+- Análisis: build_use_case configura una fábrica por ejecución. DataUnderstandingAgent
+  registra el LoadedDataset validado en un DatasetRegistry local; las seis herramientas
+  estadísticas reciben ese registro. El workflow libera sus recursos en finally,
+  incluso ante fallo, timeout o cancelación. Esa limpieza no borra datasets EDA.
 
-- `AnalysisResult`: formato común, estados SUCCESS/FAILED/SKIPPED, valores JSON,
-  duraciones en segundos y estadísticas opcionales. No admite resultados calculados
-  en estados no exitosos.
-- `DataDictionary`: entradas con fuente y confianza, sin columnas duplicadas.
-- `AgentUpdate`: actualización tipada; solo campos explícitos se aplican al estado.
-- `AgentState`: estado propio de una ejecución LangGraph. Los agentes no lo reciben
-  como memoria global compartida; reciben un contexto explícito validado.
-- `LLMRequest`: instrucciones y contexto agregado. Al agregar proveedores, construir
-  resúmenes acotados, nunca incluir filas crudas en `summary`.
-- `ExperimentMetrics`: indicadores no medidos en `None`. No equiparar ausencia de
-  medición con una puntuación cero.
+## Contratos y flujo actual
 
-## Flujo actual
+El grafo ejecuta DataUnderstanding → Planner → Analysis → Critic → Insight. Cada nodo
+recibe AgentContext validado y aplica únicamente los campos explícitos de AgentUpdate.
+Planner construye un plan reproducible con metadatos y límites; Analysis valida IDs,
+dependencias y presupuesto antes de ejecutar herramientas autorizadas secuencialmente.
+Cada resultado conserva trazabilidad de paso e hipótesis.
 
-`build_use_case` inyecta `DataUnderstandingService` mediante el puerto
-`DataUnderstanding` en el primer agente. El servicio lee la fuente a través de
-`DataSource`, aplica reglas del dominio y devuelve datos locales y metadatos. El
-agente solo propaga perfil, diccionario, dataset_id y métricas. El servicio está
-decorado con `RegisteringDataUnderstanding`, que publica el dataset en el store. El
-registry contiene las tools de EDA, asociación y gráficos; los demás agentes siguen
-siendo skeletons con LLM desactivado y todavía no invocan tools.
+Critic puede leer Pearson/Spearman exitosos de analysis_results si no hay una
+asociación equivalente. Usa effect_size y valida controles en metadatos, incluido el
+formato singular como fallback. Solo genera evaluaciones cuando existe evidencia;
+Insight conserva los vínculos con esa evidencia y las limitaciones.
 
-El grafo detiene la ejecución si una etapa devuelve FAILED. Después de un intake
-exitoso, las siguientes etapas siguen devolviendo SKIPPED. El reporte incluye
-`dataset_profile`, `data_dictionary` y el tiempo de intake en `profiling_time`.
+El grafo termina ante una etapa FAILED. El reporte global es FAILED ante errores o
+etapas fallidas, SUCCESS si todas las etapas registradas son exitosas y SKIPPED si
+quedan etapas pendientes. Analysis SUCCESS no implica éxito global. AnalysisResult
+no admite estadísticas calculadas en estados no exitosos.
 
-El reporte registra `run_id`, estado, advertencias, estados de etapas y duraciones.
-El resultado final es SKIPPED o FAILED, nunca un análisis exitoso ficticio. El
-timeout aplica a toda la ejecución. Errores no recuperados se convierten en un
-reporte FAILED con tiempo total; cancelaciones externas se propagan. Los errores
-fatales no conservan todavía checkpoints parciales.
+El timeout cubre toda la ejecución cooperativa; no garantiza interrumpir SciPy/Pandas
+CPU-bound. Cancelaciones externas se propagan. Los errores fatales no conservan
+checkpoints parciales. El ciclo Critic → Planner y el paralelismo real son futuros.
 
-Los contadores LLM/tool son cero en este skeleton porque esas operaciones no
-existen aún. Al implementarlas, instrumentar las fronteras reales y reemplazar
-estos contadores. No añadir llamadas reales sin actualizar esa instrumentación.
+## Métricas y trazabilidad
+
+ExperimentMetrics mantiene null para indicadores no medidos. Profiling, análisis,
+duraciones por etapa, llamadas reales a herramientas y tiempo hasta el primer insight
+se miden donde ocurren. El proveedor LLM predeterminado está deshabilitado; no hay
+consumo de tokens simulado. La telemetría registra las fronteras instrumentadas y
+la API añade X-Request-ID para correlación HTTP.
 
 ## Persistencia y reportes
 
-`AnalysisRepository` y `ReportRenderer` son contratos. SQLAlchemy únicamente
-proporciona factorías de engine/sesiones; no existen tablas ni repositorio completo.
-La URL predeterminada usa SQLite en memoria y no crea archivos al importar.
+SqlAlchemyAnalysisRepository implementa AnalysisRepository con la tabla analysis_reports,
+guardado idempotente por run_id y validación del payload con AnalysisReport. El ciclo
+de vida de FastAPI inicializa el repositorio y libera el engine al cerrar. No se
+crean archivos de base de datos al importar el módulo.
+
+SQLite en memoria es el valor predeterminado. Una URL persistente explícita permite
+recuperar reportes tras reiniciar, por ejemplo
+MDA_PERSISTENCE__DATABASE_URL=sqlite:///./analysis_reports.db. Las bases locales y
+reportes descargados no se incluyen en Git.
+
+La API conserva /intake, /tools y /datasets/{dataset_id}/tools/{tool_name}, junto con
+/analysis, /analysis/upload, /reports/{run_id}, /metrics y /markdown. Las dos últimas
+son rutas relativas al recurso de reporte. MarkdownReportRenderer y la pantalla de
+reportes presentan evidencia, estados, errores y métricas sin inventar conclusiones.
 
 ## Extensión prevista
 
-1. Liberar del store los datasets de cada ejecución al terminar el workflow.
-2. Exponer las tools de EDA por HTTP y dibujar sus gráficos en el frontend.
-3. Agregar proveedor LLM mediante inyección, sin cambiar el contrato de agentes.
-4. Implementar planner y ejecución con límites de hipótesis y tool calls.
-5. Agregar critic loop acotado por `max_critic_cycles`.
-6. Agregar fan-out de tools independientes, reducers determinísticos y límites
-   de concurrencia; el flag `parallel_tools` hoy solo es configuración preparada.
-7. Implementar insights respaldados por Evidence y métricas experimentales.
-
-Para tareas CPU intensivas, diseñar ejecución en procesos o workers internos;
-una firma async por sí sola no hace paralelos los cálculos. No se requieren
-microservicios para esa evolución.
+- Proveedor LLM inyectado con resúmenes acotados, sin filas crudas.
+- Ciclo crítico acotado por max_critic_cycles y contratos de análisis adicional.
+- Paralelismo con dependencias, concurrencia y cancelación definidos; la firma async
+  por sí sola no hace paralelos los cálculos CPU-bound.
+- Validación experimental de umbrales y calidad de detección, sin afirmar causalidad.

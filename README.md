@@ -4,8 +4,11 @@ Base inicial en Python 3.12+ para un sistema multiagente de análisis de datos.
 El objetivo es comprender datasets, planificar análisis, ejecutar herramientas
 determinísticas, criticar evidencias y producir insights y reportes trazables.
 
-**Estado: intake funcional; módulo del integrante 5 implementado. Algoritmos y agentes
-analíticos de los demás integrantes pendientes.**
+**Estado: intake CSV/TSV, EDA/Associations, Planner/Analysis deterministas, Critic,
+insights, persistencia, evaluación y reportes integrados.**
+
+Validación de la combinación main/develop y limitaciones conocidas:
+[docs/integracion-main-final.md](docs/integracion-main-final.md).
 
 Comenzar con [LEEME_INTEGRANTE5.md](LEEME_INTEGRANTE5.md). Incluye demo independiente,
 API, persistencia, evaluación, guía de integración y patch de cambios.
@@ -13,8 +16,9 @@ API, persistencia, evaluación, guía de integración y patch de cambios.
 ## Probar tus datasets desde el navegador
 
 La interfaz React vive en `frontend/`, junto al backend. Incluye **New Analysis** y
-**Dataset Overview**, basadas en el diseño: carga CSV/TSV, diccionario JSON opcional,
-separador/encoding, métricas reales, tabla de columnas, advertencias y descargas JSON.
+**Dataset Overview**, junto con **Associations** (`/associations`) e
+**Insights y evidencia** (`/report`): carga CSV/TSV, diccionario JSON opcional,
+separador/encoding, exploración, gráficos, métricas y descargas JSON/Markdown.
 
 Desde la raíz, en una terminal:
 
@@ -26,8 +30,8 @@ uv run python run.py
 En otra terminal, dentro de `frontend/` (Node 20.19+):
 
 ```powershell
-npm ci
-npm run dev
+npm.cmd ci
+npm.cmd run dev
 ```
 
 Abre **http://localhost:5173**. Vite reenvía `/api` a FastAPI en el puerto 8000.
@@ -102,9 +106,9 @@ reproducibles se gestionan con `uv sync --locked`.
 ## Tests y calidad
 
 ```powershell
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
+uv run python -m pytest
+uv run python -m ruff check .
+uv run python -m ruff format --check .
 ```
 
 Las pruebas usan fixtures, SQLite temporal/en memoria y HTTP local.
@@ -127,6 +131,7 @@ uv run uvicorn app.api.main:app --reload
 - `GET /health`: `200 {"status": "ok"}`; indica liveness.
 - `POST /intake`: recibe archivo CSV/TSV y diccionario JSON opcional mediante multipart;
   devuelve perfil, resumen, completitud, advertencias y tiempo. Errores: 400/413/422.
+- `GET /tools` y `POST /datasets/{dataset_id}/tools/{tool_name}`: exploración EDA.
 - `POST /analysis`: ejecuta el flujo actual y guarda el reporte. Etapas pendientes: SKIPPED.
 - `POST /analysis/upload`: ejecuta desde un CSV/TSV subido.
 - `GET /reports/{run_id}`: recupera reportes; sufijos `/metrics` y `/markdown` disponibles.
@@ -168,9 +173,16 @@ Los overrides por análisis solo permiten opciones de `analysis` y `performance`
 Los defaults fast son: 3 hipótesis, 8 tools, 1 ciclo crítico, muestra mínima 20,
 timeout 15 segundos y `parallel_tools=true`.
 
-El timeout se aplica al workflow skeleton. Los presupuestos, tamaño mínimo,
-reintentos LLM, repeticiones y flag de paralelismo quedan preparados para sus
-implementaciones futuras; no implican capacidades ya habilitadas.
+Planner aplica tamaño mínimo, presupuesto de hipótesis y de herramientas; Analysis
+valida el plan y limita las invocaciones reales. El timeout global protege etapas
+cooperativas, pero no interrumpe cálculos CPU-bound. El flag de paralelismo, los
+reintentos LLM y el ciclo crítico no habilitan esas capacidades todavía.
+
+SQLite usa memoria de forma predeterminada. Para recuperar reportes tras reiniciar:
+
+```powershell
+$env:MDA_PERSISTENCE__DATABASE_URL = "sqlite:///./analysis_reports.db"
+```
 
 ## Ejecutar el workflow desde Python
 
@@ -195,25 +207,30 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-DataUnderstanding lee el CSV/TSV y devuelve `SUCCESS` con perfil y diccionario.
-El reporte global conserva `SKIPPED` porque Planner, Analysis y Critic siguen pendientes; resultados analíticos e insights estarán vacíos. Una fuente inválida
-devuelve `FAILED` y detiene el grafo antes de Planner. Los tiempos son mediciones
-reales, incluido `profiling_time` (lectura, validación y perfilado básico).
+DataUnderstanding lee el CSV/TSV y entrega perfil y diccionario. Planner propone
+un plan acotado y Analysis ejecuta herramientas locales; Critic e Insight requieren
+evidencia suficiente. El reporte es `FAILED` ante errores, `SUCCESS` si todas las
+etapas registradas finalizan correctamente y `SKIPPED` cuando quedan etapas
+pendientes. Analysis puede estar en `SUCCESS` con Critic/Insight en `SKIPPED`.
+Una fuente inválida detiene el grafo antes de Planner. Los tiempos son reales,
+incluido `profiling_time`; las métricas sin medición permanecen null.
 
 ## Estado actual
 
-Implementado: contratos de dominio y fuentes, lectura validada CSV/TSV, clasificación
-de columnas, conteos/nulos/valores únicos, diccionario suministrado o inferido,
-registry, cinco agentes invocables, grafo con intake real, tiempos, trazabilidad,
-API mínima, factorías SQLAlchemy y contratos de evaluación.
+Implementado: lectura estricta CSV/TSV y clasificación de columnas, EDA y gráficos,
+planificación determinista, seis herramientas estadísticas autorizadas, registros
+por ejecución con liberación de recursos, Critic basado en evidencia, InsightAgent,
+reportes Markdown/JSON, persistencia SQLite, telemetría, evaluación y API.
 
-Pendiente: adaptadores SQL/TXT, EDA y profiling estadístico avanzado, algoritmos
-estadísticos, LLM real y prompts, ejecución de planes, critic loop, paralelismo,
-detección espuria, LLM para redacción libre y evaluación experimental del sistema completo. El módulo 5
-ya incluye insights por evidencia, Markdown, repositorio y ejecutores de evaluación.
+Pendiente: adaptadores SQL/TXT, proveedor LLM productivo y redacción libre,
+ciclo Critic → Planner, paralelismo real y validación experimental de los umbrales
+de Critic. Planner puede proponer ANOVA con una observación por grupo: la herramienta
+lo rechaza. CSV con comillas internas mal escapadas se rechaza sin omitir filas.
+Las asociaciones y evaluaciones preliminares no prueban causalidad.
 
-El registry de producción comienza vacío. `DisabledLLMProvider` lanza un error
-comprensible si se intenta usar. No hay respuestas analíticas simuladas.
+El catálogo EDA y el registro estadístico del workflow se construyen explícitamente;
+los datos de exploración se conservan separados de los recursos temporales del
+análisis. El proveedor LLM está deshabilitado y no genera respuestas simuladas.
 
 ## Contribuir
 
