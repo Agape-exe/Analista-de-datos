@@ -4,9 +4,18 @@
     {"analysis_id": "r1", "method": "pearson", "variables": ["descuento", "ventas"],
      "status": "SUCCESS", "result": {"coefficient": 0.72}, "sample_size": 250,
      "metadata": {"origin": "precomputed_test_fixture"}},
-    {"analysis_id": "r2", "method": "partial_correlation", "variables": ["descuento", "ventas", "campana"],
-     "status": "SUCCESS", "result": {"coefficient": 0.18}, "sample_size": 250,
-     "metadata": {"origin": "precomputed_test_fixture"}}
+    {
+      "analysis_id": "r2",
+      "method": "partial_correlation",
+      "variables": ["descuento", "ventas"],
+      "status": "SUCCESS",
+      "result": {"correlation": 0.18},
+      "sample_size": 250,
+      "metadata": {
+        "origin": "precomputed_test_fixture",
+        "control_variable": "campana"
+      }
+    }
   ],
   "evidence": [
     {"evidence_id": "e1", "analysis_id": "r1", "description": "Resultado ilustrativo inicial"},

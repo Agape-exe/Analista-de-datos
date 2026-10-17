@@ -52,3 +52,17 @@ Verificaciones realizadas:
 
 Estas pruebas verifican el comportamiento del software. No constituyen
 una validación experimental del sistema multiagente completo.
+
+Se cargó un CSV de prueba con 20 filas y 3 columnas.
+
+- DataUnderstanding y Planner finalizaron con estado SUCCESS.
+- Analysis y Critic quedaron en SKIPPED por estar pendientes
+  de implementación en la versión probada.
+- Insight quedó en SKIPPED por no recibir evidencia evaluada.
+- Se recuperó el reporte mediante su run_id.
+- Se descargó correctamente el informe en formato Markdown.
+- El informe conservó las advertencias y no generó conclusiones
+  sin evidencia ni métricas no calculadas.
+
+Esta prueba verifica la consulta y exportación del reporte.
+No valida el funcionamiento completo del sistema multiagente.
