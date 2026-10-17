@@ -1,24 +1,49 @@
 import logging
 from collections.abc import Awaitable, Callable
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response
 
+from app.adapters.datasource.upload_storage import TemporaryUploadStorage
 from app.api.routes.analysis import router as analysis_router
 from app.api.routes.exploration import router as exploration_router
 from app.api.routes.health import router as health_router
 from app.api.routes.intake import router as intake_router
+from app.application.use_cases.analyze_dataset import AnalyzeDataset
+from app.application.use_cases.analyze_uploaded_dataset import AnalyzeUploadedDataset
 from app.bootstrap import (
     build_dataset_store,
     build_exploration_use_case,
     build_intake_use_case,
+    build_repository,
+    build_use_case,
 )
 from app.config.settings import Settings, load_settings
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Composition root for HTTP; no analytics or persistence operations here."""
-    application = FastAPI(title="Multiagent Data Analyst", version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(instance):
+        repository = build_repository(instance.state.settings)
+        instance.state.report_repository = repository
+        workflow = build_use_case(instance.state.settings).workflow
+        instance.state.analysis_use_case = AnalyzeDataset(workflow, repository)
+        uploads = instance.state.settings.uploads
+        instance.state.upload_analysis = AnalyzeUploadedDataset(
+            instance.state.analysis_use_case,
+            TemporaryUploadStorage(uploads.chunk_size_bytes, uploads.temporary_directory),
+            uploads.max_dataset_bytes,
+            uploads.max_dictionary_bytes,
+        )
+        try:
+            yield
+        finally:
+            repository.engine.dispose()
+
+    application = FastAPI(title="Multiagent Data Analyst", version="0.1.0", lifespan=lifespan)
     application.state.settings = settings if settings is not None else load_settings()
     datasets = build_dataset_store(application.state.settings)
     application.state.intake_use_case = build_intake_use_case(application.state.settings, datasets)

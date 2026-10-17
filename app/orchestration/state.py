@@ -13,6 +13,7 @@ from app.domain.models.metrics import ExperimentMetrics
 class AgentState(TypedDict):
     """Workflow-owned message state, never a shared data store for agents."""
 
+    started_monotonic: float
     run_id: str
     input: AnalysisInput
     configuration: EffectiveConfiguration

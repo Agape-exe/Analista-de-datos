@@ -1,8 +1,14 @@
-"""Run a small reproducible Planner & Analysis benchmark outside Pytest."""
+"""Run a small, reproducible Planner & Analysis workflow benchmark.
+
+Usage: uv run python scripts/benchmark_planner_analysis.py
+"""
 
 import asyncio
+import json
 import platform
+import random
 import statistics
+import sys
 import tempfile
 from pathlib import Path
 from time import perf_counter
@@ -11,56 +17,77 @@ from app.application.dto.analysis_input import AnalysisInput
 from app.bootstrap import build_use_case
 from app.config.settings import Settings
 
+ROWS = (50, 500, 5_000)
+REPETITIONS = 3
+SEED = 20_261_016
 
-def write_csv(path: Path, rows: int) -> None:
-    values = ["income,spending,region,segment,outcome"]
+
+def write_dataset(path: Path, rows: int) -> None:
+    generator = random.Random(SEED)
+    lines = ["segment,region,income,spend,control"]
     for index in range(rows):
-        income = index + 1
-        region = "north" if index % 2 else "south"
-        segment = "retail" if index % 3 else "business"
-        outcome = 2 + (index % 3) if region == "north" else 9 + (index % 3)
-        values.append(f"{income},{income * 2},{region},{segment},{outcome}")
-    path.write_text("\n".join(values), encoding="utf-8")
+        segment = "a" if index % 2 else "b"
+        region = "north" if index % 3 else "south"
+        control = index % 20
+        income = control * 10 + generator.uniform(-2, 2)
+        spend = income * 1.8 + generator.uniform(-3, 3)
+        lines.append(f"{segment},{region},{income:.8f},{spend:.8f},{control}")
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
-async def measure(rows: int, repetitions: int = 3) -> None:
-    with tempfile.TemporaryDirectory() as directory:
-        path = Path(directory) / "benchmark.csv"
-        write_csv(path, rows)
-        use_case = build_use_case(Settings(_env_file=None))
-        totals: list[float] = []
-        analytics: list[float] = []
-        calls: list[int] = []
-        statuses: list[str] = []
-        for _ in range(repetitions):
-            started = perf_counter()
-            report = await use_case.execute(
-                AnalysisInput(
-                    source={"kind": "csv", "path": path},
-                    user_question="Evaluate income and spending by region and segment.",
+async def benchmark() -> list[dict[str, object]]:
+    settings = Settings(_env_file=None)
+    use_case = build_use_case(settings)
+    measurements: list[dict[str, object]] = []
+    with tempfile.TemporaryDirectory(prefix="planner-analysis-benchmark-") as directory:
+        root = Path(directory)
+        for rows in ROWS:
+            path = root / f"dataset-{rows}.csv"
+            write_dataset(path, rows)
+            totals: list[float] = []
+            analytics: list[float] = []
+            calls: list[int] = []
+            statuses: list[str] = []
+            for _ in range(REPETITIONS):
+                started = perf_counter()
+                report = await use_case.execute(
+                    AnalysisInput(
+                        source={"kind": "csv", "path": path},
+                        user_question="Evaluate the association between income and spend.",
+                    )
                 )
+                totals.append(perf_counter() - started)
+                analytics.append(report.metrics.analytics_time or 0.0)
+                calls.append(report.metrics.tool_calls or 0)
+                statuses.append(str(report.status))
+            measurements.append(
+                {
+                    "rows": rows,
+                    "columns": 5,
+                    "repetitions": REPETITIONS,
+                    "median_total_seconds": statistics.median(totals),
+                    "median_analytics_seconds": statistics.median(analytics),
+                    "tool_calls": calls,
+                    "statuses": statuses,
+                }
             )
-            totals.append(perf_counter() - started)
-            analytics.append(report.metrics.analytics_time or 0.0)
-            calls.append(report.metrics.tool_calls or 0)
-            statuses.append(str(report.status))
-    print(
-        {
-            "rows": rows,
-            "columns": 5,
-            "repetitions": repetitions,
-            "median_total_seconds": statistics.median(totals),
-            "median_analytics_seconds": statistics.median(analytics),
-            "tool_calls": calls[-1],
-            "status": statuses[-1],
-        }
-    )
+    return measurements
 
 
 async def main() -> None:
-    print({"python": platform.python_version(), "platform": platform.platform()})
-    for rows in (50, 500, 5000):
-        await measure(rows)
+    print(
+        json.dumps(
+            {
+                "environment": {
+                    "python": sys.version.split()[0],
+                    "platform": platform.platform(),
+                    "seed": SEED,
+                },
+                "measurements": await benchmark(),
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

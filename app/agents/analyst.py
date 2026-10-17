@@ -62,7 +62,7 @@ class AnalysisAgent(SkeletonAgent):
                         result = await tool.execute(step.request)
                     except asyncio.CancelledError:
                         raise
-                    except Exception as error:
+                    except Exception as error:  # Tool boundaries must not discard prior results.
                         result = _failed_step(step, f"Tool execution failed: {error}")
             traced = _with_trace(result, step)
             results.append(traced)

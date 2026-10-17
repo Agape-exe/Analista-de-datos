@@ -1,5 +1,9 @@
 # Interfaz web de Data Intake
 
+> Actualización del integrante 5: ver [guía de integración](integrante5-integracion.md).
+> Las descripciones del skeleton de análisis reflejan la base original; la API de
+> análisis y reporting se extendió en esta entrega.
+
 ## Estructura y tecnologías
 
 `frontend/` pertenece al mismo repositorio que el backend hexagonal. Usa React,
@@ -40,9 +44,14 @@ calidad ni indicadores de duplicados/outliers. Los demás destinos futuros se mu
 deshabilitados. El estado es Intake completed, no una afirmación
 de análisis multiagente terminado.
 
-El resultado vive en memoria del navegador: recargar la página lo descarta. New
-Analysis inicia una carga nueva. En caso de error se preservan archivos/opciones
-para corregir y reintentar. No existe historial persistente en esta entrega.
+El resultado de intake vive en memoria del navegador: recargar la página lo descarta.
+New Analysis inicia una carga nueva. En caso de error se preservan archivos/opciones
+para corregir y reintentar.
+
+**Insights y evidencia** (`/report`) ejecuta el análisis del archivo seleccionado,
+muestra resultados, evidencia, métricas y estados, y descarga JSON/Markdown. Un
+reporte se puede recuperar por run_id después de recargar la página; para conservarlo
+tras reiniciar el backend se requiere una URL de SQLite persistente explícita.
 
 ## Backend y contratos
 
@@ -97,8 +106,8 @@ uv run python run.py
 Frontend, desde `frontend/`:
 
 ```powershell
-npm ci
-npm run dev
+npm.cmd ci
+npm.cmd run dev
 ```
 
 Abrir `http://localhost:5173`. El proxy Vite transforma `/api/intake` en `/intake`
@@ -108,11 +117,11 @@ contra `http://127.0.0.1:8000`; no requiere CORS para este flujo.
 Generar nuevamente contratos después de cambiar modelos o rutas:
 
 ```powershell
-npm run generate:api
+npm.cmd run generate:api
 ```
 
 El script lee OpenAPI directamente desde la aplicación Python, sin necesitar un
-servidor activo. Para producción, `npm run build` genera `frontend/dist`; el hosting
+servidor activo. Para producción, `npm.cmd run build` genera `frontend/dist`; el hosting
 debe servir la SPA y reenviar `/api/*` al backend quitando ese prefijo. Los módulos
 de infraestructura del backend siguen en su estructura actual.
 
@@ -120,28 +129,32 @@ de infraestructura del backend siguen en su estructura actual.
 
 ```powershell
 # Desde frontend/
-npm run typecheck
-npm run lint
-npm test
-npm run build
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
 ```
 
 Tests de navegador con backend real y un CSV de tres filas:
 
 ```powershell
-npx playwright install chromium
-npm run test:e2e
+npx.cmd playwright install chromium
+npm.cmd run test:e2e
 ```
 
 Si Edge ya está instalado en Windows, se puede usar sin descargar Chromium:
 
 ```powershell
 $env:PLAYWRIGHT_CHANNEL = "msedge"
-npm run test:e2e
+npm.cmd run test:e2e
 ```
 
-Playwright inicia los servidores si no están activos. Verifica carga real,
-descarga del perfil, ausencia de errores JS y layout a 1440, 1024 y 480 px.
+Playwright inicia servidores exclusivos en 8016 (backend) y 5186 (frontend), con
+proxy explícito entre ellos. No reutiliza los servidores de desarrollo de 8000/5173.
+Los puertos se pueden cambiar con E2E_BACKEND_PORT y E2E_FRONTEND_PORT; deben estar
+libres. Las cuatro pruebas verifican intake y descarga del perfil, asociaciones y
+gráficos, reportes SKIPPED/SUCCESS, evidencia, descargas JSON/Markdown, recuperación
+por run_id y coexistencia de EDA con el análisis. Comprueban el layout hasta 390 px.
 Las capturas son opcionales mediante UI_SCREENSHOT_DIR (directorio existente).
 Los tests unitarios usan respuestas de prueba solo en archivos de testing;
 las pantallas de producción no incluyen datasets o resultados simulados.
