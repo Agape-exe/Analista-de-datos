@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from app.adapters.datasource.csv_source import CsvDataSource
 from app.adapters.datasource.router import DataSourceRouter
 from app.adapters.datasource.tsv_source import TsvDataSource
@@ -8,9 +10,11 @@ from app.agents.critic import CriticAgent
 from app.agents.data_understanding import DataUnderstandingAgent
 from app.agents.insight import InsightAgent
 from app.agents.planner import PlannerAgent
+from app.analytics.factory import build_statistical_tool_registry
 from app.analytics.registry import ToolRegistry
 from app.application.errors import LLMDisabledError
 from app.application.services.data_understanding import DataUnderstandingService
+from app.application.services.dataset_registry import DatasetRegistry
 from app.application.use_cases.analyze_dataset import AnalyzeDataset
 from app.application.use_cases.intake_uploaded_dataset import IntakeUploadedDataset
 from app.config.settings import Settings
@@ -47,10 +51,13 @@ def build_intake_use_case(settings: Settings) -> IntakeUploadedDataset:
 
 
 def build_agents(
-    llm: LLMProvider, tools: ToolRegistry, understanding: DataUnderstanding
+    llm: LLMProvider,
+    tools: ToolRegistry,
+    understanding: DataUnderstanding,
+    datasets: DatasetRegistry | None = None,
 ) -> list[Agent]:
     return [
-        DataUnderstandingAgent(understanding),
+        DataUnderstandingAgent(understanding, datasets),
         PlannerAgent(llm),
         AnalysisAgent(llm, tools),
         CriticAgent(llm),
@@ -59,8 +66,21 @@ def build_agents(
 
 
 def build_use_case(settings: Settings) -> AnalyzeDataset:
-    agents = build_agents(build_llm(settings), ToolRegistry(), build_data_understanding(settings))
-    return AnalyzeDataset(LangGraphWorkflow(settings, agents))
+    build_llm(settings)
+
+    def build_run() -> tuple[list[Agent], Callable[[], None]]:
+        datasets = DatasetRegistry()
+        return (
+            build_agents(
+                build_llm(settings),
+                build_statistical_tool_registry(datasets),
+                build_data_understanding(settings),
+                datasets,
+            ),
+            datasets.clear,
+        )
+
+    return AnalyzeDataset(LangGraphWorkflow(settings, run_factory=build_run))
 
 
 def build_repository(settings: Settings):

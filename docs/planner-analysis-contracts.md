@@ -6,9 +6,10 @@ El módulo Planner & Analysis debe convertir una pregunta de análisis y el resu
 del dataset en un plan reproducible de solicitudes estadísticas, ejecutar esas
 solicitudes sobre los datos locales y entregar resultados trazables al flujo común.
 
-En el estado actual, esta capacidad todavía es un skeleton: `PlannerAgent` y
-`AnalysisAgent` son invocables, pero devuelven `SKIPPED`; no hay ejecución de
-tools ni proveedor LLM activo.
+Actualmente `PlannerAgent` construye planes determinísticos y `AnalysisAgent` los
+ejecuta en el workflow de LangGraph mediante recursos locales aislados por corrida.
+No hay proveedor LLM activo; Critic e Insight continúan siendo etapas separadas y
+no se consideran una conclusión final de negocio.
 
 ## 2. Responsabilidades de Planner Agent
 
@@ -58,20 +59,29 @@ trata como fallo real de planificación.
 
 - `AnalysisAgent` está en `app/agents/analyst.py`.
 - Recibe un `ToolRegistry` explícito además del proveedor LLM.
+- Ejecuta un `AnalysisPlan` sólo cuando supera validaciones de IDs de paso únicos,
+  hipótesis y dependencias válidas, grafo acíclico, dataset coherente y límite de
+  hipótesis. Ordena los pasos topológicamente de forma estable.
+- Ejecuta secuencialmente sólo tools autorizadas mediante `ToolRegistry.resolve()`.
+  Conserva éxitos si otro paso falla; dependencias fallidas o presupuesto agotado
+  producen `SKIPPED`, mientras que tools desconocidas, incompatibles o erróneas
+  producen `FAILED` sin estadísticas ficticias.
+- Añade `step_id` y, cuando existe, `hypothesis_id` a los metadatos de cada
+  resultado. Mide `analytics_time` y cuenta exclusivamente invocaciones reales en
+  `tool_calls`. No llama al proveedor LLM.
 - El registry permite registrar instancias, consultar nombres, resolver una
   solicitud compatible y ejecutar solo tools autorizadas; rechaza nombres vacíos,
   registros duplicados, tools desconocidas y solicitudes no compatibles.
 - `AnalyticsTool` define `name`, `supports(request)` y `execute(request)`.
+- `build_statistical_tool_registry(datasets)`, en `app/analytics/factory.py`, crea
+  un registry nuevo e inyecta el mismo `DatasetRegistry` en las seis tools:
+  `pearson`, `spearman`, `partial_correlation`, `chi_square`, `cramers_v` y
+  `anova_one_way`. No hay registry global ni datasets compartidos entre ejecuciones.
 
 ### Propuesto para una implementación posterior
 
-- Validar cada `AnalysisStep` y resolver su tool registrada.
-- Ejecutar las solicitudes respetando dependencias, límites de llamadas, timeout
-  y la configuración de paralelismo.
-- Persistir en `AgentUpdate.analysis_results` los `AnalysisResult` exitosos,
-  fallidos o omitidos, junto con warnings y errores del `AgentResult`.
-- No convertir una ausencia de tool, un error estadístico o una muestra insuficiente
-  en un resultado exitoso ficticio.
+- Ejecutar tools en paralelo cuando la configuración y la semántica de dependencias
+  lo permitan, y definir la coordinación de cancelación y timeouts CPU-bound.
 
 ## 4. Contratos existentes y ubicación real
 
@@ -95,7 +105,7 @@ metadatos. Los estados se definen en `app/domain/enums/statuses.py`.
 El flujo actual es:
 
 ```text
-DataUnderstanding → Planner (SKIPPED) → Analysis (SKIPPED) → Critic → Insight
+DataUnderstanding → Planner → Analysis → Critic → Insight
 ```
 
 `AgentState` contiene el estado serializable del workflow. Para cada nodo,
@@ -112,10 +122,18 @@ columna declarada esté disponible con el número de filas esperado y permite
 recuperar, liberar o limpiar referencias. No es serializable ni global, por lo
 que cada ejecución puede usar una instancia aislada y liberar sus datos al final.
 
-El intake existente no se conecta todavía a ese registry: las cargas HTTP usan
-archivos temporales que se eliminan al terminar el intake. Conectar el registry al
-workflow requiere acordar el ciclo de vida de los datos locales sin retener rutas
-temporales inválidas.
+`build_use_case(settings)` configura una fábrica de recursos por llamada a
+`LangGraphWorkflow.run()`. Cada corrida crea un `DatasetRegistry`, un `ToolRegistry`
+con las seis tools y una lista nueva de agentes. `DataUnderstandingAgent` registra
+exactamente el `LoadedDataset` que `DataUnderstandingService` ya cargó y validó; no
+vuelve a abrir ni perfilar el archivo. Sólo dataset_id, perfil y diccionario cruzan
+`AgentState`. El workflow libera referencias con `DatasetRegistry.clear()` en un
+`finally`, incluso ante fallo, timeout o cancelación.
+
+La misma instancia de `AnalyzeDataset` puede usarse en corridas secuenciales o
+concurrentes: no comparte datasets, tools o resultados entre ellas. Las cargas HTTP
+siguen con su ciclo temporal actual; esta sesión no modifica endpoints ni mantiene
+rutas temporales después de cargar los datos en memoria.
 
 Tras la ejecución futura, `analysis_results` quedará en `AgentState` y será visible
 para Critic mediante el siguiente `AgentContext`. `Evidence` y
@@ -169,9 +187,8 @@ degenerados. ANOVA exige al menos dos observaciones por grupo válido, no realiz
 post-hoc y advierte que sus supuestos no se evalúan automáticamente.
 
 `ToolRegistry.execute(request)` resuelve la tool por el método de `ToolRequest` y
-exige que `supports(request)` sea verdadero antes de delegar la ejecución. No hay
-registro global ni conexión al workflow: las tools se registrarán por ejecución
-cuando se acuerde el ciclo de vida del dataset.
+exige que `supports(request)` sea verdadero antes de delegar la ejecución. El
+workflow crea y registra las tools por ejecución; no hay registry global.
 
 El repositorio conserva espacios para `profiling`, `association`, `anomalies` y
 `clustering`; no se implementan aquí otras técnicas estadísticas ni agentes por
@@ -184,11 +201,26 @@ Los límites ya modelados son `max_hypotheses`, `max_tool_calls`,
 `parallel_tools`. Los defaults empaquetados están en
 `app/config/defaults.toml`; el modo por defecto es `fast`.
 
-Planner ya consume `minimum_sample_size`, `max_hypotheses`, `max_tool_calls` y
-`mode` para construir un plan acotado; no incrementa métricas porque no ejecuta
-tools ni llama al LLM. El grafo aún no ejecuta tools, no hace fan-out paralelo ni
-consume presupuestos durante Analysis. La implementación futura debe mantener esos
-límites en la frontera de ejecución e instrumentar operaciones reales.
+Planner consume `minimum_sample_size`, `max_hypotheses`, `max_tool_calls` y `mode`
+para construir un plan acotado; no incrementa métricas porque no ejecuta tools.
+Analysis valida de nuevo el límite de hipótesis y aplica `max_tool_calls`: los pasos
+posteriores se marcan `SKIPPED` al agotarse el presupuesto. Conserva
+`ExperimentMetrics.analytics_time`; solicitudes rechazadas y pasos omitidos no
+incrementan `tool_calls`.
+
+El ejecutor no añade un timeout local: las tools son cálculos CPU-bound y un timeout
+de `asyncio` no garantiza interrumpirlos mientras bloquean el hilo. Tampoco ejecuta
+tools en paralelo: `parallel_tools` no está operativo aún. El timeout global del
+workflow sí protege etapas cooperativas y el `finally` libera los recursos, pero no
+promete interrupción fuerte de SciPy/Pandas CPU-bound.
+
+El reporte conserva las métricas que actualiza Analysis: `tool_calls` es el número
+de tools invocadas realmente, `analytics_time` mide la fase analítica,
+`profiling_time` procede de Data Understanding y `total_response_time` mide toda la
+corrida. `llm_calls` permanece en cero. El reporte es `FAILED` ante un fallo de
+workflow o etapa, `SUCCESS` cuando hay resultados analíticos exitosos sin fallos, y
+`SKIPPED` cuando no existe un análisis ejecutable por una condición legítima. El
+éxito sólo expresa ejecución estadística válida; no completa Critic ni Insight.
 
 ## 8. Dependencias con los demás integrantes
 
@@ -223,15 +255,11 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
 
 ## 10. Cambios o decisiones pendientes de aprobación
 
-- Cómo conectar el ciclo de vida de `DatasetRegistry` al workflow y a las cargas
-  temporales sin serializar filas en `AgentState` ni retener rutas inválidas.
+- Cómo integrar el ciclo de vida de cargas HTTP temporales con esta fábrica por
+  corrida, sin serializar filas en `AgentState` ni retener rutas inválidas.
 - Catálogo inicial, nombres y esquemas de parámetros de las tools con Integrante 2.
-- Registro por ejecución de las tools de correlación cuando se integre Analysis
-  Agent, manteniendo el aislamiento de `DatasetRegistry`.
-- Registro por ejecución de las tools mixtas y decisión de Planner sobre cuándo
-  una variable codificada puede tratarse como categoría o resultado numérico.
-- Integración de `AnalysisPlan` con Analysis Agent, registro por ejecución de tools
-  y validación final de muestras efectivas después de excluir faltantes.
+- Decisión de Planner sobre cuándo una variable codificada puede tratarse como
+  categoría o resultado numérico.
 - Política de dependencias entre `AnalysisStep` y comportamiento ante ciclos o
   solicitudes no soportadas.
 - Semántica de ejecución paralela, límites por tool y cancelación bajo FAST MODE.
@@ -240,3 +268,8 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
 - Política de persistencia de resultados y errores para reporte y reanudación.
 - Los modelos compartidos actuales no se modifican en esta sesión; cualquier
   cambio incompatible queda deliberadamente pendiente de aprobación.
+
+El PR #7 del Integrante 5 también modifica bootstrap, graph, state, reporte y esta
+documentación, aunque su base es `main`. No se incorporaron sus cambios: al preparar
+su integración será necesario resolver el solapamiento de métricas/reporting y
+mantener esta fábrica de recursos por corrida.
