@@ -4,7 +4,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, Response, Upl
 
 from app.adapters.reporting.markdown import MarkdownReportRenderer
 from app.api.protection import enforce_request_limit, reserve_operation_capacity
-from app.application.dto.analysis_input import AnalysisInput
+from app.application.dto.analysis_input import AnalysisInput, StoredSourceSpec
 from app.application.dto.intake import IntakeOptions
 from app.application.errors import (
     DatasetNotFoundError,
@@ -18,6 +18,10 @@ from app.domain.models.report import AnalysisReport
 
 router = APIRouter()
 local_router = APIRouter()
+
+
+class StoredAnalysisRequest(DomainModel):
+    user_question: str | None = None
 
 
 @local_router.post("/analysis", response_model=AnalysisReport)
@@ -67,6 +71,7 @@ async def analysis_stored(
     dataset_id: str, request: Request, body: StoredAnalysisRequest | None = None
 ) -> AnalysisReport:
     """Analyze a dataset already uploaded through intake, without re-reading or re-profiling."""
+    await enforce_request_limit(request, "upload")
     try:
         await request.app.state.datasets.get(dataset_id)
     except DatasetNotFoundError as error:
@@ -78,11 +83,12 @@ async def analysis_stored(
             },
         ) from error
     question = body.user_question.strip() if body and body.user_question else None
-    return await request.app.state.analysis_use_case.execute(
-        AnalysisInput(
-            source=StoredSourceSpec(dataset_id=dataset_id), user_question=question or None
+    async with reserve_operation_capacity(request):
+        return await request.app.state.analysis_use_case.execute(
+            AnalysisInput(
+                source=StoredSourceSpec(dataset_id=dataset_id), user_question=question or None
+            )
         )
-    )
 
 
 async def get_report(run_id: str, request: Request) -> AnalysisReport:

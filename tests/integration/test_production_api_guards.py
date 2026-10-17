@@ -1,6 +1,9 @@
+import asyncio
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from app.api.main import create_app
 from app.config.settings import Settings
@@ -92,3 +95,85 @@ def test_report_rate_limit_runs_before_report_lookup() -> None:
         limited = client.get("/reports/unknown")
         assert limited.status_code == 429
         assert limited.headers["Retry-After"] == "60"
+
+
+def test_stored_analysis_shares_upload_rate_limit() -> None:
+    settings = Settings(_env_file=None, deployment={"max_upload_requests": 2})
+    application = create_app(settings)
+    with TestClient(application) as client:
+        intake = client.post("/intake", files={"file": ("small.csv", b"a\n1\n")})
+        dataset_id = intake.json()["profile"]["dataset_id"]
+        execute = AsyncMock(wraps=application.state.analysis_use_case.execute)
+        application.state.analysis_use_case.execute = execute
+
+        assert client.post(f"/analysis/datasets/{dataset_id}").status_code == 200
+        limited = client.post(f"/analysis/datasets/{dataset_id}")
+        assert limited.status_code == 429
+        assert limited.json()["detail"]["code"] == "REQUEST_RATE_LIMITED"
+        assert limited.headers["Retry-After"] == "60"
+        execute.assert_awaited_once()
+
+
+def test_stored_analysis_rate_limit_runs_before_dataset_lookup() -> None:
+    settings = Settings(_env_file=None, deployment={"max_upload_requests": 1})
+    with TestClient(create_app(settings)) as client:
+        assert client.post("/analysis/datasets/missing").status_code == 404
+        limited = client.post("/analysis/datasets/another-missing")
+        assert limited.status_code == 429
+        assert limited.json()["detail"]["code"] == "REQUEST_RATE_LIMITED"
+        assert limited.headers["Retry-After"] == "60"
+
+
+async def test_stored_analysis_reserves_shared_operation_capacity() -> None:
+    settings = Settings(_env_file=None, deployment={"max_concurrent_operations": 1})
+    application = create_app(settings)
+    with TestClient(application) as client:
+        intake = client.post("/intake", files={"file": ("small.csv", b"a\n1\n")})
+        dataset_id = intake.json()["profile"]["dataset_id"]
+        original_execute = application.state.analysis_use_case.execute
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        async def blocked_execute(analysis_input):
+            started.set()
+            await release.wait()
+            return await original_execute(analysis_input)
+
+        execute = AsyncMock(side_effect=blocked_execute)
+        application.state.analysis_use_case.execute = execute
+        async with AsyncClient(
+            transport=ASGITransport(app=application), base_url="http://testserver"
+        ) as async_client:
+            path = f"/analysis/datasets/{dataset_id}"
+            first = asyncio.create_task(async_client.post(path))
+            try:
+                await asyncio.wait_for(started.wait(), timeout=5)
+                for limited in (
+                    await async_client.post(path),
+                    await async_client.post(
+                        "/analysis/upload", files={"file": ("small.csv", b"a\n1\n")}
+                    ),
+                ):
+                    assert limited.status_code == 429
+                    assert limited.json()["detail"]["code"] == "ANALYSIS_CAPACITY_EXCEEDED"
+                    assert limited.headers["Retry-After"] == "1"
+                execute.assert_awaited_once()
+            finally:
+                release.set()
+                response = await asyncio.wait_for(first, timeout=10)
+            assert response.status_code == 200
+            assert (await async_client.post(path)).status_code == 200
+
+
+def test_stored_analysis_releases_capacity_after_failure() -> None:
+    settings = Settings(_env_file=None, deployment={"max_concurrent_operations": 1})
+    application = create_app(settings)
+    with TestClient(application, raise_server_exceptions=False) as client:
+        intake = client.post("/intake", files={"file": ("small.csv", b"a\n1\n")})
+        dataset_id = intake.json()["profile"]["dataset_id"]
+        original_execute = application.state.analysis_use_case.execute
+        application.state.analysis_use_case.execute = AsyncMock(side_effect=RuntimeError("failed"))
+
+        assert client.post(f"/analysis/datasets/{dataset_id}").status_code == 500
+        application.state.analysis_use_case.execute = original_execute
+        assert client.post(f"/analysis/datasets/{dataset_id}").status_code == 200
