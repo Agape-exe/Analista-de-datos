@@ -15,10 +15,10 @@ no se consideran una conclusión final de negocio.
 
 ### Existente
 
-- `PlannerAgent` está en `app/agents/planner.py`, conserva el puerto LLM para
+- `PlannerAgent` está en `app/modules/analysis/application/agents/planner.py`, conserva el puerto LLM para
   compatibilidad futura y no lo invoca mientras el proveedor siga deshabilitado.
 - `DeterministicAnalysisPlanner`, en
-  `app/application/services/analysis_planning.py`, construye planes reproducibles
+  `app/modules/analysis/application/services/analysis_planning.py`, construye planes reproducibles
   sólo a partir de `AgentContext`, perfil, diccionario y configuración efectiva.
 - Genera hipótesis exploratorias sin conclusiones causales y devuelve
   `AnalysisPlan` mediante `AgentUpdate.analysis_plan` cuando tiene pasos válidos.
@@ -57,7 +57,7 @@ trata como fallo real de planificación.
 
 ### Existente
 
-- `AnalysisAgent` está en `app/agents/analyst.py`.
+- `AnalysisAgent` está en `app/modules/analysis/application/agents/analyst.py`.
 - Recibe un `ToolRegistry` explícito además del proveedor LLM.
 - Ejecuta un `AnalysisPlan` sólo cuando supera validaciones de IDs de paso únicos,
   hipótesis y dependencias válidas, grafo acíclico, dataset coherente y límite de
@@ -73,7 +73,7 @@ trata como fallo real de planificación.
   solicitud compatible y ejecutar solo tools autorizadas; rechaza nombres vacíos,
   registros duplicados, tools desconocidas y solicitudes no compatibles.
 - `AnalyticsTool` define `name`, `supports(request)` y `execute(request)`.
-- `build_statistical_tool_registry(datasets)`, en `app/analytics/factory.py`, crea
+- `build_statistical_tool_registry(datasets)`, en `app/modules/analysis/adapters/analytics/factory.py`, crea
   un registry nuevo e inyecta el mismo `DatasetRegistry` en las seis tools:
   `pearson`, `spearman`, `partial_correlation`, `chi_square`, `cramers_v` y
   `anova_one_way`. No hay registry global ni datasets compartidos entre ejecuciones.
@@ -86,19 +86,19 @@ trata como fallo real de planificación.
 ## 4. Contratos existentes y ubicación real
 
 - `Hypothesis`, `ToolRequest`, `AnalysisStep`, `AnalysisPlan`, `AnalysisResult` y
-  `AssociationResult`: `app/domain/models/analysis.py`.
-- `AgentContext`, `AgentUpdate` y `AgentResult`: `app/application/dto/agent.py`.
-- `AgentState`: `app/orchestration/state.py`.
-- `AnalyticsTool`: `app/ports/analytics_tool.py`.
-- `ToolRegistry`: `app/analytics/registry.py`.
-- Puerto común de agentes: `app/ports/agent.py`.
+  `AssociationResult`: `app/shared/domain/models/analysis.py`.
+- `AgentContext`, `AgentUpdate` y `AgentResult`: `app/shared/contracts/agent.py`.
+- `AgentState`: `app/modules/analysis/application/state.py`.
+- `AnalyticsTool`: `app/shared/ports/analytics_tool.py`.
+- `ToolRegistry`: `app/shared/application/tool_registry.py`.
+- Puerto común de agentes: `app/modules/analysis/ports/agent.py`.
 - Configuración efectiva y overrides por ejecución:
-  `app/config/settings.py` y `app/application/dto/analysis_input.py`.
-- Grafo y adaptación de contexto/updates: `app/orchestration/graph.py`.
+  `app/shared/config/settings.py` y `app/shared/contracts/analysis_input.py`.
+- Grafo y adaptación de contexto/updates: `app/modules/analysis/adapters/orchestration/graph.py`.
 
 `AnalysisResult` solo permite valores estadísticos calculados cuando el estado es
 `SUCCESS`; incluye método, variables, tamaño de muestra, warnings, duración y
-metadatos. Los estados se definen en `app/domain/enums/statuses.py`.
+metadatos. Los estados se definen en `app/shared/domain/enums/statuses.py`.
 
 ## 5. Flujo de información entre módulos
 
@@ -109,14 +109,14 @@ DataUnderstanding → Planner → Analysis → Critic → Insight
 ```
 
 `AgentState` contiene el estado serializable del workflow. Para cada nodo,
-`app/orchestration/graph.py` construye un `AgentContext` explícito y aplica solo
+`app/modules/analysis/adapters/orchestration/graph.py` construye un `AgentContext` explícito y aplica solo
 los campos presentes en `AgentUpdate`. El contexto no contiene `LocalTable`, una
 sesión de persistencia ni filas crudas.
 
 El intake local usa `LoadedDataset` y `LocalTable` en
-`app/application/dto/datasource.py`; `PandasLocalTable` vive en
-`app/adapters/datasource/delimited_source.py`. `DatasetRegistry`, en
-`app/application/services/dataset_registry.py`, mantiene por instancia las
+`app/shared/contracts/datasource.py`; `PandasLocalTable` vive en
+`app/modules/data_intake/adapters/datasource/delimited_source.py`. `DatasetRegistry`, en
+`app/shared/application/dataset_registry.py`, mantiene por instancia las
 referencias de datasets ya validados. Registra IDs únicos, verifica que cada
 columna declarada esté disponible con el número de filas esperado y permite
 recuperar, liberar o limpiar referencias. No es serializable ni global, por lo
@@ -146,7 +146,7 @@ solicitudes adicionales aún no está implementado.
 ## 6. Herramientas estadísticas para el MVP
 
 Las tools determinísticas de correlación están en
-`app/analytics/statistics/correlation.py` y reciben un `DatasetRegistry` por
+`app/modules/analysis/adapters/analytics/correlation.py` y reciben un `DatasetRegistry` por
 inyección. Sus métodos autorizados son:
 
 - `pearson`: dos variables numéricas distintas en `ToolRequest.variables`.
@@ -168,7 +168,7 @@ resultados no finitos. En esos casos devuelven `AnalysisResult` con `FAILED`, si
 estadísticos calculados. Los resultados exitosos incluyen una advertencia explícita:
 asociación estadística no demuestra causalidad.
 
-Las tools estadísticas mixtas están en `app/analytics/statistics/mixed.py` y usan
+Las tools estadísticas mixtas están en `app/modules/analysis/adapters/analytics/mixed.py` y usan
 la misma inyección local de `DatasetRegistry`. Sus métodos autorizados son:
 
 - `chi_square`: dos variables categóricas distintas en `variables`. Construye una
@@ -201,7 +201,7 @@ independientes de las seis herramientas del flujo Planner/Analysis.
 Los límites ya modelados son `max_hypotheses`, `max_tool_calls`,
 `max_critic_cycles`, `minimum_sample_size`, `timeout_seconds` y
 `parallel_tools`. Los defaults empaquetados están en
-`app/config/defaults.toml`; el modo por defecto es `fast`.
+`app/shared/config/defaults.toml`; el modo por defecto es `fast`.
 
 Planner consume `minimum_sample_size`, `max_hypotheses`, `max_tool_calls` y `mode`
 para construir un plan acotado; no incrementa métricas porque no ejecuta tools.

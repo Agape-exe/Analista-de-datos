@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.domain.models.data_dictionary import DataDictionary, DataDictionaryEntry
+from app.shared.domain.models.data_dictionary import DataDictionary, DataDictionaryEntry
 
 
 def test_dictionary_round_trip_and_duplicate_rejection() -> None:

@@ -1,6 +1,6 @@
 import pytest
 
-from app.evaluation.metrics import TimingRecorder
+from app.shared.application.timing import TimingRecorder
 
 
 def test_timing_including_failure() -> None:

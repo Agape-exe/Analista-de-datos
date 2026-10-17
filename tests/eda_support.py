@@ -4,10 +4,15 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from app.adapters.datasource.dataset_store import InMemoryDatasetStore
-from app.application.dto.datasource import LoadedDataset, RegisteredDataset
-from app.domain.enums.semantic_type import SemanticType
-from app.domain.models.dataset import ColumnProfile, ColumnSchema, DatasetProfile, DatasetSchema
+from app.modules.data_intake.adapters.datasource.dataset_store import InMemoryDatasetStore
+from app.shared.contracts.datasource import LoadedDataset, RegisteredDataset
+from app.shared.domain.enums.semantic_type import SemanticType
+from app.shared.domain.models.dataset import (
+    ColumnProfile,
+    ColumnSchema,
+    DatasetProfile,
+    DatasetSchema,
+)
 
 
 @dataclass(frozen=True)

@@ -1,12 +1,12 @@
-from app.agents.insight import InsightAgent
-from app.application.dto.agent import AgentResult, AgentUpdate
-from app.application.dto.analysis_input import AnalysisInput
-from app.application.dto.llm import LLMResponse
-from app.config.settings import Settings
-from app.domain.models.analysis import AnalysisResult
-from app.domain.models.evidence import Evidence, RelationshipAssessment
-from app.observability.telemetry import InstrumentedLLMProvider
-from app.orchestration.graph import LangGraphWorkflow
+from app.modules.analysis.adapters.orchestration.graph import LangGraphWorkflow
+from app.modules.reporting.application.agents.insight import InsightAgent
+from app.shared.adapters.observability.telemetry import InstrumentedLLMProvider
+from app.shared.config.settings import Settings
+from app.shared.contracts.agent import AgentResult, AgentUpdate
+from app.shared.contracts.analysis_input import AnalysisInput
+from app.shared.contracts.llm import LLMResponse
+from app.shared.domain.models.analysis import AnalysisResult
+from app.shared.domain.models.evidence import Evidence, RelationshipAssessment
 
 
 class FixtureEvidenceAgent:

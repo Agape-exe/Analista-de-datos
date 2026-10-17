@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.api.main import create_app
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
 
 
 def test_full_analysis_preserves_eda_and_durable_report(tmp_path: Path) -> None:

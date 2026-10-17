@@ -11,9 +11,9 @@ Desde la raíz del proyecto:
 ```python
 import asyncio
 
-from app.application.dto.analysis_input import AnalysisInput
+from app.shared.contracts.analysis_input import AnalysisInput
 from app.bootstrap import build_data_understanding
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
 
 
 async def main() -> None:

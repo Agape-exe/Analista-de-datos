@@ -2,7 +2,7 @@ from typing import Literal
 
 from fastapi import APIRouter
 
-from app.domain.models.base import DomainModel
+from app.shared.domain.models.base import DomainModel
 
 router = APIRouter()
 

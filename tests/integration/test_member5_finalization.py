@@ -1,15 +1,15 @@
 import asyncio
 from pathlib import Path
 
-from app.adapters.llm.disabled import DisabledLLMProvider
-from app.agents.insight import InsightAgent
-from app.application.dto.finalization import FinalizationInput
-from app.application.use_cases.finalize_analysis import FinalizeAnalysis
 from app.bootstrap import build_repository
-from app.config.settings import Settings
-from app.domain.models.report import AnalysisReport
-from app.evaluation.benchmark import BenchmarkDataset
-from app.evaluation.runner import BenchmarkRunner, ExperimentLogger
+from app.modules.reporting.application.agents.insight import InsightAgent
+from app.modules.reporting.application.dto import FinalizationInput
+from app.modules.reporting.application.evaluation.benchmark import BenchmarkDataset
+from app.modules.reporting.application.evaluation.runner import BenchmarkRunner, ExperimentLogger
+from app.modules.reporting.application.use_cases.finalize_analysis import FinalizeAnalysis
+from app.shared.adapters.llm.disabled import DisabledLLMProvider
+from app.shared.config.settings import Settings
+from app.shared.domain.models.report import AnalysisReport
 
 
 async def test_standalone_finalization_preserves_links_and_persists(tmp_path: Path):
@@ -71,8 +71,8 @@ async def test_parallel_repository_saves_are_retrievable(tmp_path: Path):
 async def test_repeatability_runner_logs_each_run_and_consistency(tmp_path: Path):
     from uuid import uuid4
 
-    from app.domain.models.evidence import RelationshipAssessment
-    from app.evaluation.runner import RepeatabilityRunner
+    from app.modules.reporting.application.evaluation.runner import RepeatabilityRunner
+    from app.shared.domain.models.evidence import RelationshipAssessment
 
     class ControlledWorkflow:
         async def run(self, value):

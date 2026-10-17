@@ -2,10 +2,10 @@ from dataclasses import dataclass
 
 import pytest
 
-from app.application.dto.datasource import LoadedDataset
-from app.application.errors import DatasetRegistryError
-from app.application.services.dataset_registry import DatasetRegistry
-from app.domain.models.dataset import DatasetSchema
+from app.shared.application.dataset_registry import DatasetRegistry
+from app.shared.application.errors import DatasetRegistryError
+from app.shared.contracts.datasource import LoadedDataset
+from app.shared.domain.models.dataset import DatasetSchema
 
 
 @dataclass(frozen=True)

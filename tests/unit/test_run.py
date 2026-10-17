@@ -1,7 +1,7 @@
 import pytest
 
 import run
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
 
 
 def _run_with_settings(monkeypatch: pytest.MonkeyPatch, settings: Settings) -> dict[str, object]:

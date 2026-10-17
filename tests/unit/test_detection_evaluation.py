@@ -1,10 +1,16 @@
 import pytest
 
-from app.domain.models.evidence import RelationshipAssessment
-from app.domain.models.report import AnalysisReport
-from app.evaluation.classification import RelationshipLabel, evaluate_detection
-from app.evaluation.consistency import conclusion_agreement
-from app.evaluation.rubric import HumanInsightEvaluation, default_rubric
+from app.modules.reporting.application.evaluation.classification import (
+    RelationshipLabel,
+    evaluate_detection,
+)
+from app.modules.reporting.application.evaluation.consistency import conclusion_agreement
+from app.modules.reporting.application.evaluation.rubric import (
+    HumanInsightEvaluation,
+    default_rubric,
+)
+from app.shared.domain.models.evidence import RelationshipAssessment
+from app.shared.domain.models.report import AnalysisReport
 
 
 def test_detection_confusion_matrix_and_coverage():

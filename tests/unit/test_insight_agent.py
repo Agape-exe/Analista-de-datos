@@ -1,12 +1,12 @@
 import pytest
 
-from app.agents.insight import InsightAgent
-from app.application.dto.agent import AgentContext
-from app.application.dto.analysis_input import AnalysisConfiguration, resolve_configuration
-from app.application.dto.llm import LLMResponse
-from app.config.settings import Settings
-from app.domain.models.analysis import AnalysisResult
-from app.domain.models.evidence import Evidence, RelationshipAssessment
+from app.modules.reporting.application.agents.insight import InsightAgent
+from app.shared.config.settings import Settings
+from app.shared.contracts.agent import AgentContext
+from app.shared.contracts.analysis_input import AnalysisConfiguration, resolve_configuration
+from app.shared.contracts.llm import LLMResponse
+from app.shared.domain.models.analysis import AnalysisResult
+from app.shared.domain.models.evidence import Evidence, RelationshipAssessment
 
 
 class Provider:

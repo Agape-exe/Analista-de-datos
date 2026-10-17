@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.api.main import create_app
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
 
 
 def test_upload_report_lifecycle_cleanup_and_download(tmp_path: Path):

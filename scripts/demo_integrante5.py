@@ -4,15 +4,18 @@ import argparse
 import asyncio
 from pathlib import Path
 
-from app.adapters.llm.disabled import DisabledLLMProvider
-from app.adapters.reporting.markdown import MarkdownReportRenderer
-from app.agents.insight import InsightAgent
-from app.application.dto.finalization import FinalizationInput
-from app.application.use_cases.finalize_analysis import FinalizeAnalysis
 from app.bootstrap import build_repository
-from app.config.settings import Settings
-from app.evaluation.classification import RelationshipLabel, evaluate_detection
-from app.evaluation.rubric import default_rubric
+from app.modules.reporting.adapters.rendering.markdown import MarkdownReportRenderer
+from app.modules.reporting.application.agents.insight import InsightAgent
+from app.modules.reporting.application.dto import FinalizationInput
+from app.modules.reporting.application.evaluation.classification import (
+    RelationshipLabel,
+    evaluate_detection,
+)
+from app.modules.reporting.application.evaluation.rubric import default_rubric
+from app.modules.reporting.application.use_cases.finalize_analysis import FinalizeAnalysis
+from app.shared.adapters.llm.disabled import DisabledLLMProvider
+from app.shared.config.settings import Settings
 
 
 async def main(input_path: Path, output: Path) -> None:
