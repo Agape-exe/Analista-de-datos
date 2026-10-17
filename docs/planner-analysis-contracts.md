@@ -274,7 +274,10 @@ combina main y develop conservando recursos por corrida, evidencia, telemetría 
 persistencia. Los detalles de validación local están en
 [Integración final](integracion-main-final.md).
 
-Pendientes: ANOVA puede ser propuesto con una observación por grupo y la herramienta
-lo rechaza; CSV con comillas mal escapadas se rechaza estrictamente; umbrales de
+ANOVA se filtra antes de asignar presupuesto mediante conteos locales de casos
+completos por pareja. Se requieren dos grupos con dos observaciones cada uno; ver
+[validación de grupos](anova-group-validation.md).
+
+Pendientes: CSV con comillas mal escapadas se rechaza estrictamente; umbrales de
 Critic provisionales; proveedor LLM productivo, paralelismo y ciclo Critic → Planner
 aún no implementados.

@@ -341,3 +341,32 @@ async def test_planner_is_deterministic_and_contains_no_raw_rows() -> None:
     assert first.update.analysis_plan == second.update.analysis_plan
     assert "table" not in first.update.analysis_plan.model_dump_json()
     assert "table" not in value.model_dump()
+
+
+async def test_planner_omits_anova_when_metadata_proves_singleton_groups() -> None:
+    value = context([("group", SemanticType.CATEGORICAL), ("outcome", SemanticType.NUMERIC)])
+    value.dataset_profile.columns[0].unique_count = value.dataset_profile.row_count
+
+    result = await PlannerAgent(MustNotCallLLM()).run(value)
+
+    assert result.status == "SKIPPED"
+    assert result.update.analysis_plan is None
+    assert any("each group requires at least two" in warning for warning in result.warnings)
+
+
+async def test_anova_summary_requests_stay_bounded_and_prioritize_question() -> None:
+    columns = [(f"group_{i:03}", SemanticType.CATEGORICAL) for i in range(100)] + [
+        (f"value_{i:03}", SemanticType.NUMERIC) for i in range(100)
+    ]
+    value = context(columns, question="Compare group_099 and value_099.")
+    calls: list[list[tuple[str, str]]] = []
+
+    def summarize(dataset_id, pairs):
+        assert dataset_id == value.dataset_id
+        calls.append(pairs)
+        return {}
+
+    await PlannerAgent(MustNotCallLLM(), summarize_anova=summarize).run(value)
+
+    assert len(calls) == 1 and len(calls[0]) == 16
+    assert ("group_099", "value_099") in calls[0]
