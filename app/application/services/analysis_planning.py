@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from itertools import combinations
 
 from app.application.dto.agent import AgentContext
+from app.application.dto.planning import AnovaGroupSummaries, AnovaGroupSummary
 from app.domain.enums.semantic_type import SemanticType
 from app.domain.models.analysis import AnalysisPlan, AnalysisStep, Hypothesis, ToolRequest
 from app.domain.models.dataset import ColumnProfile
@@ -34,7 +35,9 @@ class _Candidate:
 class DeterministicAnalysisPlanner:
     """Build bounded exploratory plans from serializable dataset metadata only."""
 
-    def plan(self, context: AgentContext) -> PlanningOutcome:
+    def plan(
+        self, context: AgentContext, anova_groups: AnovaGroupSummaries | None = None
+    ) -> PlanningOutcome:
         profile = context.dataset_profile
         dataset_id = context.dataset_id or (profile.dataset_id if profile is not None else None)
         if profile is None or dataset_id is None:
@@ -62,6 +65,20 @@ class DeterministicAnalysisPlanner:
             configuration.mode,
             configuration.max_hypotheses,
         )
+        supported: list[_Candidate] = []
+        profiles = {column.column_name: column for column in profile.columns}
+        for candidate in candidates:
+            if candidate.family == "anova":
+                category, numeric = candidate.variables
+                summary = (anova_groups or {}).get((category, numeric))
+                reason = _anova_sample_problem(
+                    profiles[category], profiles[numeric], profile.row_count, summary
+                )
+                if reason is not None:
+                    warnings.append(f"ANOVA omitted for '{category}' and '{numeric}': {reason}")
+                    continue
+            supported.append(candidate)
+        candidates = supported
         if not candidates:
             return PlanningOutcome(
                 None, warnings + ["No compatible variables were available for planning."]
@@ -76,6 +93,34 @@ class DeterministicAnalysisPlanner:
         if not plan.steps:
             return PlanningOutcome(None, warnings + ["Planning limits prevented executable steps."])
         return PlanningOutcome(plan, warnings)
+
+    def anova_pairs(self, context: AgentContext) -> list[tuple[str, str]]:
+        """List only bounded, metadata-compatible pairs for local count summaries."""
+        profile = context.dataset_profile
+        if (
+            profile is None
+            or profile.row_count < context.configuration.analysis.minimum_sample_size
+            or context.configuration.analysis.max_tool_calls == 0
+        ):
+            return []
+        columns, _ = self._typed_columns(context)
+        profiles = {column.column_name: column for column in profile.columns}
+        pairs: list[tuple[str, str]] = []
+        for candidate in self._candidates(
+            columns,
+            context.input.user_question,
+            context.configuration.analysis.mode,
+            context.configuration.analysis.max_hypotheses,
+        ):
+            if candidate.family != "anova":
+                continue
+            category, numeric = candidate.variables
+            if (
+                _anova_sample_problem(profiles[category], profiles[numeric], profile.row_count)
+                is None
+            ):
+                pairs.append((category, numeric))
+        return pairs
 
     def _typed_columns(
         self, context: AgentContext
@@ -215,6 +260,29 @@ class DeterministicAnalysisPlanner:
                 )
             used_families.add(candidate.family)
         return AnalysisPlan(hypotheses=hypotheses, steps=steps)
+
+
+def _anova_sample_problem(
+    category: ColumnProfile,
+    numeric: ColumnProfile,
+    row_count: int,
+    summary: AnovaGroupSummary | None = None,
+) -> str | None:
+    if summary is not None:
+        if summary.group_count < 2:
+            return "at least two groups with complete observations are required."
+        if summary.minimum_group_size < 2:
+            return "each group requires at least two complete observations."
+        return None
+    # Metadata-only callers can still exclude cases that are provably insufficient.
+    groups = category.unique_count
+    if groups is not None:
+        if groups < 2:
+            return "at least two groups are required."
+        observed = row_count - (category.missing_count or 0)
+        if observed <= groups or (numeric.missing_count == 0 and observed < 2 * groups):
+            return "each group requires at least two complete observations."
+    return None
 
 
 def _semantic_type(value: str | None) -> SemanticType | None:
