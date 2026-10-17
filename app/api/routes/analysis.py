@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Request, Response, UploadFile
 
 from app.adapters.reporting.markdown import MarkdownReportRenderer
+from app.api.protection import enforce_request_limit, reserve_operation_capacity
 from app.application.dto.analysis_input import AnalysisInput
 from app.application.dto.intake import IntakeOptions
 from app.application.errors import DataSourceError, UploadTooLargeError, UploadValidationError
@@ -10,9 +11,10 @@ from app.domain.models.metrics import ExperimentMetrics
 from app.domain.models.report import AnalysisReport
 
 router = APIRouter()
+local_router = APIRouter()
 
 
-@router.post("/analysis", response_model=AnalysisReport)
+@local_router.post("/analysis", response_model=AnalysisReport)
 async def analysis(analysis_input: AnalysisInput, request: Request) -> AnalysisReport:
     """Local development contract. Pending stages remain explicitly SKIPPED."""
     return await request.app.state.analysis_use_case.execute(analysis_input)
@@ -28,12 +30,14 @@ async def analysis_upload(
     user_question: Annotated[str | None, Form()] = None,
 ) -> AnalysisReport:
     try:
-        return await request.app.state.upload_analysis.execute(
-            file,
-            IntakeOptions(delimiter=delimiter, encoding=encoding),
-            data_dictionary,
-            user_question,
-        )
+        await enforce_request_limit(request, "upload")
+        async with reserve_operation_capacity(request):
+            return await request.app.state.upload_analysis.execute(
+                file,
+                IntakeOptions(delimiter=delimiter, encoding=encoding),
+                data_dictionary,
+                user_question,
+            )
     except UploadTooLargeError as error:
         raise HTTPException(
             413, detail={"code": "UPLOAD_TOO_LARGE", "message": str(error)}
@@ -49,6 +53,7 @@ async def analysis_upload(
 
 
 async def get_report(run_id: str, request: Request) -> AnalysisReport:
+    await enforce_request_limit(request, "report")
     report = await request.app.state.report_repository.get(run_id)
     if report is None:
         raise HTTPException(404, detail={"code": "REPORT_NOT_FOUND", "message": "Unknown run ID"})

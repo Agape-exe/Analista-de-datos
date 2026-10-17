@@ -171,6 +171,14 @@ def build_repository(settings: Settings):
     options = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite") else {}
     if url in {"sqlite://", "sqlite:///:memory:"}:
         options["poolclass"] = StaticPool
+    if url.startswith("postgresql+psycopg://"):
+        options.update(
+            connect_args={"sslmode": settings.persistence.effective_postgres_sslmode()},
+            pool_pre_ping=True,
+            pool_size=1,
+            max_overflow=0,
+            pool_recycle=300,
+        )
     repository = SqlAlchemyAnalysisRepository(create_engine(url, **options))
     repository.initialize()
     return repository
