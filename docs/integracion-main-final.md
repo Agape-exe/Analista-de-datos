@@ -78,3 +78,17 @@ La configuración predeterminada sigue siendo SQLite en memoria.
   Critic → Planner operativo; el timeout cooperativo no interrumpe cálculos CPU-bound.
 - Las métricas sin medición permanecen null. Ningún benchmark anterior sustituye
   los resultados de validación de esta carpeta.
+
+## Revisión adicional previa a la fusión
+
+Se revisaron composición, estados, persistencia y liberación de recursos. Las pruebas
+de navegador detectaron que se reutilizaba un backend de desarrollo antiguo y que
+las tablas de reportes heredaban un ancho mínimo global de 940 px. Se aislaron los
+servidores E2E en 8016/5186 con proxy explícito y se quitó ese mínimo solo en reportes,
+permitiendo el ajuste de texto en celdas.
+
+Validación adicional en Microsoft Edge instalado: **4 pruebas E2E aprobadas**,
+incluyendo reporte completo con cinco etapas SUCCESS, evidencia/insights, descargas
+JSON/Markdown, recuperación por run_id y navegación de vuelta a EDA. Se verificaron
+capturas del reporte a 390 px. También pasaron nuevamente las 16 pruebas unitarias
+de frontend, ESLint y el build de producción.

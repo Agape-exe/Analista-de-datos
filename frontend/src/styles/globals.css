@@ -269,9 +269,9 @@ tbody tr:hover { background: #fcfcff; }
 .report-page label { display: block; margin: 12px 0; font-size: 14px; }
 .report-page input { display: block; width: min(100%, 560px); margin-top: 6px;
   padding: 10px 12px; border: 1px solid #d8e0e8; border-radius: 8px; background: #fff; }
-.report-page table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.report-page table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
 .report-page th, .report-page td { padding: 10px 12px; text-align: left;
-  border-bottom: 1px solid #e8edf2; overflow-wrap: anywhere; font-size: 13px; }
+  border-bottom: 1px solid #e8edf2; white-space: normal; overflow-wrap: anywhere; font-size: 13px; }
 .report-page article { padding: 12px 0; border-bottom: 1px solid #e8edf2; }
 .report-page pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .report-page p, .report-page li { overflow-wrap: anywhere; }
