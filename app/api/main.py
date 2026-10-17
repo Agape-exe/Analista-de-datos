@@ -4,8 +4,11 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.adapters.datasource.upload_storage import TemporaryUploadStorage
+from app.api.protection import build_operation_capacity, build_request_limiter
+from app.api.routes.analysis import local_router as local_analysis_router
 from app.api.routes.analysis import router as analysis_router
 from app.api.routes.exploration import router as exploration_router
 from app.api.routes.health import router as health_router
@@ -45,6 +48,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application = FastAPI(title="Multiagent Data Analyst", version="0.1.0", lifespan=lifespan)
     application.state.settings = settings if settings is not None else load_settings()
+    deployment = application.state.settings.deployment
+    application.state.request_limiter = build_request_limiter(deployment)
+    application.state.operation_capacity = build_operation_capacity(deployment)
+    if deployment.cors_allowed_origins:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=deployment.cors_allowed_origins,
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["Content-Type"],
+            expose_headers=["X-Request-ID"],
+        )
     datasets = build_dataset_store(application.state.settings)
     application.state.intake_use_case = build_intake_use_case(application.state.settings, datasets)
     application.state.exploration_use_case = build_exploration_use_case(
@@ -66,6 +81,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application.include_router(health_router)
     application.include_router(analysis_router)
+    if deployment.allow_local_analysis:
+        application.include_router(local_analysis_router)
     application.include_router(intake_router)
     application.include_router(exploration_router)
     return application
