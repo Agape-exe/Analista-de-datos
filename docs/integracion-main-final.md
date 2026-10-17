@@ -69,8 +69,9 @@ La configuración predeterminada sigue siendo SQLite en memoria.
 
 ## Limitaciones conservadas
 
-- Planner puede proponer ANOVA con una sola observación por grupo; la herramienta
-  lo rechaza. La integración no oculta ni corrige ese pendiente.
+- En la integración original, Planner podía proponer ANOVA con una sola observación
+  por grupo. La corrección posterior se documenta en
+  [validación de grupos](anova-group-validation.md).
 - El lector estricto rechaza CSV con comillas internas mal escapadas; no se omiten
   filas silenciosamente.
 - Los umbrales de Critic son provisionales y no demuestran causalidad.

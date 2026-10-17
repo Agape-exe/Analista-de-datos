@@ -224,8 +224,9 @@ reportes Markdown/JSON, persistencia SQLite, telemetría, evaluación y API.
 
 Pendiente: adaptadores SQL/TXT, proveedor LLM productivo y redacción libre,
 ciclo Critic → Planner, paralelismo real y validación experimental de los umbrales
-de Critic. Planner puede proponer ANOVA con una observación por grupo: la herramienta
-lo rechaza. CSV con comillas internas mal escapadas se rechaza sin omitir filas.
+de Critic. Planner omite ANOVA con grupos insuficientes antes de asignar presupuesto;
+ver [validación de grupos](docs/anova-group-validation.md). CSV con comillas internas
+mal escapadas se rechaza sin omitir filas.
 Las asociaciones y evaluaciones preliminares no prueban causalidad.
 
 El catálogo EDA y el registro estadístico del workflow se construyen explícitamente;
