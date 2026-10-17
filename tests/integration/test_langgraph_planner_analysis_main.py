@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from app.application.dto.analysis_input import AnalysisInput
 from app.bootstrap import build_use_case
-from app.config.settings import Settings
-from app.domain.enums.statuses import AnalysisStatus
+from app.shared.config.settings import Settings
+from app.shared.contracts.analysis_input import AnalysisInput
+from app.shared.domain.enums.statuses import AnalysisStatus
 
 
 def write_dataset(path: Path) -> None:

@@ -9,7 +9,7 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
   { links: [{ label: "Resumen", icon: LayoutDashboard }] },
   { label: "Datos", links: [
     { label: "Dataset", icon: Database, to: "/dataset" },
-    { label: "Calidad de datos", icon: ShieldCheck }, { label: "Diccionario de datos", icon: BookOpen },
+    { label: "Calidad de datos", icon: ShieldCheck }, { label: "Diccionario de datos", icon: BookOpen, to: "/dictionary" },
   ] },
   { label: "Exploración", links: [
     { label: "Asociaciones", icon: ScanSearch, to: "/associations" }, { label: "Patrones", icon: Layers },
@@ -39,7 +39,7 @@ export function Sidebar() {
       {groups.map((group, index) => <div className="nav-group" key={group.label || index}>
         {group.label && <p className="nav-group-label">{group.label}</p>}
         {group.links.map(({ label, icon: Icon, to }) => to
-          ? <NavLink key={label} to={to} title={label} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
+          ? <NavLink key={label} to={to} title={label} aria-label={label} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
             <Icon size={15} /><span className="sidebar-label">{label}</span>
           </NavLink>
           : <button key={label} className="nav-item unavailable" disabled title={`${label} — Próximamente`}>

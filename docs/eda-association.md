@@ -7,7 +7,7 @@ Las relaciones son **candidatas estadísticas**: el Critic decide si son espuria
 ## Acceso a datos: `DatasetProvider`
 
 Las tools reciben un `ToolRequest` con `dataset_id`, no filas. El puerto
-`DatasetProvider` (`app/ports/dataset_provider.py`) resuelve ese id a un
+`DatasetProvider` (`app/modules/data_intake/ports/dataset_provider.py`) resuelve ese id a un
 `RegisteredDataset`: datos locales (`LoadedDataset`) más su `DatasetProfile`, que
 aporta el tipo semántico de cada columna.
 
@@ -92,7 +92,7 @@ MI como evidencia de apoyo.
 
 ## Gráficos: Python calcula, el frontend dibuja
 
-`app/adapters/visualization/charts.py` devuelve especificaciones tipadas en
+`app/modules/exploration/adapters/visualization/charts.py` devuelve especificaciones tipadas en
 `AnalysisResult.result` con campo `kind`. Nunca incluyen el dataset completo.
 
 | Tool | `kind` | Contenido |
@@ -104,7 +104,7 @@ MI como evidencia de apoyo.
 
 ## Configuración
 
-Sección `[eda]` de `app/config/defaults.toml`, sobreescribible con
+Sección `[eda]` de `app/shared/config/defaults.toml`, sobreescribible con
 `MDA_EDA__<CLAVE>`: nivel de significancia, `top_relationships`, límites de pares,
 categorías, bins, puntos y outliers, umbrales IQR/MAD, `normality_alpha`, vecinos
 de MI y `random_seed`.

@@ -4,8 +4,8 @@ export type AnalysisResult = components["schemas"]["AnalysisResult"];
 export type ToolRunRequest = components["schemas"]["ToolRunRequest"];
 
 // AnalysisResult.result is free JSON in OpenAPI. These shapes mirror the Python models
-// RankedRelationship (app/domain/models/analysis.py) and the chart specs in
-// app/adapters/visualization/charts.py; update both sides together.
+// RankedRelationship (app/shared/domain/models/analysis.py) and the chart specs in
+// app/modules/exploration/adapters/visualization/charts.py; update both sides together.
 
 export interface SupportingMeasure {
   method: string;

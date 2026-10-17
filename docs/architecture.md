@@ -1,103 +1,165 @@
-# Arquitectura
+# Arquitectura modular hexagonal
 
-La integración conserva intake, EDA, Planner/Analysis, Critic, Insight, persistencia
-y reportes dentro del mismo monolito. Ver [validación final](integracion-main-final.md)
-y [contratos de Planner/Analysis](planner-analysis-contracts.md).
+El sistema es un **monolito modular**: cada capacidad posee sus casos de uso y sus adaptadores. El dominio y los contratos no importan FastAPI, Pandas, SciPy, SQLAlchemy ni LangGraph.
 
-## Cliente web
+Esta organización sustituye las carpetas globales por capa de develop `4aaa945cd10c43ca5f3e015a76443f905af4271d`. Conserva algoritmos, cuerpos HTTP, diez rutas y el arranque `app.api.main:app`.
 
-El cliente React/TypeScript consume FastAPI y usa tipos generados desde OpenAPI.
-New Analysis y Dataset Overview usan intake; Associations consume herramientas EDA;
-Report ejecuta análisis por carga y recupera reportes por run_id. Las reglas de
-lectura, estadística y clasificación permanecen en Python.
-
-## Límites
-
-El dominio depende únicamente de Pydantic y biblioteca estándar. Los Protocols en
-ports dependen de DTO y modelos; los adaptadores implementan esos Protocols.
-La aplicación invoca AnalysisWorkflow sin importar LangGraph. Los agentes reciben
-AgentContext y devuelven AgentResult sin importar CSV ni SQLAlchemy.
+## Estructura real
 
 ```text
-API → Application → Ports ← Adapters / Orchestration
-                       ↓
-                     Domain
-Bootstrap → construcción de implementaciones y dependencias
+app/
+├── api/
+│   ├── main.py                  # composición HTTP y ciclo de vida
+│   └── routes/health.py
+├── bootstrap.py                 # inyección de implementaciones
+├── modules/
+│   ├── data_intake/
+│   │   ├── domain/              # clasificación pura de columnas
+│   │   ├── application/         # agentes, servicios y casos de uso de intake
+│   │   ├── ports/               # fuentes, comprensión, datasets y uploads
+│   │   └── adapters/
+│   │       ├── datasource/      # CSV/TSV, temporales y store en memoria
+│   │       └── http/            # rutas y dependencias FastAPI
+│   ├── exploration/
+│   │   ├── application/         # ExploreDataset y DTO de exploración
+│   │   └── adapters/
+│   │       ├── analytics/       # profiling, medidas, ranking y matriz
+│   │       ├── visualization/   # especificaciones de gráficos
+│   │       ├── http/
+│   │       └── relationship_screening.py
+│   ├── analysis/
+│   │   ├── application/         # Planner, Analysis, Association, planes y casos de uso
+│   │   ├── ports/               # Agent, AnalysisWorkflow, RelationshipScreening, ANOVA summary
+│   │   └── adapters/
+│   │       ├── analytics/       # herramientas estadísticas del workflow
+│   │       ├── orchestration/   # LangGraph
+│   │       └── http/            # ejecutar análisis local/upload/stored
+│   ├── critical_review/
+│   │   ├── domain/              # reglas puras de robustez
+│   │   └── application/         # Critic y revisión de resultados medidos
+│   └── reporting/
+│       ├── application/         # Insight, finalización y evaluación experimental
+│       ├── ports/               # AnalysisRepository y ReportRenderer
+│       └── adapters/
+│           ├── persistence/     # SQLAlchemy y SQLite/PostgreSQL
+│           ├── rendering/       # Markdown
+│           └── http/            # reporte, métricas y descarga
+└── shared/
+    ├── domain/                  # modelos/enums del contrato común
+    ├── contracts/               # entrada, contexto, agentes, dataset y LLM
+    ├── ports/                   # AnalyticsTool y LLMProvider transversales
+    ├── application/             # registry, errores, tiempos y funciones comunes
+    ├── config/                  # settings y defaults.toml
+    └── adapters/                # guardas HTTP, LLM desactivado y observabilidad
+
+frontend/src/
+├── app/                         # composición y rutas React
+├── features/                    # UI por funcionalidad
+├── components/                  # UI y SVG reutilizables
+├── lib/                         # transporte HTTP y utilidades
+└── types/                       # contratos HTTP y gráficos
+
+tests/architecture/              # reglas y compatibilidad pública
+scripts/check_architecture.py    # comprobación AST
 ```
 
-application/dto/analysis_input.py comparte validación de configuración con
-config/settings.py. Los modelos de dominio no importan Settings.
+Las capas se crean cuando contienen implementación o un puerto real. Critic no necesita un adaptador ficticio y los módulos no repiten puertos LLM. Se retiraron paquetes vacíos de funcionalidades futuras; una carpeta o botón de navegación no implica una capacidad terminada.
 
-## Datos y recursos
+React es el cliente/adaptador de entrada y ya está organizado por features. No calcula estadísticas ni copia capas vacías de Python.
 
-CSV y TSV usan DataSourceRouter y el lector delimitado estricto. SQL y TXT tienen
-contratos de entrada, pero sus adaptadores siguen pendientes. Se validan encabezados,
-anchura de filas y tipos antes de construir el perfil; no se omiten filas inválidas.
+## Responsabilidad de cada capa
 
-LoadedDataset y LocalTable contienen datos locales y no se serializan en el contexto,
-el estado ni el reporte. Las clasificaciones inferidas son roles estructurales, no
-significado de negocio confirmado.
+| Capa | Función | Ejemplos |
+| --- | --- | --- |
+| domain | Reglas e invariantes independientes de infraestructura | column_classification, robustness y modelos comunes Pydantic |
+| application | Coordinar casos de uso/agentes mediante contratos | IntakeUploadedDataset, ExploreDataset, AnalyzeDataset, CriticAgent, InsightAgent |
+| ports | Expresar dependencias externas mediante Protocol | DataSource, UploadStorage, AnalysisWorkflow, RelationshipScreening, AnalysisRepository |
+| adapters | Implementar puertos o traducir entradas externas | CSV/TSV, FastAPI, SciPy, LangGraph, SQLAlchemy y Markdown |
+| composición | Elegir implementaciones y controlar su ciclo de vida | bootstrap.py y api/main.py |
 
-Hay dos ciclos de vida independientes:
+`shared/domain` y `shared/contracts` son el **contrato de integración compartido**: perfil/diccionario, planes/resultados, evidencias, insights, métricas, reporte y mensajes entre agentes. Se centralizan porque varios módulos los intercambian y los reportes históricos los serializan. No colocar funcionalidades de usuario nuevas en shared solo por comodidad.
 
-- EDA: RegisteringDataUnderstanding publica un RegisteredDataset en el almacén LRU
-  InMemoryDatasetStore. Intake, herramientas EDA y gráficos comparten ese almacén.
-- Análisis: build_use_case configura una fábrica por ejecución. DataUnderstandingAgent
-  registra el LoadedDataset validado en un DatasetRegistry local; las nueve herramientas
-  estadísticas reciben ese registro. El workflow libera sus recursos en finally,
-  incluso ante fallo, timeout o cancelación. Esa limpieza no borra datasets EDA.
+## Dirección de dependencias
 
-## Contratos y flujo actual
+```mermaid
+flowchart LR
+    HTTP["HTTP / React"] --> App["application"]
+    App --> Domain["domain y contratos"]
+    App --> Ports["ports"]
+    Adapters["adapters"] --> Ports
+    Adapters --> App
+    Ports --> Domain
+    Composition["bootstrap / create_app"] --> App
+    Composition --> Adapters
+```
 
-El grafo ejecuta DataUnderstanding → Planner → Analysis → Critic → Insight. Cada nodo
-recibe AgentContext validado y aplica únicamente los campos explícitos de AgentUpdate.
-Planner construye un plan reproducible con metadatos y límites; Analysis valida IDs,
-dependencias y presupuesto antes de ejecutar herramientas autorizadas secuencialmente.
-Cada resultado conserva trazabilidad de paso e hipótesis.
+Reglas verificadas por AST y pytest:
 
-Critic puede leer Pearson/Spearman exitosos de analysis_results si no hay una
-asociación equivalente. Usa effect_size y valida controles en metadatos, incluido el
-formato singular como fallback. Solo genera evaluaciones cuando existe evidencia;
-Insight conserva los vínculos con esa evidencia y las limitaciones.
+1. domain solo usa biblioteca estándar, Pydantic y dominio compartido.
+2. application no importa adapters, frameworks de infraestructura ni bootstrap.
+3. ports no importa application/adapters; usa modelos y DTO.
+4. Un módulo puede consumir los **ports** de otro, pero no sus implementaciones privadas de application/adapters. El composition root puede construir los módulos concretos.
+5. shared no depende de módulos funcionales y respeta sus propias capas internas.
+6. FastAPI, Pandas/NumPy/SciPy/scikit-learn, SQLAlchemy y LangGraph quedan en adaptadores/composición. La configuración transversal conserva su cargador Pydantic Settings.
+7. Una snapshot de OpenAPI de develop verifica rutas, modelos, validación y operation IDs después de mover archivos.
 
-El grafo termina ante una etapa FAILED. El reporte global es FAILED ante errores o
-etapas fallidas, SUCCESS si todas las etapas registradas son exitosas y SKIPPED si
-quedan etapas pendientes. Analysis SUCCESS no implica éxito global. AnalysisResult
-no admite estadísticas calculadas en estados no exitosos.
+La comprobación resuelve imports absolutos/relativos y dinámicos literales. No pretende demostrar todos los mecanismos dinámicos posibles de Python.
 
-El timeout cubre toda la ejecución cooperativa; no garantiza interrumpir SciPy/Pandas
-CPU-bound. Cancelaciones externas se propagan. Los errores fatales no conservan
-checkpoints parciales. El ciclo Critic → Planner y el paralelismo real son futuros.
+## Inversión de dependencias del screening
 
-## Métricas y trazabilidad
+Antes, AssociationAgent importaba y construía RelationshipRankingTool. Ahora recibe un puerto:
 
-ExperimentMetrics mantiene null para indicadores no medidos. Profiling, análisis,
-duraciones por etapa, llamadas reales a herramientas y tiempo hasta el primer insight
-se miden donde ocurren. El proveedor LLM predeterminado está deshabilitado; no hay
-consumo de tokens simulado. La telemetría registra las fronteras instrumentadas y
-la API añade X-Request-ID para correlación HTTP.
+```text
+AssociationAgent → RelationshipScreening (Protocol)
+                             ↑
+                  RelationshipScreeningAdapter → ranking EDA
 
-## Persistencia y reportes
+bootstrap.py construye el adaptador y lo inyecta en el agente.
+```
 
-SqlAlchemyAnalysisRepository implementa AnalysisRepository con la tabla analysis_reports,
-guardado idempotente por run_id y validación del payload con AnalysisReport. El ciclo
-de vida de FastAPI inicializa el repositorio y libera el engine al cerrar. No se
-crean archivos de base de datos al importar el módulo.
+El agente no conoce Pandas/SciPy, el store EDA ni la clase concreta del ranking. Se puede probar con un fake del puerto. Se conservan resultados, estados y advertencias.
 
-SQLite en memoria es el valor predeterminado. Una URL persistente explícita permite
-recuperar reportes tras reiniciar, por ejemplo
-MDA_PERSISTENCE__DATABASE_URL=sqlite:///./analysis_reports.db. Las bases locales y
-reportes descargados no se incluyen en Git.
+La descripción legible compartida de resultados está en `shared/application/result_descriptions.py`: Critic no importa la implementación privada de Insight/Reporting.
 
-La API conserva /intake, /tools y /datasets/{dataset_id}/tools/{tool_name}, junto con
-/analysis, /analysis/upload, /reports/{run_id}, /metrics y /markdown. Las dos últimas
-son rutas relativas al recurso de reporte. MarkdownReportRenderer y la pantalla de
-reportes presentan evidencia, estados, errores y métricas sin inventar conclusiones.
+## Ejecución y persistencia
 
-## Extensión prevista
+Se mantienen seis agentes:
 
-- Proveedor LLM inyectado con resúmenes acotados, sin filas crudas.
-- Ciclo crítico acotado por max_critic_cycles y contratos de análisis adicional.
-- Paralelismo con dependencias, concurrencia y cancelación definidos; la firma async
-  por sí sola no hace paralelos los cálculos CPU-bound.
-- Validación experimental de umbrales y calidad de detección, sin afirmar causalidad.
+```text
+DataUnderstanding → Association → Planner → Analysis → Critic → Insight
+```
+
+La aplicación invoca AnalysisWorkflow; LangGraphWorkflow lo implementa en analysis/adapters/orchestration. El recorrido continúa lineal, corta ante FAILED y permite omisiones explícitas. No se añadió paralelismo ni ciclo crítico.
+
+Las tablas completas permanecen locales. DatasetStore EDA y DatasetRegistry por ejecución tienen vidas independientes. Liberar un análisis no elimina el dataset de intake; los uploads se eliminan después de leerlos.
+
+Reporting conserva `analysis_reports(run_id, payload)`. SQLite en memoria sigue siendo el default. PostgreSQL/Neon necesita configuración externa. No se cambian esquema, SQL, retención ni credenciales.
+
+## Añadir una capacidad
+
+1. Elegir el módulo dueño y acordar entradas/salidas e invariantes.
+2. Implementar el caso de uso sin infraestructura.
+3. Definir un puerto si necesita una dependencia externa nueva.
+4. Implementar el adaptador e inyectarlo en bootstrap.
+5. Registrar las rutas propias en create_app.
+6. Probar con fakes y con integración real; ejecutar las reglas.
+
+Los algoritmos son herramientas, no agentes adicionales. Operaciones de preview/diccionario pertenecen a data_intake. Medidas reutilizables de calidad/profiling pueden vivir en exploration. Los contratos nuevos deben preservar compatibilidad o declarar explícitamente su migración.
+
+## Comprobación
+
+```powershell
+uv run python scripts/check_architecture.py
+uv run python -m pytest tests/architecture -q
+uv run python -m pytest
+uv run ruff check .
+uv run ruff format --check .
+```
+
+El checker devuelve error ante dependencias invertidas. Las reglas se ejecutan también en pytest general. La comparación antes/después y los fallos preexistentes constan en [la validación](hexagonal-architecture-validation.md).
+
+## Adaptar ramas anteriores
+
+Consultar [el mapa de rutas](architecture-path-map.json). Los imports internos cambian; no se mantienen árboles paralelos con código duplicado. Los endpoints y reportes mantienen su contrato.
+
+Trasladar cada cambio a su módulo y actualizar imports. No restaurar las carpetas globales antiguas al resolver conflictos. El PR #21 no se integró: sus adaptadores deben incorporarse bajo data_intake/adapters/datasource si el equipo decide fusionarlo.

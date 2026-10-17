@@ -3,13 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from app.adapters.llm.disabled import DisabledLLMProvider
-from app.analytics.registry import ToolRegistry
-from app.application.dto.agent import AgentContext, AgentResult
-from app.application.dto.analysis_input import AnalysisInput
 from app.bootstrap import build_agents, build_data_understanding, build_use_case
-from app.config.settings import Settings
-from app.orchestration.graph import LangGraphWorkflow, initial_state
+from app.modules.analysis.adapters.orchestration.graph import LangGraphWorkflow, initial_state
+from app.shared.adapters.llm.disabled import DisabledLLMProvider
+from app.shared.application.tool_registry import ToolRegistry
+from app.shared.config.settings import Settings
+from app.shared.contracts.agent import AgentContext, AgentResult
+from app.shared.contracts.analysis_input import AnalysisInput
 
 
 async def test_linear_graph_and_report() -> None:
@@ -67,7 +67,7 @@ async def test_unusable_source_stops_before_planner(tmp_path: Path) -> None:
 
 
 def test_unimplemented_provider_is_not_silently_disabled() -> None:
-    from app.application.errors import LLMDisabledError
+    from app.shared.application.errors import LLMDisabledError
 
     settings = Settings(llm={"provider": "unknown"}, _env_file=None)
     with pytest.raises(LLMDisabledError):

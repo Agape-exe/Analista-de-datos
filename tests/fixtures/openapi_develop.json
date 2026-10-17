@@ -1,0 +1,2010 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Multiagent Data Analyst",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "description": "Process liveness; does not assert analytical readiness.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analysis/upload": {
+      "post": {
+        "summary": "Analysis Upload",
+        "operationId": "analysis_upload_analysis_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analysis_upload_analysis_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analysis/datasets/{dataset_id}": {
+      "post": {
+        "summary": "Analysis Stored",
+        "description": "Analyze a dataset already uploaded through intake, without re-reading or re-profiling.",
+        "operationId": "analysis_stored_analysis_datasets__dataset_id__post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/StoredAnalysisRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dataset no longer in memory"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{run_id}": {
+      "get": {
+        "summary": "Report",
+        "operationId": "report_reports__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{run_id}/metrics": {
+      "get": {
+        "summary": "Report Metrics",
+        "operationId": "report_metrics_reports__run_id__metrics_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentMetrics"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{run_id}/markdown": {
+      "get": {
+        "summary": "Report Markdown",
+        "operationId": "report_markdown_reports__run_id__markdown_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analysis": {
+      "post": {
+        "summary": "Analysis",
+        "description": "Local development contract. Pending stages remain explicitly SKIPPED.",
+        "operationId": "analysis_analysis_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/intake": {
+      "post": {
+        "summary": "Intake",
+        "description": "Translate multipart HTTP input to the framework-independent intake use case.",
+        "operationId": "intake_intake_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_intake_intake_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools": {
+      "get": {
+        "summary": "Tools",
+        "operationId": "tools_tools_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolCatalog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/datasets/{dataset_id}/tools/{tool_name}": {
+      "post": {
+        "summary": "Run Tool",
+        "description": "SKIPPED/FAILED tool outcomes are returned with 200; they are analysis results.",
+        "operationId": "run_tool_datasets__dataset_id__tools__tool_name__post",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "tool_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tool Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ToolRunRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dataset not in memory or unknown tool"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalysisConfiguration": {
+        "properties": {
+          "analysis": {
+            "$ref": "#/components/schemas/AnalysisOverrides"
+          },
+          "performance": {
+            "$ref": "#/components/schemas/PerformanceOverrides"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AnalysisConfiguration"
+      },
+      "AnalysisInput": {
+        "properties": {
+          "source": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CsvSourceSpec"
+              },
+              {
+                "$ref": "#/components/schemas/TsvSourceSpec"
+              },
+              {
+                "$ref": "#/components/schemas/TextSourceSpec"
+              },
+              {
+                "$ref": "#/components/schemas/SqlSourceSpec"
+              },
+              {
+                "$ref": "#/components/schemas/StoredSourceSpec"
+              }
+            ],
+            "title": "Source",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "csv": "#/components/schemas/CsvSourceSpec",
+                "sql": "#/components/schemas/SqlSourceSpec",
+                "stored": "#/components/schemas/StoredSourceSpec",
+                "tsv": "#/components/schemas/TsvSourceSpec",
+                "txt": "#/components/schemas/TextSourceSpec"
+              }
+            }
+          },
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatasetSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_dictionary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataDictionary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Question"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/AnalysisConfiguration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "title": "AnalysisInput"
+      },
+      "AnalysisOverrides": {
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fast",
+                  "standard"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "max_hypotheses": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Hypotheses"
+          },
+          "max_tool_calls": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tool Calls"
+          },
+          "max_critic_cycles": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Critic Cycles"
+          },
+          "minimum_sample_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 2.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Sample Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AnalysisOverrides"
+      },
+      "AnalysisReport": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnalysisStatus"
+          },
+          "dataset_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatasetProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_dictionary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataDictionary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "analysis_results": {
+            "items": {
+              "$ref": "#/components/schemas/AnalysisResult"
+            },
+            "type": "array",
+            "title": "Analysis Results"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/Insight"
+            },
+            "type": "array",
+            "title": "Insights"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/ExperimentMetrics"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "stage_statuses": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnalysisStatus"
+            },
+            "type": "object",
+            "title": "Stage Statuses"
+          },
+          "stage_durations": {
+            "additionalProperties": {
+              "type": "number",
+              "minimum": 0.0
+            },
+            "type": "object",
+            "title": "Stage Durations"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "relationship_assessments": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipAssessment"
+            },
+            "type": "array",
+            "title": "Relationship Assessments"
+          },
+          "configuration": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "object",
+            "title": "Configuration"
+          },
+          "execution_trace": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Execution Trace"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "status"
+        ],
+        "title": "AnalysisReport"
+      },
+      "AnalysisResult": {
+        "properties": {
+          "analysis_id": {
+            "type": "string",
+            "title": "Analysis Id"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Variables"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnalysisStatus"
+          },
+          "result": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value"
+          },
+          "effect_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect Size"
+          },
+          "sample_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Size"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "execution_time": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Execution Time",
+            "default": 0
+          },
+          "metadata": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "method",
+          "status"
+        ],
+        "title": "AnalysisResult"
+      },
+      "AnalysisStatus": {
+        "type": "string",
+        "enum": [
+          "SUCCESS",
+          "FAILED",
+          "SKIPPED"
+        ],
+        "title": "AnalysisStatus"
+      },
+      "Body_analysis_upload_analysis_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "delimiter": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1,
+            "title": "Delimiter",
+            "default": ","
+          },
+          "encoding": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Encoding",
+            "default": "utf-8"
+          },
+          "data_dictionary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Dictionary"
+          },
+          "user_question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_analysis_upload_analysis_upload_post"
+      },
+      "Body_intake_intake_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "delimiter": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1,
+            "title": "Delimiter",
+            "default": ","
+          },
+          "encoding": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Encoding",
+            "default": "utf-8"
+          },
+          "data_dictionary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Dictionary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_intake_intake_post"
+      },
+      "ColumnProfile": {
+        "properties": {
+          "column_name": {
+            "type": "string",
+            "title": "Column Name"
+          },
+          "data_type": {
+            "type": "string",
+            "title": "Data Type"
+          },
+          "semantic_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SemanticType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "missing_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Count"
+          },
+          "unique_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unique Count"
+          },
+          "classification_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DictionarySource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "classification_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification Reason"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "column_name",
+          "data_type"
+        ],
+        "title": "ColumnProfile"
+      },
+      "ColumnSchema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "data_type": {
+            "type": "string",
+            "title": "Data Type"
+          },
+          "nullable": {
+            "type": "boolean",
+            "title": "Nullable",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "data_type"
+        ],
+        "title": "ColumnSchema"
+      },
+      "CsvSourceSpec": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "csv",
+            "title": "Kind",
+            "default": "csv"
+          },
+          "path": {
+            "type": "string",
+            "format": "path",
+            "title": "Path"
+          },
+          "delimiter": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1,
+            "title": "Delimiter",
+            "default": ","
+          },
+          "encoding": {
+            "type": "string",
+            "title": "Encoding",
+            "default": "utf-8"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "title": "CsvSourceSpec"
+      },
+      "DataDictionary": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/DataDictionaryEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DataDictionary"
+      },
+      "DataDictionaryEntry": {
+        "properties": {
+          "column_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Column Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "data_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Type"
+          },
+          "semantic_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Type"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "source": {
+            "$ref": "#/components/schemas/DictionarySource"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "inferred_fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "description",
+                "data_type",
+                "semantic_type"
+              ]
+            },
+            "type": "array",
+            "title": "Inferred Fields"
+          },
+          "inference_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inference Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "column_name",
+          "source"
+        ],
+        "title": "DataDictionaryEntry"
+      },
+      "DatasetCompleteness": {
+        "properties": {
+          "missing_cells": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Missing Cells"
+          },
+          "total_cells": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Cells"
+          },
+          "missing_percentage": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Missing Percentage"
+          },
+          "column_missing_percentages": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Column Missing Percentages"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "missing_cells",
+          "total_cells",
+          "missing_percentage",
+          "column_missing_percentages"
+        ],
+        "title": "DatasetCompleteness"
+      },
+      "DatasetProfile": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "row_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Row Count"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnProfile"
+            },
+            "type": "array",
+            "title": "Columns"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "row_count"
+        ],
+        "title": "DatasetProfile"
+      },
+      "DatasetSchema": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnSchema"
+            },
+            "type": "array",
+            "title": "Columns"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DatasetSchema"
+      },
+      "DatasetSummary": {
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rows"
+          },
+          "columns": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Columns"
+          },
+          "numeric_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Numeric Columns"
+          },
+          "categorical_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categorical Columns"
+          },
+          "temporal_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Temporal Columns"
+          },
+          "identifiers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Identifiers"
+          },
+          "text_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Text Columns"
+          },
+          "unknown_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unknown Columns"
+          },
+          "data_dictionary": {
+            "$ref": "#/components/schemas/DataDictionary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rows",
+          "columns",
+          "numeric_columns",
+          "categorical_columns",
+          "temporal_columns",
+          "identifiers",
+          "text_columns",
+          "unknown_columns",
+          "data_dictionary"
+        ],
+        "title": "DatasetSummary"
+      },
+      "DictionarySource": {
+        "type": "string",
+        "enum": [
+          "official",
+          "manual",
+          "schema",
+          "inferred"
+        ],
+        "title": "DictionarySource"
+      },
+      "Evidence": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "title": "Evidence Id"
+          },
+          "analysis_id": {
+            "type": "string",
+            "title": "Analysis Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "analysis_id",
+          "description"
+        ],
+        "title": "Evidence"
+      },
+      "ExperimentMetrics": {
+        "properties": {
+          "precision": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision"
+          },
+          "recall": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recall"
+          },
+          "f1_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "F1 Score"
+          },
+          "false_positive_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "False Positive Rate"
+          },
+          "pattern_detection_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern Detection Rate"
+          },
+          "spurious_detection_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spurious Detection Rate"
+          },
+          "hypothesis_consistency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hypothesis Consistency"
+          },
+          "insight_consistency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insight Consistency"
+          },
+          "tool_selection_consistency": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Selection Consistency"
+          },
+          "conclusion_agreement": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conclusion Agreement"
+          },
+          "semantic_similarity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Similarity"
+          },
+          "total_response_time": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Response Time"
+          },
+          "time_to_first_insight": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time To First Insight"
+          },
+          "llm_calls": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Calls"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Calls"
+          },
+          "tokens_used": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens Used"
+          },
+          "iterations": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iterations"
+          },
+          "profiling_time": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profiling Time"
+          },
+          "analytics_time": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analytics Time"
+          },
+          "completion_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Rate"
+          },
+          "human_intervention_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Human Intervention Rate"
+          },
+          "valid_tool_selection_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Tool Selection Rate"
+          },
+          "invalid_analysis_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalid Analysis Rate"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExperimentMetrics"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status",
+            "default": "ok"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "HealthResponse"
+      },
+      "Insight": {
+        "properties": {
+          "insight_id": {
+            "type": "string",
+            "title": "Insight Id"
+          },
+          "statement": {
+            "type": "string",
+            "title": "Statement"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Ids"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "insight_id",
+          "statement"
+        ],
+        "title": "Insight"
+      },
+      "IntakeResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "SUCCESS",
+            "title": "Status",
+            "default": "SUCCESS"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/DatasetProfile"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/DatasetSummary"
+          },
+          "completeness": {
+            "$ref": "#/components/schemas/DatasetCompleteness"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "profiling_time": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Profiling Time"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "profile",
+          "summary",
+          "completeness",
+          "profiling_time"
+        ],
+        "title": "IntakeResponse",
+        "description": "Metadata-only HTTP response; no raw rows or server filesystem paths."
+      },
+      "JsonValue": {},
+      "PerformanceOverrides": {
+        "properties": {
+          "timeout_seconds": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout Seconds"
+          },
+          "parallel_tools": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parallel Tools"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PerformanceOverrides"
+      },
+      "RelationshipAssessment": {
+        "properties": {
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Variables"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Ids"
+          },
+          "potentially_spurious": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Potentially Spurious"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "variables"
+        ],
+        "title": "RelationshipAssessment"
+      },
+      "SemanticType": {
+        "type": "string",
+        "enum": [
+          "numeric",
+          "categorical",
+          "temporal",
+          "identifier",
+          "text",
+          "unknown"
+        ],
+        "title": "SemanticType"
+      },
+      "SqlSourceSpec": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "sql",
+            "title": "Kind",
+            "default": "sql"
+          },
+          "connection_ref": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Connection Ref"
+          },
+          "table": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Table"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "connection_ref",
+          "table"
+        ],
+        "title": "SqlSourceSpec"
+      },
+      "StoredAnalysisRequest": {
+        "properties": {
+          "user_question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Question"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "StoredAnalysisRequest"
+      },
+      "StoredSourceSpec": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "stored",
+            "title": "Kind",
+            "default": "stored"
+          },
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset_id"
+        ],
+        "title": "StoredSourceSpec",
+        "description": "A dataset already read and understood by intake, resolved from the dataset store."
+      },
+      "TextSourceSpec": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "txt",
+            "title": "Kind",
+            "default": "txt"
+          },
+          "path": {
+            "type": "string",
+            "format": "path",
+            "title": "Path"
+          },
+          "delimiter": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1,
+            "title": "Delimiter"
+          },
+          "encoding": {
+            "type": "string",
+            "title": "Encoding",
+            "default": "utf-8"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "delimiter"
+        ],
+        "title": "TextSourceSpec"
+      },
+      "ToolCatalog": {
+        "properties": {
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tools"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tools"
+        ],
+        "title": "ToolCatalog"
+      },
+      "ToolRunRequest": {
+        "properties": {
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Variables"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "object",
+            "title": "Parameters"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ToolRunRequest",
+        "description": "HTTP body for running one deterministic tool on an intake dataset."
+      },
+      "TsvSourceSpec": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "tsv",
+            "title": "Kind",
+            "default": "tsv"
+          },
+          "path": {
+            "type": "string",
+            "format": "path",
+            "title": "Path"
+          },
+          "encoding": {
+            "type": "string",
+            "title": "Encoding",
+            "default": "utf-8"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "title": "TsvSourceSpec"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

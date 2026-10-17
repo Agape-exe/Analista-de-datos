@@ -2,10 +2,10 @@ from datetime import datetime
 
 import pytest
 
-from app.config.settings import Settings
-from app.domain.models.data_dictionary import DataDictionaryEntry
-from app.domain.models.dataset import ColumnSchema
-from app.domain.services.column_classification import classify_column
+from app.modules.data_intake.domain.column_classification import classify_column
+from app.shared.config.settings import Settings
+from app.shared.domain.models.data_dictionary import DataDictionaryEntry
+from app.shared.domain.models.dataset import ColumnSchema
 
 
 @pytest.mark.parametrize(

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from app.config.settings import Settings, load_settings
+from app.shared.config.settings import Settings, load_settings
 
 
 def test_defaults() -> None:

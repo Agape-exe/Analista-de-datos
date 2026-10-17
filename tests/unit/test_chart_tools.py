@@ -1,16 +1,16 @@
 import pytest
 from eda_support import planted_dataset, store_with
 
-from app.adapters.visualization.charts import (
+from app.bootstrap import build_tool_registry
+from app.modules.exploration.adapters.visualization.charts import (
     BoxPlotChart,
     HeatmapChart,
     HistogramChart,
     ScatterChart,
 )
-from app.analytics.registry import ToolRegistry
-from app.bootstrap import build_tool_registry
-from app.config.settings import Settings
-from app.domain.models.analysis import AnalysisResult, ToolRequest
+from app.shared.application.tool_registry import ToolRegistry
+from app.shared.config.settings import Settings
+from app.shared.domain.models.analysis import AnalysisResult, ToolRequest
 
 
 @pytest.fixture

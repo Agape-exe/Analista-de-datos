@@ -1,26 +1,36 @@
 from collections.abc import Callable
 
-from app.adapters.datasource.csv_source import CsvDataSource
-from app.adapters.datasource.dataset_store import InMemoryDatasetStore
-from app.adapters.datasource.router import DataSourceRouter
-from app.adapters.datasource.tsv_source import TsvDataSource
-from app.adapters.datasource.upload_storage import TemporaryUploadStorage
-from app.adapters.llm.disabled import DisabledLLMProvider
-from app.adapters.visualization.charts import (
-    BoxPlotTool,
-    CorrelationHeatmapTool,
-    HistogramTool,
-    ScatterTool,
+from app.modules.analysis.adapters.analytics.factory import build_statistical_tool_registry
+from app.modules.analysis.adapters.analytics.mixed import AnovaGroupProfiler
+from app.modules.analysis.adapters.orchestration.graph import LangGraphWorkflow
+from app.modules.analysis.application.agents.analyst import AnalysisAgent
+from app.modules.analysis.application.agents.association import AssociationAgent
+from app.modules.analysis.application.agents.planner import PlannerAgent
+from app.modules.analysis.application.use_cases.analyze_dataset import AnalyzeDataset
+from app.modules.analysis.ports.agent import Agent
+from app.modules.critical_review.application.agents.critic import CriticAgent
+from app.modules.data_intake.adapters.datasource.csv_source import CsvDataSource
+from app.modules.data_intake.adapters.datasource.dataset_store import InMemoryDatasetStore
+from app.modules.data_intake.adapters.datasource.router import DataSourceRouter
+from app.modules.data_intake.adapters.datasource.tsv_source import TsvDataSource
+from app.modules.data_intake.adapters.datasource.upload_storage import TemporaryUploadStorage
+from app.modules.data_intake.application.agents.data_understanding import DataUnderstandingAgent
+from app.modules.data_intake.application.services.data_understanding import DataUnderstandingService
+from app.modules.data_intake.application.services.registering_understanding import (
+    RegisteringDataUnderstanding,
 )
-from app.agents.analyst import AnalysisAgent
-from app.agents.association import AssociationAgent
-from app.agents.critic import CriticAgent
-from app.agents.data_understanding import DataUnderstandingAgent
-from app.agents.insight import InsightAgent
-from app.agents.planner import PlannerAgent
-from app.analytics.association.matrix import CorrelationMatrixTool
-from app.analytics.association.ranking import RelationshipRankingTool
-from app.analytics.association.tools import (
+from app.modules.data_intake.application.services.stored_understanding import (
+    StoredDataUnderstanding,
+)
+from app.modules.data_intake.application.use_cases.intake_uploaded_dataset import (
+    IntakeUploadedDataset,
+)
+from app.modules.data_intake.ports.data_understanding import DataUnderstanding
+from app.modules.data_intake.ports.dataset_provider import DatasetProvider, DatasetStore
+from app.modules.data_intake.ports.datasource import DataSource
+from app.modules.exploration.adapters.analytics.association.matrix import CorrelationMatrixTool
+from app.modules.exploration.adapters.analytics.association.ranking import RelationshipRankingTool
+from app.modules.exploration.adapters.analytics.association.tools import (
     AnovaTool,
     ChiSquareTool,
     CramersVTool,
@@ -29,32 +39,29 @@ from app.analytics.association.tools import (
     PearsonTool,
     SpearmanTool,
 )
-from app.analytics.base import DatasetTool
-from app.analytics.factory import build_statistical_tool_registry
-from app.analytics.profiling.tools import (
+from app.modules.exploration.adapters.analytics.base import DatasetTool
+from app.modules.exploration.adapters.analytics.profiling.tools import (
     CardinalityTool,
     DescriptiveStatisticsTool,
     DistributionTool,
     MissingValuesTool,
     OutliersTool,
 )
-from app.analytics.registry import ToolRegistry
-from app.analytics.statistics.mixed import AnovaGroupProfiler
-from app.application.errors import LLMDisabledError
-from app.application.services.data_understanding import DataUnderstandingService
-from app.application.services.dataset_registry import DatasetRegistry
-from app.application.services.registering_understanding import RegisteringDataUnderstanding
-from app.application.services.stored_understanding import StoredDataUnderstanding
-from app.application.use_cases.analyze_dataset import AnalyzeDataset
-from app.application.use_cases.explore_dataset import ExploreDataset
-from app.application.use_cases.intake_uploaded_dataset import IntakeUploadedDataset
-from app.config.settings import EdaSettings, Settings
-from app.orchestration.graph import LangGraphWorkflow
-from app.ports.agent import Agent
-from app.ports.data_understanding import DataUnderstanding
-from app.ports.dataset_provider import DatasetProvider, DatasetStore
-from app.ports.datasource import DataSource
-from app.ports.llm_provider import LLMProvider
+from app.modules.exploration.adapters.relationship_screening import RelationshipScreeningAdapter
+from app.modules.exploration.adapters.visualization.charts import (
+    BoxPlotTool,
+    CorrelationHeatmapTool,
+    HistogramTool,
+    ScatterTool,
+)
+from app.modules.exploration.application.use_cases.explore_dataset import ExploreDataset
+from app.modules.reporting.application.agents.insight import InsightAgent
+from app.shared.adapters.llm.disabled import DisabledLLMProvider
+from app.shared.application.dataset_registry import DatasetRegistry
+from app.shared.application.errors import LLMDisabledError
+from app.shared.application.tool_registry import ToolRegistry
+from app.shared.config.settings import EdaSettings, Settings
+from app.shared.ports.llm_provider import LLMProvider
 
 
 def build_llm(settings: Settings) -> LLMProvider:
@@ -130,7 +137,9 @@ def build_agents(
 ) -> list[Agent]:
     """Association screening needs local data, so it runs only with a dataset registry."""
     screening: list[Agent] = (
-        [AssociationAgent(datasets, eda)] if datasets is not None and eda is not None else []
+        [AssociationAgent(RelationshipScreeningAdapter(datasets, eda))]
+        if datasets is not None and eda is not None
+        else []
     )
     return [
         DataUnderstandingAgent(understanding, datasets),
@@ -178,7 +187,9 @@ def build_repository(settings: Settings):
     from sqlalchemy import create_engine
     from sqlalchemy.pool import StaticPool
 
-    from app.adapters.persistence.report_repository import SqlAlchemyAnalysisRepository
+    from app.modules.reporting.adapters.persistence.report_repository import (
+        SqlAlchemyAnalysisRepository,
+    )
 
     url = settings.persistence.database_url
     options = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite") else {}

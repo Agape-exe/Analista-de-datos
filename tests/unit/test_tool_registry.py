@@ -2,12 +2,12 @@ from dataclasses import dataclass
 
 import pytest
 
-from app.analytics.registry import ToolRegistry
-from app.application.dto.datasource import LoadedDataset
-from app.application.errors import ToolRegistryError
-from app.application.services.dataset_registry import DatasetRegistry
-from app.domain.models.analysis import AnalysisResult, ToolRequest
-from app.domain.models.dataset import DatasetSchema
+from app.shared.application.dataset_registry import DatasetRegistry
+from app.shared.application.errors import ToolRegistryError
+from app.shared.application.tool_registry import ToolRegistry
+from app.shared.contracts.datasource import LoadedDataset
+from app.shared.domain.models.analysis import AnalysisResult, ToolRequest
+from app.shared.domain.models.dataset import DatasetSchema
 
 
 class NoOpTool:

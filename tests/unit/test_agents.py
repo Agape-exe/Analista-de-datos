@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from app.analytics.registry import ToolRegistry
-from app.application.dto.agent import AgentContext
-from app.application.dto.analysis_input import AnalysisInput, resolve_configuration
-from app.application.dto.llm import LLMRequest, LLMResponse
 from app.bootstrap import build_agents, build_data_understanding
-from app.config.settings import Settings
-from app.orchestration.state import AgentState
+from app.modules.analysis.application.state import AgentState
+from app.shared.application.tool_registry import ToolRegistry
+from app.shared.config.settings import Settings
+from app.shared.contracts.agent import AgentContext
+from app.shared.contracts.analysis_input import AnalysisInput, resolve_configuration
+from app.shared.contracts.llm import LLMRequest, LLMResponse
 
 
 class MustNotCallLLM:

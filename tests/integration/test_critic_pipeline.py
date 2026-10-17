@@ -1,9 +1,9 @@
 from hashlib import sha256
 from pathlib import Path
 
-from app.application.dto.analysis_input import AnalysisInput
 from app.bootstrap import build_use_case
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
+from app.shared.contracts.analysis_input import AnalysisInput
 
 
 def csv_content():

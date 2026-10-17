@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.bootstrap import build_repository
-from app.config.settings import Settings
+from app.shared.config.settings import Settings
 
 
 def production_settings(**overrides: object) -> Settings:
@@ -148,7 +148,8 @@ def test_postgresql_repository_uses_tls_and_small_resilient_pool(
 
     monkeypatch.setattr("sqlalchemy.create_engine", create_engine)
     monkeypatch.setattr(
-        "app.adapters.persistence.report_repository.SqlAlchemyAnalysisRepository", Repository
+        "app.modules.reporting.adapters.persistence.report_repository.SqlAlchemyAnalysisRepository",
+        Repository,
     )
     build_repository(production_settings())
 
@@ -178,7 +179,8 @@ def test_postgresql_verify_full_preserves_pool_options(monkeypatch: pytest.Monke
 
     monkeypatch.setattr("sqlalchemy.create_engine", create_engine)
     monkeypatch.setattr(
-        "app.adapters.persistence.report_repository.SqlAlchemyAnalysisRepository", Repository
+        "app.modules.reporting.adapters.persistence.report_repository.SqlAlchemyAnalysisRepository",
+        Repository,
     )
     build_repository(
         production_settings(

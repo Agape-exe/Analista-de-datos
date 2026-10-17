@@ -1,11 +1,11 @@
 import pytest
 
-from app.agents.critic import CriticAgent
-from app.application.dto.agent import AgentContext
-from app.application.dto.analysis_input import AnalysisInput, resolve_configuration
-from app.application.services.insights import generate_insights
-from app.config.settings import Settings
-from app.domain.models.analysis import AnalysisResult
+from app.modules.critical_review.application.agents.critic import CriticAgent
+from app.modules.reporting.application.services.insights import generate_insights
+from app.shared.config.settings import Settings
+from app.shared.contracts.agent import AgentContext
+from app.shared.contracts.analysis_input import AnalysisInput, resolve_configuration
+from app.shared.domain.models.analysis import AnalysisResult
 
 
 class NoLLM:

@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.domain.models.dataset import ColumnProfile, DatasetProfile, DatasetSchema
-from app.domain.models.metrics import ExperimentMetrics
+from app.shared.domain.models.dataset import ColumnProfile, DatasetProfile, DatasetSchema
+from app.shared.domain.models.metrics import ExperimentMetrics
 
 
 def test_profile_round_trip() -> None:
