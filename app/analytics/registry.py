@@ -1,4 +1,5 @@
 from app.application.errors import ToolRegistryError
+from app.domain.models.analysis import AnalysisResult, ToolRequest
 from app.ports.analytics_tool import AnalyticsTool
 
 
@@ -20,6 +21,17 @@ class ToolRegistry:
             return self._tools[name]
         except KeyError as error:
             raise ToolRegistryError(f"Unknown analytics tool: {name}") from error
+
+    def resolve(self, request: ToolRequest) -> AnalyticsTool:
+        """Return an authorized tool only when it declares request compatibility."""
+        tool = self.get(request.method)
+        if not tool.supports(request):
+            raise ToolRegistryError(f"Analytics tool does not support request: {request.method}")
+        return tool
+
+    async def execute(self, request: ToolRequest) -> AnalysisResult:
+        """Execute through the registry so unregistered tools cannot be dispatched."""
+        return await self.resolve(request).execute(request)
 
     def names(self) -> tuple[str, ...]:
         return tuple(sorted(self._tools))

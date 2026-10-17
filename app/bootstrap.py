@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from app.adapters.datasource.csv_source import CsvDataSource
 from app.adapters.datasource.dataset_store import InMemoryDatasetStore
 from app.adapters.datasource.router import DataSourceRouter
@@ -27,6 +29,7 @@ from app.analytics.association.tools import (
     SpearmanTool,
 )
 from app.analytics.base import DatasetTool
+from app.analytics.factory import build_statistical_tool_registry
 from app.analytics.profiling.tools import (
     CardinalityTool,
     DescriptiveStatisticsTool,
@@ -37,6 +40,7 @@ from app.analytics.profiling.tools import (
 from app.analytics.registry import ToolRegistry
 from app.application.errors import LLMDisabledError
 from app.application.services.data_understanding import DataUnderstandingService
+from app.application.services.dataset_registry import DatasetRegistry
 from app.application.services.registering_understanding import RegisteringDataUnderstanding
 from app.application.use_cases.analyze_dataset import AnalyzeDataset
 from app.application.use_cases.explore_dataset import ExploreDataset
@@ -115,10 +119,13 @@ def build_intake_use_case(
 
 
 def build_agents(
-    llm: LLMProvider, tools: ToolRegistry, understanding: DataUnderstanding
+    llm: LLMProvider,
+    tools: ToolRegistry,
+    understanding: DataUnderstanding,
+    datasets: DatasetRegistry | None = None,
 ) -> list[Agent]:
     return [
-        DataUnderstandingAgent(understanding),
+        DataUnderstandingAgent(understanding, datasets),
         PlannerAgent(llm),
         AnalysisAgent(llm, tools),
         CriticAgent(llm),
@@ -131,7 +138,18 @@ def build_exploration_use_case(settings: Settings, datasets: DatasetProvider) ->
 
 
 def build_use_case(settings: Settings) -> AnalyzeDataset:
-    store = build_dataset_store(settings)
-    understanding = RegisteringDataUnderstanding(build_data_understanding(settings), store)
-    agents = build_agents(build_llm(settings), build_tool_registry(settings, store), understanding)
-    return AnalyzeDataset(LangGraphWorkflow(settings, agents))
+    build_llm(settings)
+
+    def build_run() -> tuple[list[Agent], Callable[[], None]]:
+        datasets = DatasetRegistry()
+        return (
+            build_agents(
+                build_llm(settings),
+                build_statistical_tool_registry(datasets),
+                build_data_understanding(settings),
+                datasets,
+            ),
+            datasets.clear,
+        )
+
+    return AnalyzeDataset(LangGraphWorkflow(settings, run_factory=build_run))

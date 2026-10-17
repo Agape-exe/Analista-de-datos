@@ -18,7 +18,12 @@ from app.orchestration.state import AgentState
 from app.ports.agent import Agent
 
 Node = Callable[[AgentState], Awaitable[Mapping[str, Any]]]
+RunFactory = Callable[[], tuple[Sequence[Agent], Callable[[], None]]]
 CONTEXT_FIELDS = set(AgentContext.model_fields)
+
+
+def _noop_release() -> None:
+    return None
 
 
 def _agent_node(agent: Agent) -> Node:
@@ -93,33 +98,50 @@ def initial_state(analysis_input: AnalysisInput, settings: Settings) -> AgentSta
 
 
 class LangGraphWorkflow:
-    """Run actual data intake followed by explicit skeleton stages."""
+    """Run a static graph or create isolated agents and local data per execution."""
 
-    def __init__(self, settings: Settings, agents: Sequence[Agent]) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        agents: Sequence[Agent] | None = None,
+        run_factory: RunFactory | None = None,
+    ) -> None:
+        if (agents is None) == (run_factory is None):
+            raise ValueError("Workflow requires exactly one of agents or run_factory")
         self.settings = settings
-        self.graph = build_graph(agents)
+        self._run_factory = run_factory
+        self.graph = build_graph(agents) if agents is not None else None
 
     async def run(self, analysis_input: AnalysisInput) -> AnalysisReport:
         state = initial_state(analysis_input, self.settings)
         recorder = TimingRecorder()
         failure: str | None = None
         completed: Mapping[str, Any] = {}
-        with recorder.measure("total"):
-            try:
+        release = _noop_release
+        graph = self.graph
+        try:
+            with recorder.measure("total"):
+                if self._run_factory is not None:
+                    agents, release = self._run_factory()
+                    graph = build_graph(agents)
+                assert graph is not None
                 async with asyncio.timeout(state["configuration"].performance.timeout_seconds):
-                    completed = await self.graph.ainvoke(state)
-            except TimeoutError:
-                failure = "Workflow timeout exceeded"
-            except Exception as error:
-                # Recover at the workflow boundary; cancellations remain propagating.
-                failure = f"Workflow execution failed: {error}"
+                    completed = await graph.ainvoke(state)
+        except TimeoutError:
+            failure = "Workflow timeout exceeded"
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            failure = f"Workflow execution failed: {error}"
+        finally:
+            release()
         recorded_metrics: ExperimentMetrics = completed.get("metrics", state["metrics"])
         metrics = recorded_metrics.model_copy(
             update={
                 "total_response_time": recorder.durations["total"],
-                "llm_calls": 0,
-                "tool_calls": 0,
-                "iterations": 1,
+                "llm_calls": recorded_metrics.llm_calls or 0,
+                "tool_calls": recorded_metrics.tool_calls or 0,
+                "iterations": recorded_metrics.iterations or 1,
             }
         )
         if failure is not None:
@@ -135,9 +157,18 @@ class LangGraphWorkflow:
         failed = completed["errors"] or any(
             status == AnalysisStatus.FAILED for status in completed["stage_statuses"].values()
         )
+        has_results = any(
+            result.status == AnalysisStatus.SUCCESS for result in completed["analysis_results"]
+        )
         return AnalysisReport(
             run_id=state["run_id"],
-            status=AnalysisStatus.FAILED if failed else AnalysisStatus.SKIPPED,
+            status=(
+                AnalysisStatus.FAILED
+                if failed
+                else AnalysisStatus.SUCCESS
+                if has_results
+                else AnalysisStatus.SKIPPED
+            ),
             dataset_profile=completed["dataset_profile"],
             data_dictionary=completed["data_dictionary"],
             analysis_results=completed["analysis_results"],
