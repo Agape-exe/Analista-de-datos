@@ -1,3 +1,4 @@
+import type { AnalysisResult, ToolRunRequest } from "../types/exploration";
 import type { IntakeDraft, IntakeResponse } from "../types/intake";
 
 export class ApiError extends Error {
@@ -29,12 +30,27 @@ export async function submitIntake(draft: IntakeDraft, signal?: AbortSignal): Pr
   body.append("delimiter", draft.delimiter);
   body.append("encoding", draft.encoding);
   if (draft.dictionary) body.append("data_dictionary", draft.dictionary);
+  return request<IntakeResponse>("/intake", { method: "POST", body, signal });
+}
+
+export class DatasetExpiredError extends ApiError {}
+
+export async function runTool(
+  datasetId: string, tool: string, body: ToolRunRequest, signal?: AbortSignal,
+): Promise<AnalysisResult> {
+  const path = `/datasets/${encodeURIComponent(datasetId)}/tools/${encodeURIComponent(tool)}`;
+  return request<AnalysisResult>(path, {
+    method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" }, signal,
+  });
+}
+
+async function request<T>(path: string, init: RequestInit): Promise<T> {
   const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
   let response: Response;
   try {
-    response = await fetch(`${base}/intake`, { method: "POST", body, signal });
+    response = await fetch(`${base}${path}`, init);
   } catch (error) {
-    if (signal?.aborted) throw error;
+    if (init.signal?.aborted) throw error;
     throw new ApiError("Cannot reach the backend. Check that FastAPI is running and try again.");
   }
   const requestId = response.headers.get("X-Request-ID") || undefined;
@@ -44,6 +60,15 @@ export async function submitIntake(draft: IntakeDraft, signal?: AbortSignal): Pr
   } catch {
     throw new ApiError("The server returned an unreadable response. Check the API connection.", requestId);
   }
-  if (!response.ok) throw new ApiError(errorMessage(payload), requestId);
-  return payload as IntakeResponse;
+  if (!response.ok) {
+    const Failure = errorCode(payload) === "DATASET_NOT_FOUND" ? DatasetExpiredError : ApiError;
+    throw new Failure(errorMessage(payload), requestId);
+  }
+  return payload as T;
+}
+
+function errorCode(payload: unknown): string | undefined {
+  if (typeof payload !== "object" || payload === null || !("detail" in payload)) return undefined;
+  const detail = payload.detail;
+  return typeof detail === "object" && detail !== null && "code" in detail ? String(detail.code) : undefined;
 }

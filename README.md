@@ -48,9 +48,9 @@ Guía de interfaz, contratos y tests: [docs/frontend.md](docs/frontend.md).
 | `app/domain` | Modelos, enums e invariantes, sin infraestructura |
 | `app/application` | DTO, configuración efectiva y caso de uso |
 | `app/ports` | Protocols para agentes, fuentes, tools, LLM y workflow |
-| `app/adapters` | CSV/TSV locales, LLM desactivado y factorías SQLAlchemy |
+| `app/adapters` | CSV/TSV locales, store de datasets, datos de gráficos, LLM desactivado y factorías SQLAlchemy |
 | `app/agents` | DataUnderstanding, Planner, Analysis, Critic e Insight |
-| `app/analytics` | Registry y espacios para tools determinísticas |
+| `app/analytics` | Registry y tools determinísticas de profiling y asociación |
 | `app/orchestration` | Estado serializable y grafo LangGraph |
 | `app/evaluation` | Contratos experimentales y registro monotónico de tiempos |
 | `app/config` | Settings y defaults TOML |
@@ -61,6 +61,7 @@ Guía de interfaz, contratos y tests: [docs/frontend.md](docs/frontend.md).
 
 Detalles y límites de dependencia: [docs/architecture.md](docs/architecture.md).
 Guía del intake: [docs/data-intake.md](docs/data-intake.md).
+Motor EDA y de asociación: [docs/eda-association.md](docs/eda-association.md).
 
 ## Flujo conceptual
 

@@ -13,6 +13,21 @@ class AssociationResult(DomainModel):
     p_value: float | None = Field(default=None, ge=0, le=1)
 
 
+class RankedRelationship(DomainModel):
+    """Candidate relationship from screening; the Critic decides if it is meaningful."""
+
+    x: str
+    y: str
+    method: str
+    score: float = Field(ge=0, le=1)
+    strength: float | None = None
+    p_value: float | None = Field(default=None, ge=0, le=1)
+    adjusted_p_value: float | None = Field(default=None, ge=0, le=1)
+    sample_size: int = Field(ge=0)
+    supporting: list[AssociationResult] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class Hypothesis(DomainModel):
     hypothesis_id: str = Field(default_factory=lambda: str(uuid4()))
     statement: str
