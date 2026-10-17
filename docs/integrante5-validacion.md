@@ -66,3 +66,17 @@ Se cargó un CSV de prueba con 20 filas y 3 columnas.
 
 Esta prueba verifica la consulta y exportación del reporte.
 No valida el funcionamiento completo del sistema multiagente.
+
+## Validación de integración con develop
+
+- Backend: 189 pruebas aprobadas y Ruff sin errores.
+- Prueba desde el frontend con prueba_correlacion.csv:
+  DataUnderstanding, Planner y Analysis finalizaron en SUCCESS.
+- Critic e Insight permanecieron en SKIPPED.
+- El flujo completo todavía no está validado.
+
+Incidencia detectada con prueba_api.csv:
+Pearson y Spearman finalizaron correctamente, pero el ANOVA
+falló porque cada producto tenía una sola observación.
+Queda pendiente coordinar la validación del tamaño de los
+grupos antes de planificar ANOVA.
