@@ -1,5 +1,9 @@
 # Data Intake & Understanding
 
+> Actualización del integrante 5: ver [guía de integración](integrante5-integracion.md).
+> Las descripciones del skeleton de análisis reflejan la base original; la API de
+> análisis y reporting se extendió en esta entrega.
+
 ## Uso directo
 
 Desde la raíz del proyecto:

@@ -350,7 +350,13 @@ async def test_final_planner_analysis_is_reproducible(tmp_path: Path) -> None:
     second_results = [
         (item.method, item.variables, item.result, item.p_value) for item in second.analysis_results
     ]
-    assert first.status == second.status == AnalysisStatus.SUCCESS
+    assert first.status == second.status == AnalysisStatus.SKIPPED
+    for report in (first, second):
+        assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
+        assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
+        assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+        assert report.analysis_results
+        assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
     assert first_results == pytest.approx(second_results, nan_ok=False)
     assert first.metrics.tool_calls == second.metrics.tool_calls
     assert first.metrics.iterations == second.metrics.iterations == 1

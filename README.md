@@ -4,7 +4,11 @@ Base inicial en Python 3.12+ para un sistema multiagente de análisis de datos.
 El objetivo es comprender datasets, planificar análisis, ejecutar herramientas
 determinísticas, criticar evidencias y producir insights y reportes trazables.
 
-**Estado: Data Intake & Understanding funcional con interfaz web; análisis completo en desarrollo.**
+**Estado: intake funcional; módulo del integrante 5 implementado. Algoritmos y agentes
+analíticos de los demás integrantes pendientes.**
+
+Comenzar con [LEEME_INTEGRANTE5.md](LEEME_INTEGRANTE5.md). Incluye demo independiente,
+API, persistencia, evaluación, guía de integración y patch de cambios.
 
 ## Probar tus datasets desde el navegador
 
@@ -102,7 +106,7 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-Las pruebas usan fixtures de tres filas, SQLite en memoria y HTTP local.
+Las pruebas usan fixtures, SQLite temporal/en memoria y HTTP local.
 No requieren proveedor LLM, red ni datasets grandes.
 
 ## Levantar FastAPI
@@ -122,8 +126,10 @@ uv run uvicorn app.api.main:app --reload
 - `GET /health`: `200 {"status": "ok"}`; indica liveness.
 - `POST /intake`: recibe archivo CSV/TSV y diccionario JSON opcional mediante multipart;
   devuelve perfil, resumen, completitud, advertencias y tiempo. Errores: 400/413/422.
-- `POST /analysis`: valida la entrada y devuelve **501** con
-  `ANALYSIS_WORKFLOW_NOT_ENABLED`. Entrada inválida: **422**.
+- `POST /analysis`: ejecuta el flujo actual y guarda el reporte. Etapas pendientes: SKIPPED.
+- `POST /analysis/upload`: ejecuta desde un CSV/TSV subido.
+- `GET /reports/{run_id}`: recupera reportes; sufijos `/metrics` y `/markdown` disponibles.
+- Entrada JSON inválida: **422**.
 - Cada respuesta incluye `X-Request-ID` para correlación HTTP.
 
 Ejemplo de cuerpo válido para `/analysis`:
@@ -142,8 +148,8 @@ Ejemplo de cuerpo válido para `/analysis`:
 }
 ```
 
-El endpoint `/analysis` todavía no lee esa ruta ni ejecuta el grafo. La interfaz
-usa `/intake`, que sí procesa archivos subidos para comprender su estructura.
+El endpoint `/analysis` ahora ejecuta el grafo. La interfaz conserva `/intake` y
+añade `/report` para ejecutar `/analysis/upload` y recuperar reportes.
 
 ## Configuración
 
@@ -189,8 +195,7 @@ asyncio.run(main())
 ```
 
 DataUnderstanding lee el CSV/TSV y devuelve `SUCCESS` con perfil y diccionario.
-El reporte global conserva `SKIPPED` porque las siguientes cuatro etapas aún son
-skeletons; resultados analíticos e insights estarán vacíos. Una fuente inválida
+El reporte global conserva `SKIPPED` porque Planner, Analysis y Critic siguen pendientes; resultados analíticos e insights estarán vacíos. Una fuente inválida
 devuelve `FAILED` y detiene el grafo antes de Planner. Los tiempos son mediciones
 reales, incluido `profiling_time` (lectura, validación y perfilado básico).
 
@@ -203,8 +208,8 @@ API mínima, factorías SQLAlchemy y contratos de evaluación.
 
 Pendiente: adaptadores SQL/TXT, EDA y profiling estadístico avanzado, algoritmos
 estadísticos, LLM real y prompts, ejecución de planes, critic loop, paralelismo,
-detección espuria, generación de insights, renderizadores, repositorios concretos
-y evaluación experimental completa.
+detección espuria, LLM para redacción libre y evaluación experimental del sistema completo. El módulo 5
+ya incluye insights por evidencia, Markdown, repositorio y ejecutores de evaluación.
 
 El registry de producción comienza vacío. `DisabledLLMProvider` lanza un error
 comprensible si se intenta usar. No hay respuestas analíticas simuladas.

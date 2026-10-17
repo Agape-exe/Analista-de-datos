@@ -34,7 +34,9 @@ async def test_langgraph_executes_planner_analysis_with_csv(tmp_path: Path) -> N
 
     report = await build_use_case(Settings(_env_file=None)).execute(input_for(path))
 
-    assert report.status == AnalysisStatus.SUCCESS
+    assert report.status == AnalysisStatus.SKIPPED
+    assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
+    assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
     assert {result.method for result in report.analysis_results} >= {"pearson", "spearman"}
     assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
     assert report.stage_statuses["DataUnderstanding"] == AnalysisStatus.SUCCESS
@@ -78,7 +80,9 @@ async def test_workflow_respects_fast_mode_limits(tmp_path: Path) -> None:
     assert zero.status == AnalysisStatus.SKIPPED
     assert zero.analysis_results == []
     assert zero.metrics.tool_calls == 0
-    assert one.status == AnalysisStatus.SUCCESS
+    assert one.status == AnalysisStatus.SKIPPED
+    assert one.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
+    assert one.analysis_results[0].status == AnalysisStatus.SUCCESS
     assert len(one.analysis_results) == one.metrics.tool_calls == 1
 
 
@@ -122,10 +126,14 @@ async def test_workflow_isolates_sequential_and_concurrent_runs(tmp_path: Path) 
         )
         == 4
     )
-    assert all(
-        report.status == AnalysisStatus.SUCCESS
-        for report in (first, second, concurrent_first, concurrent_second)
-    )
+
+    for report in (first, second, concurrent_first, concurrent_second):
+        assert report.status == AnalysisStatus.SKIPPED
+        assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
+        assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
+        assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+        assert report.analysis_results
+        assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
 
 
 async def test_workflow_releases_dataset_after_failure(tmp_path: Path) -> None:
