@@ -6,10 +6,10 @@ El módulo Planner & Analysis debe convertir una pregunta de análisis y el resu
 del dataset en un plan reproducible de solicitudes estadísticas, ejecutar esas
 solicitudes sobre los datos locales y entregar resultados trazables al flujo común.
 
-Actualmente `PlannerAgent` construye planes determinísticos y `AnalysisAgent`
-puede ejecutarlos cuando recibe explícitamente un `ToolRegistry` y un
-`DatasetRegistry` de la misma ejecución. No hay proveedor LLM activo ni cableado
-productivo de dichos recursos en el workflow.
+Actualmente `PlannerAgent` construye planes determinísticos y `AnalysisAgent` los
+ejecuta en el workflow de LangGraph mediante recursos locales aislados por corrida.
+No hay proveedor LLM activo; Critic e Insight continúan siendo etapas separadas y
+no se consideran una conclusión final de negocio.
 
 ## 2. Responsabilidades de Planner Agent
 
@@ -123,11 +123,18 @@ columna declarada esté disponible con el número de filas esperado y permite
 recuperar, liberar o limpiar referencias. No es serializable ni global, por lo
 que cada ejecución puede usar una instancia aislada y liberar sus datos al final.
 
-La integración controlada probada crea un `DatasetRegistry` por ejecución, registra
-el `LoadedDataset` obtenido por `DataUnderstandingService`, construye el registry de
-tools, ejecuta Planner y Analysis, y libera referencias con `clear()` en un bloque
-`finally`. El intake/workflow existente aún no realiza ese cableado: las cargas HTTP
-usan archivos temporales que se eliminan al terminar el intake.
+`build_use_case(settings)` configura una fábrica de recursos por llamada a
+`LangGraphWorkflow.run()`. Cada corrida crea un `DatasetRegistry`, un `ToolRegistry`
+con las seis tools y una lista nueva de agentes. `DataUnderstandingAgent` registra
+exactamente el `LoadedDataset` que `DataUnderstandingService` ya cargó y validó; no
+vuelve a abrir ni perfilar el archivo. Sólo dataset_id, perfil y diccionario cruzan
+`AgentState`. El workflow libera referencias con `DatasetRegistry.clear()` en un
+`finally`, incluso ante fallo, timeout o cancelación.
+
+La misma instancia de `AnalyzeDataset` puede usarse en corridas secuenciales o
+concurrentes: no comparte datasets, tools o resultados entre ellas. Las cargas HTTP
+siguen con su ciclo temporal actual; esta sesión no modifica endpoints ni mantiene
+rutas temporales después de cargar los datos en memoria.
 
 Tras la ejecución futura, `analysis_results` quedará en `AgentState` y será visible
 para Critic mediante el siguiente `AgentContext`. `Evidence` y
@@ -205,9 +212,17 @@ incrementan `tool_calls`.
 
 El ejecutor no añade un timeout local: las tools son cálculos CPU-bound y un timeout
 de `asyncio` no garantiza interrumpirlos mientras bloquean el hilo. Tampoco ejecuta
-tools en paralelo. El workflow actual aún construye un `ToolRegistry` vacío y
-sobrescribe `tool_calls` con cero en su reporte; ambos puntos quedan pendientes para
-la sesión 07.
+tools en paralelo: `parallel_tools` no está operativo aún. El timeout global del
+workflow sí protege etapas cooperativas y el `finally` libera los recursos, pero no
+promete interrupción fuerte de SciPy/Pandas CPU-bound.
+
+El reporte conserva las métricas que actualiza Analysis: `tool_calls` es el número
+de tools invocadas realmente, `analytics_time` mide la fase analítica,
+`profiling_time` procede de Data Understanding y `total_response_time` mide toda la
+corrida. `llm_calls` permanece en cero. El reporte es `FAILED` ante un fallo de
+workflow o etapa, `SUCCESS` cuando hay resultados analíticos exitosos sin fallos, y
+`SKIPPED` cuando no existe un análisis ejecutable por una condición legítima. El
+éxito sólo expresa ejecución estadística válida; no completa Critic ni Insight.
 
 ## 8. Dependencias con los demás integrantes
 
@@ -242,11 +257,9 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
 
 ## 10. Cambios o decisiones pendientes de aprobación
 
-- Cómo conectar el ciclo de vida de `DatasetRegistry` al workflow y a las cargas
-  temporales sin serializar filas en `AgentState` ni retener rutas inválidas.
+- Cómo integrar el ciclo de vida de cargas HTTP temporales con esta fábrica por
+  corrida, sin serializar filas en `AgentState` ni retener rutas inválidas.
 - Catálogo inicial, nombres y esquemas de parámetros de las tools con Integrante 2.
-- Registro por ejecución de las tools y ciclo de vida de `DatasetRegistry` dentro
-  de `LangGraphWorkflow`/bootstrap, manteniendo el aislamiento y liberación final.
 - Decisión de Planner sobre cuándo una variable codificada puede tratarse como
   categoría o resultado numérico.
 - Política de dependencias entre `AnalysisStep` y comportamiento ante ciclos o
@@ -257,3 +270,8 @@ Cualquier cambio de dominio, DTO o puerto requiere coordinación y revisión cru
 - Política de persistencia de resultados y errores para reporte y reanudación.
 - Los modelos compartidos actuales no se modifican en esta sesión; cualquier
   cambio incompatible queda deliberadamente pendiente de aprobación.
+
+El PR #7 del Integrante 5 también modifica bootstrap, graph, state, reporte y esta
+documentación, aunque su base es `main`. No se incorporaron sus cambios: al preparar
+su integración será necesario resolver el solapamiento de métricas/reporting y
+mantener esta fábrica de recursos por corrida.
