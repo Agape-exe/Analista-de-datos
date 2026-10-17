@@ -43,7 +43,7 @@ Hay dos ciclos de vida independientes:
 - EDA: RegisteringDataUnderstanding publica un RegisteredDataset en el almacén LRU
   InMemoryDatasetStore. Intake, herramientas EDA y gráficos comparten ese almacén.
 - Análisis: build_use_case configura una fábrica por ejecución. DataUnderstandingAgent
-  registra el LoadedDataset validado en un DatasetRegistry local; las seis herramientas
+  registra el LoadedDataset validado en un DatasetRegistry local; las nueve herramientas
   estadísticas reciben ese registro. El workflow libera sus recursos en finally,
   incluso ante fallo, timeout o cancelación. Esa limpieza no borra datasets EDA.
 

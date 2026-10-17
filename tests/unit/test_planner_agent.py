@@ -64,6 +64,10 @@ async def test_planner_generates_numeric_analysis_plan() -> None:
     assert [step.request.method for step in result.update.analysis_plan.steps] == [
         "pearson",
         "spearman",
+        "correlation_without_outliers",
+    ]
+    assert result.update.analysis_plan.steps[-1].depends_on == [
+        result.update.analysis_plan.steps[0].step_id
     ]
     assert all(
         step.request.dataset_id == "dataset-plan" for step in result.update.analysis_plan.steps
@@ -370,3 +374,39 @@ async def test_anova_summary_requests_stay_bounded_and_prioritize_question() -> 
 
     assert len(calls) == 1 and len(calls[0]) == 16
     assert ("group_099", "value_099") in calls[0]
+
+
+async def test_constant_numeric_columns_are_excluded_before_planning():
+    value = context(
+        [
+            ("year", SemanticType.NUMERIC),
+            ("amount", SemanticType.NUMERIC),
+            ("interest", SemanticType.NUMERIC),
+        ]
+    )
+    next(
+        item for item in value.dataset_profile.columns if item.column_name == "year"
+    ).unique_count = 1
+    result = await PlannerAgent(MustNotCallLLM()).run(value)
+    assert result.status == "SUCCESS"
+    assert all("year" not in step.request.variables for step in result.update.analysis_plan.steps)
+    assert any("constant numeric column" in warning for warning in result.warnings)
+
+
+async def test_continuous_numeric_pool_keeps_priority_over_calendar_codes():
+    value = context(
+        [
+            ("a_year", SemanticType.NUMERIC),
+            ("tax", SemanticType.NUMERIC),
+            ("interest", SemanticType.NUMERIC),
+            ("total", SemanticType.NUMERIC),
+        ]
+    )
+    for item in value.dataset_profile.columns:
+        item.data_type = "Int64" if item.column_name == "a_year" else "Float64"
+    result = await PlannerAgent(MustNotCallLLM()).run(value)
+    steps = result.update.analysis_plan.steps
+    correlation = next(item for item in steps if item.request.method == "pearson")
+    assert correlation.request.variables == ["interest", "tax"]
+    identity = next(item for item in steps if item.request.method == "additive_identity")
+    assert identity.request.variables == ["interest", "tax", "total"]

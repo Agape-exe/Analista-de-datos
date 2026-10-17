@@ -81,7 +81,9 @@ async def test_workflow_keeps_valid_anova_with_complete_groups(
     assert result.sample_size == sum(outcome is not None for outcome in outcomes)
     assert result.p_value is not None and result.effect_size is not None
     assert report.metrics.tool_calls == 1
-    assert report.status == "SKIPPED"  # Critic/Insight still require evidence.
+    assert report.status == "SUCCESS"
+    assert report.insights and report.relationship_assessments
+    assert all(item.potentially_spurious is None for item in report.relationship_assessments)
     assert not report.errors
 
 
@@ -102,7 +104,7 @@ async def test_fast_mode_uses_next_valid_anova_after_omitting_sparse_pair(tmp_pa
     assert len(anova) == 1
     assert anova[0].variables == ["group", "z_valid"] and anova[0].status == "SUCCESS"
     assert report.stage_statuses["Analysis"] == "SUCCESS"
-    assert report.metrics.tool_calls == 3
+    assert report.metrics.tool_calls == 5
     assert any(
         "'a_sparse'" in warning and "ANOVA omitted" in warning for warning in report.warnings
     )

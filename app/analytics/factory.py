@@ -4,6 +4,11 @@ from app.analytics.statistics.correlation import (
     PearsonCorrelationTool,
     SpearmanCorrelationTool,
 )
+from app.analytics.statistics.diagnostics import (
+    AdditiveIdentityTool,
+    OutlierCorrelationTool,
+    SubgroupCorrelationTool,
+)
 from app.analytics.statistics.mixed import (
     ChiSquareIndependenceTool,
     CramersVTool,
@@ -19,6 +24,9 @@ def build_statistical_tool_registry(datasets: DatasetRegistry) -> ToolRegistry:
         PearsonCorrelationTool(datasets),
         SpearmanCorrelationTool(datasets),
         PartialCorrelationTool(datasets),
+        OutlierCorrelationTool(datasets),
+        SubgroupCorrelationTool(datasets),
+        AdditiveIdentityTool(datasets),
         ChiSquareIndependenceTool(datasets),
         CramersVTool(datasets),
         OneWayAnovaTool(datasets),
