@@ -50,6 +50,26 @@ class UploadSettings(DomainModel):
     temporary_directory: Path | None = None
 
 
+class EdaSettings(DomainModel):
+    """Policy for exploratory profiling, association screening and chart data."""
+
+    significance_level: float = Field(gt=0, lt=1)
+    top_relationships: int = Field(ge=1)
+    max_pairs: int = Field(ge=1)
+    max_categories: int = Field(ge=2)
+    max_cached_datasets: int = Field(ge=1)
+    top_categories: int = Field(ge=1)
+    max_histogram_bins: int = Field(ge=1)
+    outlier_iqr_multiplier: float = Field(gt=0)
+    outlier_mad_threshold: float = Field(gt=0)
+    max_outlier_examples: int = Field(ge=0)
+    normality_alpha: float = Field(gt=0, lt=1)
+    mutual_information_neighbors: int = Field(ge=1)
+    max_scatter_points: int = Field(ge=2)
+    max_box_outliers: int = Field(ge=0)
+    random_seed: int = Field(ge=0)
+
+
 class Settings(BaseSettings):
     """Defaults < external TOML < dotenv < environment < constructor."""
 
@@ -67,6 +87,7 @@ class Settings(BaseSettings):
     persistence: PersistenceSettings
     data_intake: ProfilingOptions
     uploads: UploadSettings
+    eda: EdaSettings
 
     @classmethod
     def settings_customise_sources(

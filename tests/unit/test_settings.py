@@ -12,6 +12,7 @@ def test_defaults() -> None:
     assert settings.llm.provider == "disabled"
     assert settings.llm.model is None
     assert settings.uploads.max_dataset_bytes == 0
+    assert settings.eda.significance_level == 0.05
 
 
 def test_environment_and_constructor_precedence(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -36,3 +36,20 @@ text_name_tokens = ["description", "comment", "notes", "descripcion", "comentari
 max_dataset_bytes = 0
 max_dictionary_bytes = 1048576
 chunk_size_bytes = 65536
+
+[eda]
+significance_level = 0.05
+top_relationships = 10
+max_pairs = 1000
+max_categories = 50
+max_cached_datasets = 8
+top_categories = 10
+max_histogram_bins = 30
+outlier_iqr_multiplier = 1.5
+outlier_mad_threshold = 3.5
+max_outlier_examples = 20
+normality_alpha = 0.05
+mutual_information_neighbors = 3
+max_scatter_points = 2000
+max_box_outliers = 200
+random_seed = 0

@@ -20,3 +20,15 @@ class UploadValidationError(Exception):
 
 class UploadTooLargeError(UploadValidationError):
     """Configured upload size limit was exceeded."""
+
+
+class DatasetNotFoundError(Exception):
+    """No local dataset is registered under the requested identifier."""
+
+
+class ToolInputError(Exception):
+    """An analytics request references invalid columns or arguments."""
+
+
+class AnalysisNotApplicableError(Exception):
+    """A valid request cannot be computed on the available data."""
