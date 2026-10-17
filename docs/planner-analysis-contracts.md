@@ -281,3 +281,8 @@ completos por pareja. Se requieren dos grupos con dos observaciones cada uno; ve
 Pendientes: CSV con comillas mal escapadas se rechaza estrictamente; umbrales de
 Critic provisionales; proveedor LLM productivo, paralelismo y ciclo Critic → Planner
 aún no implementados.
+
+
+## Revisión con evidencia calculada
+
+Consulta [Critic e Insight con evidencia calculada](critic-evidence-pipeline.md) para el catálogo ampliado, planificación automática, clasificación indeterminada y condiciones de omisión.

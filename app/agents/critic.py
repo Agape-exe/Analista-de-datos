@@ -11,6 +11,7 @@ from app.analytics.statistics.robustness import (
     is_control_sensitive,
 )
 from app.application.dto.agent import AgentContext, AgentResult, AgentUpdate
+from app.application.services.critical_review import review_measured_results
 from app.domain.enums.statuses import AnalysisStatus
 from app.domain.models.analysis import AssociationResult
 from app.domain.models.evidence import Evidence, RelationshipAssessment
@@ -211,7 +212,7 @@ class CriticAgent(SkeletonAgent):
                 if not isinstance(outlier_method, str) or not outlier_method.strip():
                     continue
 
-                if type(removed_count) is not int or removed_count < 1:
+                if type(removed_count) is not int or removed_count < 0:
                     continue
 
                 try:
@@ -220,6 +221,9 @@ class CriticAgent(SkeletonAgent):
                         analysis.effect_size,
                     )
                 except ValueError:
+                    continue
+
+                if removed_count == 0 and impact > 1e-12:
                     continue
 
                 significant_impact = impact >= self.OUTLIER_IMPACT_THRESHOLD
@@ -504,12 +508,16 @@ class CriticAgent(SkeletonAgent):
 
             new_assessments.append(assessment)
 
+        review_measured_results(context.analysis_results, new_evidence, new_assessments)
+
         # 15. Omitir si no existe evidencia evaluable
         if not new_assessments:
             return AgentResult(
                 agent_name=self.name,
                 status=AnalysisStatus.SKIPPED,
-                warnings=["Critic: no hay resultados estadísticos válidos para evaluar."],
+                warnings=[
+                    "Critic: no hay resultados calculados compatibles con una evaluación trazable."
+                ],
             )
 
         # 16. Devolver evidencias y evaluaciones

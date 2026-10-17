@@ -43,7 +43,10 @@ def test_full_analysis_preserves_eda_and_durable_report(tmp_path: Path) -> None:
             for stage in ("DataUnderstanding", "Planner", "Analysis", "Critic", "Insight")
         }
         assert report["evidence"] and report["relationship_assessments"] and report["insights"]
-        assert report["metrics"]["tool_calls"] == 3
+        assert report["metrics"]["tool_calls"] == 4
+        assert any(
+            item["method"] == "correlation_without_outliers" for item in report["analysis_results"]
+        )
         assert report["metrics"]["tokens_used"] is None
         assert report["dataset_profile"]["dataset_id"] != dataset_id
         assert not list(uploads.iterdir())

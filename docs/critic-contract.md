@@ -131,3 +131,7 @@ equivalente.
 Para correlación parcial admite metadata.control_variable
 como texto cuando no se proporciona control_variables.
 Se conservan las validaciones de las variables de control.
+
+## Revisión con evidencia calculada
+
+Consulta [Critic e Insight con evidencia calculada](critic-evidence-pipeline.md) para el catálogo ampliado, planificación automática, clasificación indeterminada y condiciones de omisión.

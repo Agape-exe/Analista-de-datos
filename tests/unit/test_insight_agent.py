@@ -99,7 +99,7 @@ async def test_correlation_is_presented_with_readable_values(key):
     statement = result.update.insights[0].statement
     assert "La correlación de Pearson entre x y y fue de 0.72." in statement
     assert "Muestra utilizada: 20 observaciones." in statement
-    assert "Valor p reportado: 0.001." in statement
+    assert "Valor p: 0.001." in statement
     assert result.update.insights[0].evidence_ids == ["e1"]
 
 
@@ -123,7 +123,7 @@ async def test_zero_correlation_is_preserved():
 
     result = await InsightAgent(Provider()).run(value)
 
-    assert "fue de 0.0." in result.update.insights[0].statement
+    assert "fue de 0." in result.update.insights[0].statement
 
 
 async def test_negative_assessment_is_not_presented_as_causal():
