@@ -35,6 +35,7 @@ class _Candidate:
     methods: tuple[str, ...]
     statement: str
     control_variable: str | None = None
+    group_by: str | None = None
     priority: int = 0
     screening_rank: int | None = None
 
@@ -151,9 +152,21 @@ class DeterministicAnalysisPlanner:
             semantic = _effective_semantic_type(
                 profile, dictionary_types.get(profile.column_name), warnings
             )
+            if semantic == SemanticType.NUMERIC and profile.unique_count in (0, 1):
+                warnings.append(f"Planner omitted constant numeric column '{profile.column_name}'.")
+                continue
             observed = context.dataset_profile.row_count - (profile.missing_count or 0)
             if semantic in columns and observed >= minimum:
                 columns[semantic].append(profile.column_name)
+        profiles = {column.column_name: column for column in context.dataset_profile.columns}
+        columns[SemanticType.NUMERIC].sort(
+            key=lambda name: (
+                not (
+                    "float" in profiles[name].data_type.casefold()
+                    or profiles[name].data_type.casefold() in {"number", "double"}
+                )
+            )
+        )
         return columns, warnings
 
     def _candidates(
@@ -187,6 +200,10 @@ class DeterministicAnalysisPlanner:
             selected_control = control if control not in variables else None
             if selected_control is not None:
                 methods += ("partial_correlation",)
+            methods += ("correlation_without_outliers",)
+            group_by = categorical[0] if categorical else None
+            if group_by is not None:
+                methods += ("analyze_subgroups",)
             candidates.append(
                 _Candidate(
                     family="numeric",
@@ -196,9 +213,27 @@ class DeterministicAnalysisPlanner:
                         f"Evaluate whether there is an association between {first} and {second}."
                     ),
                     control_variable=selected_control,
+                    group_by=group_by,
                     priority=_question_priority(question, (*variables, selected_control)),
                 )
             )
+        for total in numeric:
+            if not re.search(r"(?<!\w)(?:total|sum)(?!\w)", total.casefold().replace("_", " ")):
+                continue
+            components = [name for name in numeric if name != total][:2]
+            if len(components) == 2:
+                variables = (*components, total)
+                candidates.append(
+                    _Candidate(
+                        family="identity",
+                        variables=variables,
+                        methods=("additive_identity",),
+                        statement=(
+                            f"Check whether {total} equals {components[0]} plus {components[1]}."
+                        ),
+                        priority=_question_priority(question, variables),
+                    )
+                )
         for first, second in combinations(categorical, 2):
             variables = (first, second)
             candidates.append(
@@ -238,12 +273,7 @@ class DeterministicAnalysisPlanner:
         unranked = len(screening)
         return sorted(
             candidates,
-            key=lambda candidate: (
-                -candidate.priority,
-                unranked if candidate.screening_rank is None else candidate.screening_rank,
-                candidate.family,
-                candidate.variables,
-            ),
+            key=lambda candidate: (-candidate.priority, candidate.family),
         )
 
     def _bounded_plan(
@@ -270,6 +300,8 @@ class DeterministicAnalysisPlanner:
             hypothesis_variables = list(candidate.variables)
             if candidate.control_variable is not None:
                 hypothesis_variables.append(candidate.control_variable)
+            if candidate.group_by is not None:
+                hypothesis_variables.append(candidate.group_by)
             hypotheses.append(
                 Hypothesis(
                     hypothesis_id=hypothesis_id,
@@ -277,16 +309,26 @@ class DeterministicAnalysisPlanner:
                     variables=hypothesis_variables,
                 )
             )
+            baseline_step_id: str | None = None
             for method in methods:
                 parameters = (
                     {"control_variable": candidate.control_variable}
                     if method == "partial_correlation" and candidate.control_variable is not None
                     else {}
                 )
+                if method == "analyze_subgroups":
+                    parameters = {"group_by": candidate.group_by}
+                dependencies = (
+                    [baseline_step_id]
+                    if baseline_step_id is not None
+                    and method in {"correlation_without_outliers", "analyze_subgroups"}
+                    else []
+                )
                 steps.append(
                     AnalysisStep(
                         step_id=f"step-{len(steps) + 1}-{method}",
                         hypothesis_id=hypothesis_id,
+                        depends_on=dependencies,
                         request=ToolRequest(
                             dataset_id=dataset_id,
                             method=method,
@@ -295,6 +337,8 @@ class DeterministicAnalysisPlanner:
                         ),
                     )
                 )
+                if method == "pearson":
+                    baseline_step_id = steps[-1].step_id
             used_families.add(candidate.family)
         return AnalysisPlan(hypotheses=hypotheses, steps=steps)
 

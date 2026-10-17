@@ -66,13 +66,16 @@ def _infer(
         )
         for value in values
     )
-    if tokens.intersection(options.identifier_name_tokens) and discrete:
+    contributor_id = re.fullmatch(
+        r"(?:n[º°o.]|n[uú]mero)\s+(?:de\s+)?contribuyente", name.strip(), re.IGNORECASE
+    )
+    if (tokens.intersection(options.identifier_name_tokens) or contributor_id) and discrete:
         warnings = (
             []
             if unique == len(values)
             else ["Identifier candidate is not unique; it may be a foreign key, not a primary key."]
         )
-        return SemanticType.IDENTIFIER, "Identifier name token and discrete values.", warnings
+        return SemanticType.IDENTIFIER, "Explicit identifier label and discrete values.", warnings
     if all(_is_uuid(value) for value in values):
         return SemanticType.IDENTIFIER, "Values have UUID structure.", []
     date_format = _date_format(values, options)

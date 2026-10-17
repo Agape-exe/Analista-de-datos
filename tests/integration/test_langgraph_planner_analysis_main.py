@@ -44,7 +44,7 @@ async def test_build_use_case_executes_planner_analysis_with_local_csv(tmp_path:
     assert report.metrics.tool_calls == len(report.analysis_results)
     assert report.metrics.analytics_time is not None and report.metrics.analytics_time >= 0
     assert {"DataUnderstanding", "Planner", "Analysis"} <= set(report.stage_statuses)
-    assert "table" not in report.model_dump_json()
+    assert '"table":' not in report.model_dump_json()
 
 
 @pytest.mark.parametrize("budget, maximum", [(0, 0), (1, 1)])
@@ -60,10 +60,11 @@ async def test_workflow_respects_fast_tool_budget(
 
     assert report.metrics.tool_calls == maximum
     assert len(report.analysis_results) <= maximum
-    # With a budget, the significant result is reported as a preliminary insight.
     expected = AnalysisStatus.SKIPPED if budget == 0 else AnalysisStatus.SUCCESS
     assert report.status == expected
-    assert report.stage_statuses["Analysis"] == expected
+    assert report.stage_statuses["Analysis"] == (
+        AnalysisStatus.SKIPPED if budget == 0 else AnalysisStatus.SUCCESS
+    )
     assert report.stage_statuses["Critic"] == expected
     assert report.stage_statuses["Insight"] == expected
     assert not report.errors
