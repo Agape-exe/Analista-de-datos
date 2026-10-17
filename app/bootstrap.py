@@ -13,6 +13,7 @@ from app.adapters.visualization.charts import (
     ScatterTool,
 )
 from app.agents.analyst import AnalysisAgent
+from app.agents.association import AssociationAgent
 from app.agents.critic import CriticAgent
 from app.agents.data_understanding import DataUnderstandingAgent
 from app.agents.insight import InsightAgent
@@ -43,10 +44,11 @@ from app.application.errors import LLMDisabledError
 from app.application.services.data_understanding import DataUnderstandingService
 from app.application.services.dataset_registry import DatasetRegistry
 from app.application.services.registering_understanding import RegisteringDataUnderstanding
+from app.application.services.stored_understanding import StoredDataUnderstanding
 from app.application.use_cases.analyze_dataset import AnalyzeDataset
 from app.application.use_cases.explore_dataset import ExploreDataset
 from app.application.use_cases.intake_uploaded_dataset import IntakeUploadedDataset
-from app.config.settings import Settings
+from app.config.settings import EdaSettings, Settings
 from app.orchestration.graph import LangGraphWorkflow
 from app.ports.agent import Agent
 from app.ports.data_understanding import DataUnderstanding
@@ -124,9 +126,15 @@ def build_agents(
     tools: ToolRegistry,
     understanding: DataUnderstanding,
     datasets: DatasetRegistry | None = None,
+    eda: EdaSettings | None = None,
 ) -> list[Agent]:
+    """Association screening needs local data, so it runs only with a dataset registry."""
+    screening: list[Agent] = (
+        [AssociationAgent(datasets, eda)] if datasets is not None and eda is not None else []
+    )
     return [
         DataUnderstandingAgent(understanding, datasets),
+        *screening,
         PlannerAgent(
             llm,
             summarize_anova=AnovaGroupProfiler(datasets).summarize
@@ -143,17 +151,22 @@ def build_exploration_use_case(settings: Settings, datasets: DatasetProvider) ->
     return ExploreDataset(datasets, build_tool_registry(settings, datasets))
 
 
-def build_use_case(settings: Settings) -> AnalyzeDataset:
+def build_use_case(settings: Settings, stored: DatasetProvider | None = None) -> AnalyzeDataset:
+    """With a provider, analyses can reuse datasets already understood by intake."""
     build_llm(settings)
 
     def build_run() -> tuple[list[Agent], Callable[[], None]]:
         datasets = DatasetRegistry()
+        understanding = build_data_understanding(settings)
+        if stored is not None:
+            understanding = StoredDataUnderstanding(understanding, stored)
         return (
             build_agents(
                 build_llm(settings),
                 build_statistical_tool_registry(datasets),
-                build_data_understanding(settings),
+                understanding,
                 datasets,
+                settings.eda,
             ),
             datasets.clear,
         )
@@ -171,6 +184,14 @@ def build_repository(settings: Settings):
     options = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite") else {}
     if url in {"sqlite://", "sqlite:///:memory:"}:
         options["poolclass"] = StaticPool
+    if url.startswith("postgresql+psycopg://"):
+        options.update(
+            connect_args={"sslmode": settings.persistence.effective_postgres_sslmode()},
+            pool_pre_ping=True,
+            pool_size=1,
+            max_overflow=0,
+            pool_recycle=300,
+        )
     repository = SqlAlchemyAnalysisRepository(create_engine(url, **options))
     repository.initialize()
     return repository

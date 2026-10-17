@@ -7,6 +7,7 @@ from app.application.dto.llm import LLMRequest, LLMResponse
 from app.config.settings import Settings
 from app.domain.enums.semantic_type import SemanticType
 from app.domain.enums.statuses import DictionarySource
+from app.domain.models.analysis import AssociationResult
 from app.domain.models.data_dictionary import DataDictionary, DataDictionaryEntry
 from app.domain.models.dataset import ColumnProfile, DatasetProfile
 

@@ -14,10 +14,10 @@ afterEach(() => vi.unstubAllGlobals());
 describe("intake workflow", () => {
   it("does not allow submitting without a file and explains unavailable features", () => {
     renderApp();
-    expect(screen.getByRole("button", { name: "Understand Dataset" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Patterns Soon" })).toBeDisabled();
-    expect(screen.getByRole("link", { name: "Associations" })).toHaveAttribute("href", "/associations");
-    expect(screen.getByLabelText("What would you like to investigate?", { exact: false })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Comprender dataset" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Patrones Pronto" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Asociaciones" })).toHaveAttribute("href", "/associations");
+    expect(screen.getByLabelText("¿Qué te gustaría investigar?", { exact: false })).toBeDisabled();
   });
 
   it("uploads a dataset with options and dictionary, renders metadata and downloads JSON", async () => {
@@ -31,12 +31,12 @@ describe("intake workflow", () => {
     renderApp();
     const file = new File(["id;amount;category\n001;10;A\n002;;A\n"], "sales.csv", { type: "text/csv" });
     const dictionary = new File(['{"entries":[]}'], "dictionary.json", { type: "application/json" });
-    await user.upload(screen.getByLabelText("Dataset file"), file);
-    await user.upload(screen.getByLabelText("Data dictionary file"), dictionary);
-    await user.selectOptions(screen.getByLabelText("CSV separator"), ";");
-    await user.selectOptions(screen.getByLabelText("File encoding"), "cp1252");
-    await user.click(screen.getByRole("button", { name: "Understand Dataset" }));
-    expect(await screen.findByRole("heading", { name: "Dataset Overview" })).toBeInTheDocument();
+    await user.upload(screen.getByLabelText("Archivo del dataset"), file);
+    await user.upload(screen.getByLabelText("Archivo del diccionario de datos"), dictionary);
+    await user.selectOptions(screen.getByLabelText("Separador CSV"), ";");
+    await user.selectOptions(screen.getByLabelText("Codificación del archivo"), "cp1252");
+    await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
+    expect(await screen.findByRole("heading", { name: "Resumen del dataset" })).toBeInTheDocument();
     const request = fetchMock.mock.calls[0][1] as RequestInit;
     const body = request.body as FormData;
     expect(body.get("file")).toBe(file);
@@ -46,10 +46,10 @@ describe("intake workflow", () => {
     expect(screen.getByText("50%")).toBeInTheDocument();
     expect(screen.getByText("Total amount")).toBeInTheDocument();
     expect(screen.getByText("80%")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Review notes" })).toBeInTheDocument();
-    expect(screen.getAllByText("Not evaluated")).toHaveLength(3);
-    expect(screen.getByRole("link", { name: "Explore Associations" })).toHaveAttribute("href", "/associations");
-    await user.click(screen.getByRole("button", { name: "Download dictionary" }));
+    expect(screen.getByRole("heading", { name: "Notas de revisión" })).toBeInTheDocument();
+    expect(screen.getAllByText(/^No evaluad[oa]$/)).toHaveLength(3);
+    expect(screen.getByRole("link", { name: "Explorar asociaciones" })).toHaveAttribute("href", "/associations");
+    await user.click(screen.getByRole("button", { name: "Descargar diccionario" }));
     expect(createUrl).toHaveBeenCalledOnce();
     expect(click).toHaveBeenCalledOnce();
     expect(revokeUrl).toHaveBeenCalledWith("blob:test");
@@ -65,15 +65,15 @@ describe("intake workflow", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify(intakeFixture), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     renderApp();
-    await user.upload(screen.getByLabelText("Dataset file"), new File(["a\n1\n"], "sales.csv"));
-    await user.selectOptions(screen.getByLabelText("CSV separator"), "|");
-    await user.click(screen.getByRole("button", { name: "Understand Dataset" }));
+    await user.upload(screen.getByLabelText("Archivo del dataset"), new File(["a\n1\n"], "sales.csv"));
+    await user.selectOptions(screen.getByLabelText("Separador CSV"), "|");
+    await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Invalid row at line 2");
     expect(screen.getByRole("alert")).toHaveTextContent("test-request");
-    expect(screen.getByLabelText("CSV separator")).toHaveValue("|");
-    expect(screen.getByRole("button", { name: "Understand Dataset" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Understand Dataset" }));
-    expect(await screen.findByRole("heading", { name: "Dataset Overview" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Separador CSV")).toHaveValue("|");
+    expect(screen.getByRole("button", { name: "Comprender dataset" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
+    expect(await screen.findByRole("heading", { name: "Resumen del dataset" })).toBeInTheDocument();
   });
 
   it("shows actual in-flight state and prevents duplicate submissions", async () => {
@@ -81,17 +81,17 @@ describe("intake workflow", () => {
     let resolve!: (value: Response) => void;
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((done) => { resolve = done; })));
     renderApp();
-    await user.upload(screen.getByLabelText("Dataset file"), new File(["a\n1\n"], "sales.csv"));
-    await user.click(screen.getByRole("button", { name: "Understand Dataset" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Understanding your dataset");
-    expect(screen.getByRole("button", { name: "Processing…" })).toBeDisabled();
+    await user.upload(screen.getByLabelText("Archivo del dataset"), new File(["a\n1\n"], "sales.csv"));
+    await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Comprendiendo tu dataset");
+    expect(screen.getByRole("button", { name: "Procesando…" })).toBeDisabled();
     resolve(new Response(JSON.stringify(intakeFixture), { status: 200 }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Dataset Overview" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Resumen del dataset" })).toBeInTheDocument());
   });
 
   it("shows an actionable empty state when opening Dataset without a result", () => {
     renderApp("/dataset");
-    expect(screen.getByRole("heading", { name: "No dataset yet" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Upload dataset" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("heading", { name: "Aún no hay dataset" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Subir dataset" })).toHaveAttribute("href", "/");
   });
 });

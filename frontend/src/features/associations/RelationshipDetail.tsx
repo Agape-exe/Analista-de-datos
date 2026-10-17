@@ -25,19 +25,19 @@ export function RelationshipDetail({ datasetId, x, y, ranked, numeric }: {
 
   const stats = ranked
     ? [
-      { label: "Method", value: methodLabel(ranked.method) },
-      { label: "Score", value: ranked.score.toFixed(2) },
-      { label: "Strength", value: formatValue(ranked.strength) },
-      { label: "Adjusted p-value", value: formatPValue(ranked.adjusted_p_value) },
-      { label: "Raw p-value", value: formatPValue(ranked.p_value) },
-      { label: "Complete rows", value: formatValue(ranked.sample_size, 0) },
+      { label: "Método", value: methodLabel(ranked.method) },
+      { label: "Puntaje", value: ranked.score.toFixed(2) },
+      { label: "Fuerza", value: formatValue(ranked.strength) },
+      { label: "Valor p ajustado", value: formatPValue(ranked.adjusted_p_value) },
+      { label: "Valor p sin ajustar", value: formatPValue(ranked.p_value) },
+      { label: "Filas completas", value: formatValue(ranked.sample_size, 0) },
     ]
     : test.data?.status === "SUCCESS"
       ? [
-        { label: "Method", value: methodLabel(test.data.method) },
-        { label: "Strength", value: formatValue(test.data.effect_size) },
-        { label: "p-value (uncorrected)", value: formatPValue(test.data.p_value) },
-        { label: "Complete rows", value: formatValue(test.data.sample_size, 0) },
+        { label: "Método", value: methodLabel(test.data.method) },
+        { label: "Fuerza", value: formatValue(test.data.effect_size) },
+        { label: "Valor p (sin corregir)", value: formatPValue(test.data.p_value) },
+        { label: "Filas completas", value: formatValue(test.data.sample_size, 0) },
       ]
       : [];
   const notes = [...(ranked?.warnings ?? []), ...(ranked ? [] : test.data?.warnings ?? []), ...(chart.data?.warnings ?? [])];
@@ -45,21 +45,21 @@ export function RelationshipDetail({ datasetId, x, y, ranked, numeric }: {
   return <div className="relationship-detail">
     <div className="detail-heading">
       <h3><span className="variable-name">{x}</span> <span className="muted">↔</span> <span className="variable-name">{y}</span></h3>
-      {ranked ? <Badge tone="info">Ranked candidate</Badge> : <Badge>Not in ranking · single test</Badge>}
+      {ranked ? <Badge tone="info">Candidata del ranking</Badge> : <Badge>Fuera del ranking · prueba individual</Badge>}
     </div>
     <div className="detail-layout">
       <div className="detail-chart">
         {kind === "categorical"
-          ? <div className="chart-placeholder"><Info size={16} />Both columns are categorical; a contingency view is not available yet. Use the statistics on the right.</div>
+          ? <div className="chart-placeholder"><Info size={16} />Ambas columnas son categóricas; la vista de contingencia aún no está disponible. Usa las estadísticas de la derecha.</div>
           : chart.error ? <div className="error-panel" role="alert"><TriangleAlert size={16} /><div>{chart.error.message}</div></div>
             : spec?.kind === "scatter" ? <ScatterPlot chart={spec as ScatterChart} stale={chart.stale} />
               : spec?.kind === "boxplot" ? <BoxPlot chart={spec as BoxPlotChart} stale={chart.stale} />
-                : chart.data ? <div className="chart-placeholder"><Info size={16} />{chart.data.warnings?.[0] ?? "Chart not available."}</div>
-                  : <div className="chart-placeholder"><LoaderCircle size={16} className="spin" />Computing chart…</div>}
+                : chart.data ? <div className="chart-placeholder"><Info size={16} />{chart.data.warnings?.[0] ?? "Gráfico no disponible."}</div>
+                  : <div className="chart-placeholder"><LoaderCircle size={16} className="spin" />Calculando gráfico…</div>}
       </div>
       <dl className="detail-stats">
         {stats.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
-        {ranked && ranked.supporting.length > 0 && <div className="supporting"><dt>Supporting evidence</dt>
+        {ranked && ranked.supporting.length > 0 && <div className="supporting"><dt>Evidencia de apoyo</dt>
           <dd>{ranked.supporting.map((item) => <span key={item.method}>
             {methodLabel(item.method)}: <strong>{formatValue(item.strength)}</strong>
             {item.p_value != null && <> · p {formatPValue(item.p_value)}</>}</span>)}</dd></div>}

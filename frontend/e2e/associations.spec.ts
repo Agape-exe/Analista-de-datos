@@ -7,19 +7,19 @@ test("associations computed by the real backend are ranked and drawn", async ({ 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
-  await page.getByLabel("Dataset file", { exact: true }).setInputFiles(
+  await page.getByLabel("Archivo del dataset", { exact: true }).setInputFiles(
     fileURLToPath(new URL("../../tests/fixtures/associations.csv", import.meta.url)),
   );
-  await page.getByRole("button", { name: "Understand Dataset", exact: true }).click();
-  await page.getByRole("link", { name: "Explore Associations" }).click();
-  await expect(page.getByRole("heading", { name: "Associations", exact: true })).toBeVisible();
-  const table = page.getByRole("region", { name: "Ranked relationships" });
+  await page.getByRole("button", { name: "Comprender dataset", exact: true }).click();
+  await page.getByRole("link", { name: "Explorar asociaciones" }).click();
+  await expect(page.getByRole("heading", { name: "Asociaciones", exact: true })).toBeVisible();
+  const table = page.getByRole("region", { name: "Relaciones ordenadas" });
   await expect(table.getByText("MONTO_DEVENGADO ↔ MONTO_GIRADO")).toBeVisible();
-  await expect(page.getByRole("figure", { name: /Scatter plot of MONTO_GIRADO against MONTO_DEVENGADO/ })).toBeVisible();
-  await expect(page.getByRole("figure", { name: /correlation matrix/ })).toBeVisible();
-  await expect(page.getByRole("figure", { name: /Histogram of/ })).toBeVisible();
-  await page.getByRole("button", { name: /View MONTO_DEVENGADO and SECTOR|View SECTOR and MONTO_DEVENGADO/ }).click();
-  await expect(page.getByRole("figure", { name: "Box plot of MONTO_DEVENGADO by SECTOR" })).toBeVisible();
+  await expect(page.getByRole("figure", { name: /Diagrama de dispersión de MONTO_GIRADO frente a MONTO_DEVENGADO/ })).toBeVisible();
+  await expect(page.getByRole("figure", { name: /Matriz de correlación/ })).toBeVisible();
+  await expect(page.getByRole("figure", { name: /Histograma de/ })).toBeVisible();
+  await page.getByRole("button", { name: /Ver MONTO_DEVENGADO y SECTOR|Ver SECTOR y MONTO_DEVENGADO/ }).click();
+  await expect(page.getByRole("figure", { name: "Diagrama de caja de MONTO_DEVENGADO por SECTOR" })).toBeVisible();
   for (const width of [1440, 1024, 480]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.evaluate(() => window.scrollTo(0, 0));

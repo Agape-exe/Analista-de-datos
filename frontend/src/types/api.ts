@@ -57,6 +57,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analysis/datasets/{dataset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analysis Stored
+         * @description Analyze a dataset already uploaded through intake, without re-reading or re-profiling.
+         */
+        post: operations["analysis_stored_analysis_datasets__dataset_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reports/{run_id}": {
         parameters: {
             query?: never;
@@ -177,7 +197,7 @@ export interface components {
         /** AnalysisInput */
         AnalysisInput: {
             /** Source */
-            source: components["schemas"]["CsvSourceSpec"] | components["schemas"]["TsvSourceSpec"] | components["schemas"]["TextSourceSpec"] | components["schemas"]["SqlSourceSpec"];
+            source: components["schemas"]["CsvSourceSpec"] | components["schemas"]["TsvSourceSpec"] | components["schemas"]["TextSourceSpec"] | components["schemas"]["SqlSourceSpec"] | components["schemas"]["StoredSourceSpec"];
             schema?: components["schemas"]["DatasetSchema"] | null;
             data_dictionary?: components["schemas"]["DataDictionary"] | null;
             /** User Question */
@@ -576,6 +596,24 @@ export interface components {
             /** Table */
             table: string;
         };
+        /** StoredAnalysisRequest */
+        StoredAnalysisRequest: {
+            /** User Question */
+            user_question?: string | null;
+        };
+        /**
+         * StoredSourceSpec
+         * @description A dataset already read and understood by intake, resolved from the dataset store.
+         */
+        StoredSourceSpec: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "stored";
+            /** Dataset Id */
+            dataset_id: string;
+        };
         /** TextSourceSpec */
         TextSourceSpec: {
             /**
@@ -727,6 +765,48 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AnalysisReport"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analysis_stored_analysis_datasets__dataset_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["StoredAnalysisRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisReport"];
+                };
+            };
+            /** @description Dataset no longer in memory */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Literal
+from urllib.parse import parse_qs, urlparse
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -39,6 +40,18 @@ class EvaluationSettings(DomainModel):
 
 class PersistenceSettings(DomainModel):
     database_url: str = Field(min_length=1)
+    postgres_sslmode: Literal["require", "verify-ca", "verify-full", "disable"] = "require"
+
+    def effective_postgres_sslmode(self) -> str:
+        """Resolve the configured mode without allowing the URL to silently override it."""
+        values = parse_qs(urlparse(self.database_url).query, keep_blank_values=True).get("sslmode")
+        if not values:
+            return self.postgres_sslmode
+        if len(values) != 1:
+            raise ValueError("persistence.database_url must not define sslmode more than once")
+        if values[0] != self.postgres_sslmode:
+            raise ValueError("persistence.database_url sslmode must match postgres_sslmode")
+        return values[0]
 
 
 class UploadSettings(DomainModel):
@@ -48,6 +61,20 @@ class UploadSettings(DomainModel):
     max_dictionary_bytes: int = Field(gt=0)
     chunk_size_bytes: int = Field(gt=0)
     temporary_directory: Path | None = None
+
+
+class DeploymentSettings(DomainModel):
+    """HTTP-facing safeguards; production is opt-in and validated explicitly."""
+
+    environment: Literal["development", "production"] = "development"
+    cors_allowed_origins: list[str] = Field(default_factory=list)
+    allow_local_analysis: bool = True
+    rate_limit_window_seconds: int = Field(default=60, gt=0)
+    max_upload_requests: int = Field(default=20, gt=0)
+    max_exploration_requests: int = Field(default=60, gt=0)
+    max_report_requests: int = Field(default=120, gt=0)
+    max_concurrent_operations: int = Field(default=2, gt=0)
+    max_tracked_clients: int = Field(default=1000, gt=0)
 
 
 class EdaSettings(DomainModel):
@@ -65,6 +92,7 @@ class EdaSettings(DomainModel):
     max_outlier_examples: int = Field(ge=0)
     normality_alpha: float = Field(gt=0, lt=1)
     mutual_information_neighbors: int = Field(ge=1)
+    mutual_information_max_rows: int = Field(ge=2)
     max_scatter_points: int = Field(ge=2)
     max_box_outliers: int = Field(ge=0)
     random_seed: int = Field(ge=0)
@@ -88,6 +116,44 @@ class Settings(BaseSettings):
     data_intake: ProfilingOptions
     uploads: UploadSettings
     eda: EdaSettings
+    deployment: DeploymentSettings = Field(default_factory=DeploymentSettings)
+
+    @model_validator(mode="after")
+    def validate_deployment_safety(self) -> "Settings":
+        deployment = self.deployment
+        invalid_origins = [
+            origin
+            for origin in deployment.cors_allowed_origins
+            if not _is_explicit_origin(origin, production=deployment.environment == "production")
+        ]
+        if invalid_origins:
+            raise ValueError(
+                "CORS origins must be explicit http(s) origins without wildcards or paths"
+            )
+        if deployment.environment != "production":
+            return self
+
+        problems: list[str] = []
+        if not deployment.cors_allowed_origins:
+            problems.append("deployment.cors_allowed_origins must not be empty")
+        if deployment.allow_local_analysis:
+            problems.append("deployment.allow_local_analysis must be false")
+        if not 0 < self.uploads.max_dataset_bytes <= 2_097_152:
+            problems.append("uploads.max_dataset_bytes must be between 1 and 2097152 in production")
+        if self.uploads.max_dictionary_bytes > 262_144:
+            problems.append("uploads.max_dictionary_bytes must not exceed 262144 in production")
+        if not self.persistence.database_url.startswith("postgresql+psycopg://"):
+            problems.append("persistence.database_url must use postgresql+psycopg:// in production")
+        try:
+            effective_sslmode = self.persistence.effective_postgres_sslmode()
+        except ValueError as error:
+            problems.append(str(error))
+        else:
+            if effective_sslmode not in {"require", "verify-ca", "verify-full"}:
+                problems.append("persistence effective sslmode must require TLS in production")
+        if problems:
+            raise ValueError("Unsafe production configuration: " + "; ".join(problems))
+        return self
 
     @classmethod
     def settings_customise_sources(
@@ -120,3 +186,14 @@ def load_settings(config_path: Path | None = None) -> Settings:
     if not config_path.is_file():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
     return ExternalSettings()
+
+
+def _is_explicit_origin(origin: str, *, production: bool) -> bool:
+    parsed = urlparse(origin)
+    if "*" in origin or parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+    if parsed.path not in {"", "/"} or parsed.params or parsed.query or parsed.fragment:
+        return False
+    if parsed.username or parsed.password:
+        return False
+    return not production or parsed.scheme == "https"

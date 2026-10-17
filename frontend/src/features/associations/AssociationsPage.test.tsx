@@ -24,9 +24,9 @@ function mockBackend(overrides: Record<string, () => Response> = {}) {
 async function openAssociations() {
   const user = userEvent.setup();
   render(<MemoryRouter><App /></MemoryRouter>);
-  await user.upload(screen.getByLabelText("Dataset file"), new File(["a\n1\n"], "sales.csv"));
-  await user.click(screen.getByRole("button", { name: "Understand Dataset" }));
-  await user.click(await screen.findByRole("link", { name: "Explore Associations" }));
+  await user.upload(screen.getByLabelText("Archivo del dataset"), new File(["a\n1\n"], "sales.csv"));
+  await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
+  await user.click(await screen.findByRole("link", { name: "Explorar asociaciones" }));
   return user;
 }
 
@@ -42,19 +42,19 @@ describe("associations page", () => {
   it("ranks candidates, draws the matrix and inspects a selected pair", async () => {
     const fetchMock = mockBackend();
     const user = await openAssociations();
-    expect(await screen.findByRole("heading", { name: "Associations" })).toBeInTheDocument();
-    const table = await screen.findByRole("region", { name: "Ranked relationships" });
-    expect(within(table).getByText("Pearson r")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Asociaciones" })).toBeInTheDocument();
+    const table = await screen.findByRole("region", { name: "Relaciones ordenadas" });
+    expect(within(table).getByText("r de Pearson")).toBeInTheDocument();
     expect(within(table).getByText("Kruskal-Wallis ε²")).toBeInTheDocument();
-    expect(screen.getByText("Significant candidates")).toBeInTheDocument();
-    expect(await screen.findByRole("figure", { name: /Scatter plot of price against amount/ })).toBeInTheDocument();
-    expect(await screen.findByRole("figure", { name: /correlation matrix of 2 numeric columns/ })).toBeInTheDocument();
-    expect(await screen.findByRole("figure", { name: /Histogram of amount/ })).toBeInTheDocument();
-    expect(screen.getByText("Spearman ρ:", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Candidatas significativas")).toBeInTheDocument();
+    expect(await screen.findByRole("figure", { name: /Diagrama de dispersión de price frente a amount/ })).toBeInTheDocument();
+    expect(await screen.findByRole("figure", { name: /de 2 columnas numéricas/ })).toBeInTheDocument();
+    expect(await screen.findByRole("figure", { name: /Histograma de amount/ })).toBeInTheDocument();
+    expect(screen.getByText("ρ de Spearman:", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("id_like")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "View amount and category" }));
-    expect(await screen.findByRole("figure", { name: "Box plot of amount by category" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ver amount y category" }));
+    expect(await screen.findByRole("figure", { name: "Diagrama de caja de amount por category" })).toBeInTheDocument();
     expect(screen.getByText("2 group(s) with fewer than 2 observations were excluded.")).toBeInTheDocument();
 
     const calls = requestedTools(fetchMock);
@@ -69,14 +69,14 @@ describe("associations page", () => {
       detail: { code: "DATASET_NOT_FOUND", message: "The dataset is no longer in memory." },
     }), { status: 404 }) });
     await openAssociations();
-    expect(await screen.findByRole("heading", { name: "Dataset no longer available" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Upload again" })).toHaveAttribute("href", "/");
+    expect(await screen.findByRole("heading", { name: "El dataset ya no está disponible" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Volver a subir" })).toHaveAttribute("href", "/");
   });
 
   it("asks for a dataset when nothing has been uploaded", async () => {
     const fetchMock = mockBackend();
     render(<MemoryRouter initialEntries={["/associations"]}><App /></MemoryRouter>);
-    expect(screen.getByRole("heading", { name: "No dataset yet" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Aún no hay dataset" })).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).not.toHaveBeenCalled());
   });
 });

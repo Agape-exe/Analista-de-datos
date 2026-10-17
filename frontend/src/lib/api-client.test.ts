@@ -10,11 +10,11 @@ afterEach(() => vi.unstubAllGlobals());
 describe("API client", () => {
   it("explains network failures", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
-    await expect(submitIntake(draft)).rejects.toThrow("Cannot reach the backend");
+    await expect(submitIntake(draft)).rejects.toThrow("No se puede conectar con el backend");
   });
   it("explains non-JSON responses", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("html", { status: 502 })));
-    await expect(submitIntake(draft)).rejects.toThrow("unreadable response");
+    await expect(submitIntake(draft)).rejects.toThrow("respuesta ilegible");
   });
   it("handles FastAPI 422 details", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: [{ msg: "Invalid delimiter" }] }), { status: 422 })));

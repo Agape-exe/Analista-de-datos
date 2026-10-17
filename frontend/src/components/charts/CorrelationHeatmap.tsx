@@ -19,11 +19,11 @@ export function CorrelationHeatmap({ chart, onSelect, stale }: {
   const width = left + n * CELL;
   const height = top + n * CELL;
   const labeled = n <= LABELED_LIMIT;
-  const method = chart.method === "spearman" ? "Spearman ρ" : "Pearson r";
+  const method = chart.method === "spearman" ? "ρ de Spearman" : "r de Pearson";
 
   return <div className="heatmap">
     <ChartFrame frame={frame} onLeave={hide} stale={stale}
-      label={`${method} correlation matrix of ${n} numeric columns`}>
+      label={`Matriz de correlación (${method}) de ${n} columnas numéricas`}>
       <svg viewBox={`0 0 ${width} ${height}`} style={{ maxWidth: width }} className="chart-svg">
         {chart.columns.map((name, index) => <g key={name}>
           <text x={left - 8} y={top + index * CELL + CELL / 2} className="axis-label" textAnchor="end"
@@ -37,15 +37,15 @@ export function CorrelationHeatmap({ chart, onSelect, stale }: {
           const y = chart.columns[i];
           const rows = [
             { label: method, value: formatValue(value) },
-            { label: "p-value", value: i === j ? "—" : formatPValue(chart.p_values[i][j]) },
-            { label: "pairs", value: formatValue(chart.sample_sizes[i][j], 0) },
+            { label: "valor p", value: i === j ? "—" : formatPValue(chart.p_values[i][j]) },
+            { label: "pares", value: formatValue(chart.sample_sizes[i][j], 0) },
           ];
           const interactive = i !== j && value != null && onSelect;
           return <g key={`${i}-${j}`}
             className={`heat-cell ${interactive ? "clickable" : ""}`}
             tabIndex={labeled && interactive ? 0 : undefined}
             role={interactive ? "button" : undefined}
-            aria-label={`${y} and ${x}: ${formatValue(value)}`}
+            aria-label={`${y} y ${x}: ${formatValue(value)}`}
             onPointerMove={(event) => fromPointer(event, `${y} × ${x}`, rows)}
             onFocus={(event) => fromFocus(event, `${y} × ${x}`, rows)}
             onClick={() => interactive && onSelect(y, x)}
@@ -67,7 +67,7 @@ export function CorrelationHeatmap({ chart, onSelect, stale }: {
       {tooltip}
     </ChartFrame>
     <div className="diverging-legend" aria-hidden="true">
-      <span>−1 · negative</span><span className="diverging-ramp" /><span>+1 · positive</span>
+      <span>−1 · negativa</span><span className="diverging-ramp" /><span>+1 · positiva</span>
     </div>
   </div>;
 }

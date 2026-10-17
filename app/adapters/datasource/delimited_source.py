@@ -13,6 +13,33 @@ from app.domain.models.dataset import ColumnSchema, DatasetSchema
 
 NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z")
 LEADING_ZERO = re.compile(r"[+-]?0\d")
+FRACTIONAL = re.compile(r"[.eE]")
+# Report-style numbers: "(0.17)" is -0.17 and "1,035.00" uses comma thousands. Grouped
+# values need a decimal part, since "1,035" alone may mean 1.035 in other locales.
+FORMATTED_NUMBER = re.compile(
+    r"(?P<open>\()?\s*(?P<number>\d{1,3}(?:,\d{3})+\.\d+|\d+(?:\.\d*)?|\.\d+)\s*"
+    r"(?(open)\))\Z"
+)
+
+
+def _formatted_to_plain(values: list[str | None]) -> list[str | None]:
+    """Rewrite report-style numbers only when every other observed value is already numeric."""
+    rewritten: list[str | None] = []
+    found = False
+    for value in values:
+        if value is None:
+            rewritten.append(None)
+            continue
+        if NUMBER.fullmatch(value.strip()):
+            rewritten.append(value)
+            continue
+        match = FORMATTED_NUMBER.fullmatch(value.strip())
+        if match is None:
+            return values
+        found = True
+        number = match.group("number").replace(",", "")
+        rewritten.append("-" + number if match.group("open") else number)
+    return rewritten if found else values
 
 
 @dataclass(frozen=True)
@@ -26,6 +53,13 @@ class PandasLocalTable:
 
 
 def _typed_column(values: list[str | None]) -> pd.Series:
+    plain = _formatted_to_plain(values)
+    if plain is not values:
+        numeric = _typed_column(plain)
+        # Fall back to the original labels unless the rewrite yields a numeric column.
+        return (
+            numeric if pd.api.types.is_numeric_dtype(numeric) else pd.Series(values, dtype="string")
+        )
     observed = [value.strip() for value in values if value is not None]
     column = pd.Series(values, dtype="string")
     if not observed:
@@ -33,8 +67,12 @@ def _typed_column(values: list[str | None]) -> pd.Series:
     if all(value.lower() in {"true", "false"} for value in observed):
         return column.str.strip().str.lower().map({"true": True, "false": False}).astype("boolean")
     if all(NUMBER.fullmatch(value) and not LEADING_ZERO.match(value) for value in observed):
+        stripped = column.str.strip()
+        if any(FRACTIONAL.search(value) for value in observed):
+            # pandas' fast parser can miss the last digit; Python float round-trips exactly.
+            stripped = stripped.astype(object).map(float, na_action="ignore")
         try:
-            numeric = pd.to_numeric(column.str.strip(), errors="raise").convert_dtypes()
+            numeric = pd.to_numeric(stripped, errors="raise").convert_dtypes()
             if all(
                 Decimal(original.strip()) == Decimal(str(converted))
                 for original, converted in zip(values, numeric.tolist(), strict=True)

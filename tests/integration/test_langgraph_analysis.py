@@ -42,7 +42,7 @@ async def test_langgraph_executes_planner_analysis_with_csv(tmp_path: Path) -> N
     assert report.stage_statuses["DataUnderstanding"] == AnalysisStatus.SUCCESS
     assert report.stage_statuses["Planner"] == AnalysisStatus.SUCCESS
     assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
-    assert len(report.stage_durations) == 5
+    assert len(report.stage_durations) == 6
 
 
 async def test_build_use_case_produces_real_analysis_results(tmp_path: Path) -> None:

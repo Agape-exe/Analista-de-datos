@@ -34,14 +34,14 @@ export function ScatterPlot({ chart, stale }: { chart: ScatterChart; stale?: boo
     if (best < 0 || distance > 40 ** 2) { setActive(null); hide(); return; }
     const [x, y] = chart.points[best];
     setActive(best);
-    fromPointer(event, "Observation", [{ label: chart.x, value: formatValue(x) }, { label: chart.y, value: formatValue(y) }]);
+    fromPointer(event, "Observación", [{ label: chart.x, value: formatValue(x) }, { label: chart.y, value: formatValue(y) }]);
   }
 
   const trend = chart.trend;
   const fit = trend && xDomain.map((x) => [sx(x), sy(trend.slope * x + trend.intercept)]);
   const point = active == null ? null : chart.points[active];
   return <ChartFrame frame={frame} onLeave={() => { setActive(null); hide(); }} stale={stale}
-    label={`Scatter plot of ${chart.y} against ${chart.x}, ${chart.points.length} points`}>
+    label={`Diagrama de dispersión de ${chart.y} frente a ${chart.x}, ${chart.points.length} puntos`}>
     <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg">
       <defs><clipPath id="scatter-plot-area"><rect x={M.left} y={M.top} width={W - M.left - M.right} height={H - M.top - M.bottom} /></clipPath></defs>
       {yTicks.map((tick) => <g key={`y${tick}`}>
@@ -54,7 +54,7 @@ export function ScatterPlot({ chart, stale }: { chart: ScatterChart; stale?: boo
         {chart.points.map(([x, y], index) => <circle key={index} cx={sx(x)} cy={sy(y)} r={4} className="scatter-dot" />)}
         {fit && <line x1={fit[0][0]} y1={fit[0][1]} x2={fit[1][0]} y2={fit[1][1]} className="trend-line" />}
       </g>
-      {fit && <text x={W - M.right} y={Math.max(M.top + 10, Math.min(fit[1][1] - 8, H - M.bottom - 8))} textAnchor="end" className="direct-label">Linear fit</text>}
+      {fit && <text x={W - M.right} y={Math.max(M.top + 10, Math.min(fit[1][1] - 8, H - M.bottom - 8))} textAnchor="end" className="direct-label">Ajuste lineal</text>}
       {point && <circle cx={sx(point[0])} cy={sy(point[1])} r={6} className="scatter-dot-active" />}
       <text x={(M.left + W - M.right) / 2} y={H - 8} textAnchor="middle" className="axis-title">{truncate(chart.x, 48)}</text>
       <text transform={`translate(14, ${(M.top + H - M.bottom) / 2}) rotate(-90)`} textAnchor="middle" className="axis-title">{truncate(chart.y, 40)}</text>

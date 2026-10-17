@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.domain.enums.semantic_type import SemanticType
+from app.domain.models.data_dictionary import DataDictionary
 from app.domain.models.dataset import DatasetProfile, DatasetSchema
 
 
@@ -23,10 +24,15 @@ class LoadedDataset:
 
 @dataclass(frozen=True)
 class RegisteredDataset:
-    """Local data plus its understood profile, resolved by tools through dataset_id."""
+    """Local data plus its understood profile, resolved by tools through dataset_id.
+
+    The dictionary and warnings let a later analysis reuse intake without re-profiling.
+    """
 
     dataset: LoadedDataset
     profile: DatasetProfile
+    data_dictionary: DataDictionary | None = None
+    warnings: tuple[str, ...] = ()
 
     @property
     def dataset_id(self) -> str:

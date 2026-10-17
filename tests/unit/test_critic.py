@@ -869,3 +869,63 @@ async def test_critic_combines_robustness_evidence():
     assert "sensibilidad elevada" in evaluacion.rationale
     assert "heterogeneidad elevada" in evaluacion.rationale
     assert "inestabilidad temporal elevada" in evaluacion.rationale
+
+
+def _critic_context(results: list[AnalysisResult]) -> AgentContext:
+    entrada = AnalysisInput(
+        source={"kind": "csv", "path": Path(__file__).parents[1] / "fixtures" / "sample.csv"}
+    )
+    return AgentContext(
+        run_id="test-critic-preliminar",
+        input=entrada,
+        configuration=resolve_configuration(Settings(_env_file=None), entrada.configuration),
+        analysis_results=results,
+    )
+
+
+async def test_critic_reports_significant_results_without_robustness_as_preliminary():
+    pearson = AnalysisResult(
+        method="pearson",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SUCCESS,
+        result={"correlation": 0.8},
+        effect_size=0.8,
+        p_value=0.001,
+        sample_size=100,
+    )
+    spearman = pearson.model_copy(update={"analysis_id": "spearman-1", "method": "spearman"})
+    chi = AnalysisResult(
+        method="chi_square",
+        variables=["region", "segmento"],
+        status=AnalysisStatus.SUCCESS,
+        result={"chi_square": 1.2},
+        p_value=0.4,
+        sample_size=100,
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson, spearman, chi]))
+
+    assert resultado.status == AnalysisStatus.SUCCESS
+    [evaluacion] = resultado.update.relationship_assessments
+    assert set(evaluacion.variables) == {"ingreso", "gasto"}
+    assert evaluacion.potentially_spurious is None
+    assert "preliminar" in evaluacion.rationale
+    assert {item.analysis_id for item in resultado.update.evidence} == {
+        pearson.analysis_id,
+        spearman.analysis_id,
+    }
+
+
+async def test_critic_skips_when_no_result_is_significant():
+    no_significativo = AnalysisResult(
+        method="pearson",
+        variables=["ingreso", "ruido"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=0.05,
+        p_value=0.6,
+        sample_size=100,
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([no_significativo]))
+
+    assert resultado.status == AnalysisStatus.SKIPPED

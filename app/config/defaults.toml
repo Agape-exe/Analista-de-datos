@@ -6,7 +6,7 @@ max_critic_cycles = 1
 minimum_sample_size = 20
 
 [performance]
-timeout_seconds = 15
+timeout_seconds = 120
 parallel_tools = true
 
 [llm]
@@ -19,9 +19,10 @@ repetitions = 3
 
 [persistence]
 database_url = "sqlite:///:memory:"
+postgres_sslmode = "require"
 
 [data_intake]
-identifier_name_tokens = ["id", "identifier", "uuid", "identificador"]
+identifier_name_tokens = ["id", "identifier", "uuid", "identificador", "nº"]
 identifier_unique_ratio = 0.95
 identifier_max_length = 128
 categorical_max_unique = 20
@@ -37,6 +38,17 @@ max_dataset_bytes = 0
 max_dictionary_bytes = 1048576
 chunk_size_bytes = 65536
 
+[deployment]
+environment = "development"
+cors_allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+allow_local_analysis = true
+rate_limit_window_seconds = 60
+max_upload_requests = 20
+max_exploration_requests = 60
+max_report_requests = 120
+max_concurrent_operations = 2
+max_tracked_clients = 1000
+
 [eda]
 significance_level = 0.05
 top_relationships = 10
@@ -50,6 +62,8 @@ outlier_mad_threshold = 3.5
 max_outlier_examples = 20
 normality_alpha = 0.05
 mutual_information_neighbors = 3
+# kNN mutual information samples complete pairs beyond this many rows.
+mutual_information_max_rows = 10000
 max_scatter_points = 2000
 max_box_outliers = 200
 random_seed = 0

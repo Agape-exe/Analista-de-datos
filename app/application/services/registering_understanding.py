@@ -14,5 +14,9 @@ class RegisteringDataUnderstanding:
 
     async def understand(self, analysis_input: AnalysisInput) -> DataUnderstandingResult:
         result = await self.inner.understand(analysis_input)
-        await self.store.register(RegisteredDataset(result.dataset, result.profile))
+        await self.store.register(
+            RegisteredDataset(
+                result.dataset, result.profile, result.data_dictionary, tuple(result.warnings)
+            )
+        )
         return result

@@ -3,16 +3,28 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Request, Response, UploadFile
 
 from app.adapters.reporting.markdown import MarkdownReportRenderer
-from app.application.dto.analysis_input import AnalysisInput
+from app.api.protection import enforce_request_limit, reserve_operation_capacity
+from app.application.dto.analysis_input import AnalysisInput, StoredSourceSpec
 from app.application.dto.intake import IntakeOptions
-from app.application.errors import DataSourceError, UploadTooLargeError, UploadValidationError
+from app.application.errors import (
+    DatasetNotFoundError,
+    DataSourceError,
+    UploadTooLargeError,
+    UploadValidationError,
+)
+from app.domain.models.base import DomainModel
 from app.domain.models.metrics import ExperimentMetrics
 from app.domain.models.report import AnalysisReport
 
 router = APIRouter()
+local_router = APIRouter()
 
 
-@router.post("/analysis", response_model=AnalysisReport)
+class StoredAnalysisRequest(DomainModel):
+    user_question: str | None = None
+
+
+@local_router.post("/analysis", response_model=AnalysisReport)
 async def analysis(analysis_input: AnalysisInput, request: Request) -> AnalysisReport:
     """Local development contract. Pending stages remain explicitly SKIPPED."""
     return await request.app.state.analysis_use_case.execute(analysis_input)
@@ -28,12 +40,14 @@ async def analysis_upload(
     user_question: Annotated[str | None, Form()] = None,
 ) -> AnalysisReport:
     try:
-        return await request.app.state.upload_analysis.execute(
-            file,
-            IntakeOptions(delimiter=delimiter, encoding=encoding),
-            data_dictionary,
-            user_question,
-        )
+        await enforce_request_limit(request, "upload")
+        async with reserve_operation_capacity(request):
+            return await request.app.state.upload_analysis.execute(
+                file,
+                IntakeOptions(delimiter=delimiter, encoding=encoding),
+                data_dictionary,
+                user_question,
+            )
     except UploadTooLargeError as error:
         raise HTTPException(
             413, detail={"code": "UPLOAD_TOO_LARGE", "message": str(error)}
@@ -48,7 +62,37 @@ async def analysis_upload(
             await data_dictionary.close()
 
 
+@router.post(
+    "/analysis/datasets/{dataset_id}",
+    response_model=AnalysisReport,
+    responses={404: {"description": "Dataset no longer in memory"}},
+)
+async def analysis_stored(
+    dataset_id: str, request: Request, body: StoredAnalysisRequest | None = None
+) -> AnalysisReport:
+    """Analyze a dataset already uploaded through intake, without re-reading or re-profiling."""
+    await enforce_request_limit(request, "upload")
+    try:
+        await request.app.state.datasets.get(dataset_id)
+    except DatasetNotFoundError as error:
+        raise HTTPException(
+            404,
+            detail={
+                "code": "DATASET_NOT_FOUND",
+                "message": "The dataset is no longer in memory. Upload it again to analyze it.",
+            },
+        ) from error
+    question = body.user_question.strip() if body and body.user_question else None
+    async with reserve_operation_capacity(request):
+        return await request.app.state.analysis_use_case.execute(
+            AnalysisInput(
+                source=StoredSourceSpec(dataset_id=dataset_id), user_question=question or None
+            )
+        )
+
+
 async def get_report(run_id: str, request: Request) -> AnalysisReport:
+    await enforce_request_limit(request, "report")
     report = await request.app.state.report_repository.get(run_id)
     if report is None:
         raise HTTPException(404, detail={"code": "REPORT_NOT_FOUND", "message": "Unknown run ID"})
