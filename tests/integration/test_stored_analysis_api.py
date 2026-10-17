@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "associations.csv"
@@ -15,7 +16,8 @@ def upload(client: TestClient, dictionary: dict | None = None) -> dict:
     return response.json()
 
 
-def test_analysis_reuses_intake_dataset(client: TestClient) -> None:
+@pytest.mark.parametrize("body", [{}, {"user_question": None}, {"user_question": " "}])
+def test_analysis_reuses_intake_dataset(client: TestClient, body: dict) -> None:
     dictionary = {"entries": [{"column_name": "REGION", "source": "official", "unit": "zona"}]}
     intake = upload(client, dictionary)
     dataset_id = intake["profile"]["dataset_id"]
@@ -35,6 +37,7 @@ def test_analysis_reuses_intake_dataset(client: TestClient) -> None:
     assert client.get(f"/reports/{report['run_id']}").status_code == 200
     # The intake dataset stays available for further analyses and exploration.
     assert client.post(f"/analysis/datasets/{dataset_id}").status_code == 200
+    assert client.post(f"/analysis/datasets/{dataset_id}", json=body).status_code == 200
     ranking = client.post(f"/datasets/{dataset_id}/tools/relationship_ranking")
     assert ranking.status_code == 200
 
