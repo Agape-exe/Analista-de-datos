@@ -5,6 +5,7 @@ from time import perf_counter
 
 from scipy.stats import chi2_contingency, f_oneway
 
+from app.application.dto.planning import AnovaGroupSummaries, AnovaGroupSummary
 from app.application.errors import DatasetRegistryError
 from app.application.services.dataset_registry import DatasetRegistry
 from app.domain.enums.statuses import AnalysisStatus
@@ -217,14 +218,39 @@ class OneWayAnovaTool(_MixedStatisticsTool):
 
     def _groups(self, request: ToolRequest) -> dict[str | int, list[float]]:
         categories, outcomes = self._columns(request)
-        groups: dict[str | int, list[float]] = defaultdict(list)
-        for category, outcome in zip(categories, outcomes, strict=True):
-            if _is_missing(category) or _is_missing(outcome):
-                continue
-            groups[_categorical(category, request.variables[0])].append(
-                _numeric(outcome, request.variables[1])
+        return _anova_groups(categories, outcomes, request.variables)
+
+
+def _anova_groups(
+    categories: list[object], outcomes: list[object], variables: list[str]
+) -> dict[str | int, list[float]]:
+    groups: dict[str | int, list[float]] = defaultdict(list)
+    for category, outcome in zip(categories, outcomes, strict=True):
+        if _is_missing(category) or _is_missing(outcome):
+            continue
+        groups[_categorical(category, variables[0])].append(_numeric(outcome, variables[1]))
+    return dict(groups)
+
+
+class AnovaGroupProfiler(_MixedStatisticsTool):
+    """Summarize bounded candidate pairs locally without executing an analysis tool."""
+
+    def summarize(self, dataset_id: str, pairs: list[tuple[str, str]]) -> AnovaGroupSummaries:
+        summaries: AnovaGroupSummaries = {}
+        for category, outcome in pairs:
+            request = ToolRequest(
+                dataset_id=dataset_id, method="anova_one_way", variables=[category, outcome]
             )
-        return dict(groups)
+            try:
+                groups = _anova_groups(*self._columns(request), request.variables)
+            except MixedStatisticsInputError:
+                # Preserve data/type errors for the tool's normal validation boundary.
+                continue
+            summaries[(category, outcome)] = AnovaGroupSummary(
+                group_count=len(groups),
+                minimum_group_size=min(map(len, groups.values()), default=0),
+            )
+        return summaries
 
 
 class Contingency:

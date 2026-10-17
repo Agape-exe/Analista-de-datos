@@ -38,6 +38,7 @@ from app.analytics.profiling.tools import (
     OutliersTool,
 )
 from app.analytics.registry import ToolRegistry
+from app.analytics.statistics.mixed import AnovaGroupProfiler
 from app.application.errors import LLMDisabledError
 from app.application.services.data_understanding import DataUnderstandingService
 from app.application.services.dataset_registry import DatasetRegistry
@@ -126,7 +127,12 @@ def build_agents(
 ) -> list[Agent]:
     return [
         DataUnderstandingAgent(understanding, datasets),
-        PlannerAgent(llm),
+        PlannerAgent(
+            llm,
+            summarize_anova=AnovaGroupProfiler(datasets).summarize
+            if datasets is not None
+            else None,
+        ),
         AnalysisAgent(llm, tools),
         CriticAgent(llm),
         InsightAgent(llm),
