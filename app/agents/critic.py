@@ -12,6 +12,7 @@ from app.analytics.statistics.robustness import (
 )
 from app.application.dto.agent import AgentContext, AgentResult, AgentUpdate
 from app.domain.enums.statuses import AnalysisStatus
+from app.domain.models.analysis import AssociationResult
 from app.domain.models.evidence import Evidence, RelationshipAssessment
 
 
@@ -29,9 +30,34 @@ class CriticAgent(SkeletonAgent):
     async def run(self, context: AgentContext) -> AgentResult:
         new_evidence = []
         new_assessments = []
+        associations = list(context.associations)
+
+        for analysis in context.analysis_results:
+            if analysis.status != AnalysisStatus.SUCCESS:
+                continue
+            if analysis.method not in ("pearson", "spearman"):
+                continue
+            if len(analysis.variables) != 2 or analysis.effect_size is None:
+                continue
+
+            already_present = any(
+                item.method == analysis.method and set(item.variables) == set(analysis.variables)
+                for item in associations
+            )
+            if already_present:
+                continue
+
+            associations.append(
+                AssociationResult(
+                    method=analysis.method,
+                    variables=list(analysis.variables),
+                    strength=analysis.effect_size,
+                    p_value=analysis.p_value,
+                )
+            )
 
         # 1. Revisar las correlaciones originales
-        for association in context.associations:
+        for association in associations:
             if association.method not in ("pearson", "pearson_correlation"):
                 continue
 
@@ -49,7 +75,7 @@ class CriticAgent(SkeletonAgent):
             # 2. Buscar Spearman para las mismas variables
             spearman_note = ""
 
-            for other in context.associations:
+            for other in associations:
                 if other.method not in ("spearman", "spearman_correlation"):
                     continue
 
@@ -92,6 +118,12 @@ class CriticAgent(SkeletonAgent):
 
                 # Verificar las variables de control
                 control_variables = analysis.metadata.get("control_variables")
+
+                if control_variables is None:
+                    control_variable = analysis.metadata.get("control_variable")
+
+                    if isinstance(control_variable, str):
+                        control_variables = [control_variable]
 
                 if not isinstance(control_variables, list) or not control_variables:
                     continue

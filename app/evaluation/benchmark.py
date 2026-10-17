@@ -1,13 +1,14 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from pydantic import Field
+from pydantic import Field, JsonValue
 
 from app.application.dto.analysis_input import AnalysisInput
 from app.domain.models.analysis import Hypothesis
 from app.domain.models.base import DomainModel
 from app.domain.models.metrics import ExperimentMetrics
 from app.domain.models.report import AnalysisReport
+from app.evaluation.classification import RelationshipLabel
 
 
 class GroundTruth(DomainModel):
@@ -15,6 +16,7 @@ class GroundTruth(DomainModel):
     expected_patterns: list[str] = Field(default_factory=list)
     spurious_relationships: list[list[str]] = Field(default_factory=list)
     notes: str | None = None
+    relationship_labels: list[RelationshipLabel] = Field(default_factory=list)
 
 
 class BenchmarkDataset(DomainModel):
@@ -28,6 +30,6 @@ class ExperimentRun(DomainModel):
     experiment_id: str = Field(default_factory=lambda: str(uuid4()))
     benchmark_id: str
     started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    configuration: dict[str, str] = Field(default_factory=dict)
+    configuration: dict[str, JsonValue] = Field(default_factory=dict)
     report: AnalysisReport | None = None
     metrics: ExperimentMetrics = Field(default_factory=ExperimentMetrics)

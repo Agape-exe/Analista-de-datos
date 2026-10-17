@@ -120,3 +120,14 @@ Validación global:
 uv run pytest -q
 uv run ruff check .
 uv run ruff format --check .
+
+## Compatibilidad de integración
+
+Critic también utiliza resultados exitosos de Pearson y
+Spearman recibidos en analysis_results, tomando el
+coeficiente de effect_size cuando no existe una asociación
+equivalente.
+
+Para correlación parcial admite metadata.control_variable
+como texto cuando no se proporciona control_variables.
+Se conservan las validaciones de las variables de control.

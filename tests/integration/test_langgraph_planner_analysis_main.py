@@ -34,7 +34,11 @@ async def test_build_use_case_executes_planner_analysis_with_local_csv(tmp_path:
 
     report = await build_use_case(Settings(_env_file=None)).execute(value(path))
 
-    assert report.status == AnalysisStatus.SUCCESS
+    assert report.status == AnalysisStatus.SKIPPED
+    assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
+    assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
+    assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+    assert not report.errors
     assert report.analysis_results
     assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
     assert report.metrics.tool_calls == len(report.analysis_results)
@@ -56,7 +60,13 @@ async def test_workflow_respects_fast_tool_budget(
 
     assert report.metrics.tool_calls == maximum
     assert len(report.analysis_results) <= maximum
-    assert report.status == (AnalysisStatus.SKIPPED if budget == 0 else AnalysisStatus.SUCCESS)
+    assert report.status == AnalysisStatus.SKIPPED
+    assert report.stage_statuses["Analysis"] == (
+        AnalysisStatus.SKIPPED if budget == 0 else AnalysisStatus.SUCCESS
+    )
+    assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
+    assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+    assert not report.errors
 
 
 async def test_workflow_isolates_concurrent_runs(tmp_path: Path) -> None:
@@ -68,7 +78,12 @@ async def test_workflow_isolates_concurrent_runs(tmp_path: Path) -> None:
         use_case.execute(value(path)), use_case.execute(value(path))
     )
 
-    assert first.status == second.status == AnalysisStatus.SUCCESS
+    assert first.status == second.status == AnalysisStatus.SKIPPED
+    for report in (first, second):
+        assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
+        assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
+        assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+        assert not report.errors
     assert first.run_id != second.run_id
     assert first.dataset_profile.dataset_id != second.dataset_profile.dataset_id
     assert [result.method for result in first.analysis_results] == [
