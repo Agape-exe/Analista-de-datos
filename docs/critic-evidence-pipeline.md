@@ -21,3 +21,7 @@ Prueba local con el CSV Alcabala de 36 645 filas: cinco etapas SUCCESS, cinco ev
 Se comprobó integridad del archivo original, referencias, recuperación del reporte tras reinicio y coexistencia con EDA. No se incluyen datos privados ni reportes locales en el repositorio.
 
 Regresión: 304 pruebas backend, 16 frontend y cinco E2E con Edge. Ruff, ESLint y compilación frontend satisfactorios.
+
+## Presentación de insights
+
+Los nuevos reportes resumen los subgrupos con rango de correlaciones y tamaños de muestra, sin insertar su JSON completo. Las cifras se muestran con tres dígitos significativos y p < 0.001 cuando corresponde; los resultados originales conservan toda su precisión. La consistencia aritmética se presenta por separado de la clasificación de espuriedad. Las advertencias conocidas se traducen y las de causalidad se unifican. Referencias, limitaciones y cálculos completos pueden desplegarse en la interfaz. Los reportes históricos conservan su texto; generar uno nuevo aplica esta presentación. Validación actual: 307 pruebas backend, 16 frontend y cinco E2E.

@@ -79,8 +79,8 @@ export function ReportPage() {
       </Card>
       <Card className="quality-card"><h2>Insights</h2>
         {report.insights?.length ? report.insights.map((insight) => <article key={insight.insight_id}>
-          <p>{insight.statement}</p><p>Evidencias: {insight.evidence_ids?.join(", ")}</p>
-          <ul>{insight.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul>
+          <p>{insight.statement}</p><details><summary>Ver referencias y limitaciones</summary><p>Evidencias: {insight.evidence_ids?.join(", ")}</p>
+          <ul>{insight.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul></details>
         </article>) : <p>No hay insights respaldados por evidencia disponibles.</p>}
       </Card>
       <Card className="quality-card"><h2>Etapas y tiempos</h2><table><thead><tr><th>Etapa</th><th>Estado</th><th>Segundos</th></tr></thead>
@@ -93,7 +93,7 @@ export function ReportPage() {
       </tbody></table></Card>
       <Card className="quality-card"><h2>Resultados y evidencia</h2>
         {(report.analysis_results || []).map((value) => <article key={value.analysis_id}>
-          <h3>{value.method} · {value.status}</h3><p>{value.variables?.join(" / ")}</p><pre>{JSON.stringify(value.result, null, 2)}</pre>
+          <h3>{value.method} · {value.status}</h3><p>{value.variables?.join(" / ")}</p><details><summary>Ver cálculo completo</summary><pre>{JSON.stringify(value.result, null, 2)}</pre></details>
         </article>)}
         {(report.evidence || []).map((value) => <p key={value.evidence_id}>{value.evidence_id} → {value.analysis_id}: {value.description}</p>)}
       </Card>
