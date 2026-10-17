@@ -40,7 +40,14 @@ def test_full_analysis_preserves_eda_and_durable_report(tmp_path: Path) -> None:
         assert report["status"] == "SUCCESS"
         assert report["stage_statuses"] == {
             stage: "SUCCESS"
-            for stage in ("DataUnderstanding", "Planner", "Analysis", "Critic", "Insight")
+            for stage in (
+                "DataUnderstanding",
+                "Association",
+                "Planner",
+                "Analysis",
+                "Critic",
+                "Insight",
+            )
         }
         assert report["evidence"] and report["relationship_assessments"] and report["insights"]
         assert report["metrics"]["tool_calls"] == 3

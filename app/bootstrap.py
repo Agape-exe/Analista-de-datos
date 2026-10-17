@@ -13,6 +13,7 @@ from app.adapters.visualization.charts import (
     ScatterTool,
 )
 from app.agents.analyst import AnalysisAgent
+from app.agents.association import AssociationAgent
 from app.agents.critic import CriticAgent
 from app.agents.data_understanding import DataUnderstandingAgent
 from app.agents.insight import InsightAgent
@@ -46,7 +47,7 @@ from app.application.services.registering_understanding import RegisteringDataUn
 from app.application.use_cases.analyze_dataset import AnalyzeDataset
 from app.application.use_cases.explore_dataset import ExploreDataset
 from app.application.use_cases.intake_uploaded_dataset import IntakeUploadedDataset
-from app.config.settings import Settings
+from app.config.settings import EdaSettings, Settings
 from app.orchestration.graph import LangGraphWorkflow
 from app.ports.agent import Agent
 from app.ports.data_understanding import DataUnderstanding
@@ -124,9 +125,15 @@ def build_agents(
     tools: ToolRegistry,
     understanding: DataUnderstanding,
     datasets: DatasetRegistry | None = None,
+    eda: EdaSettings | None = None,
 ) -> list[Agent]:
+    """Association screening needs local data, so it runs only with a dataset registry."""
+    screening: list[Agent] = (
+        [AssociationAgent(datasets, eda)] if datasets is not None and eda is not None else []
+    )
     return [
         DataUnderstandingAgent(understanding, datasets),
+        *screening,
         PlannerAgent(
             llm,
             summarize_anova=AnovaGroupProfiler(datasets).summarize
@@ -154,6 +161,7 @@ def build_use_case(settings: Settings) -> AnalyzeDataset:
                 build_statistical_tool_registry(datasets),
                 build_data_understanding(settings),
                 datasets,
+                settings.eda,
             ),
             datasets.clear,
         )

@@ -1,11 +1,17 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import combinations
 
 from app.application.dto.agent import AgentContext
 from app.application.dto.planning import AnovaGroupSummaries, AnovaGroupSummary
 from app.domain.enums.semantic_type import SemanticType
-from app.domain.models.analysis import AnalysisPlan, AnalysisStep, Hypothesis, ToolRequest
+from app.domain.models.analysis import (
+    AnalysisPlan,
+    AnalysisStep,
+    AssociationResult,
+    Hypothesis,
+    ToolRequest,
+)
 from app.domain.models.dataset import ColumnProfile
 
 FAST_COLUMN_POOL_SIZE = 4
@@ -30,6 +36,7 @@ class _Candidate:
     statement: str
     control_variable: str | None = None
     priority: int = 0
+    screening_rank: int | None = None
 
 
 class DeterministicAnalysisPlanner:
@@ -64,6 +71,7 @@ class DeterministicAnalysisPlanner:
             context.input.user_question,
             configuration.mode,
             configuration.max_hypotheses,
+            _screening_ranks(context.associations),
         )
         supported: list[_Candidate] = []
         profiles = {column.column_name: column for column in profile.columns}
@@ -111,6 +119,7 @@ class DeterministicAnalysisPlanner:
             context.input.user_question,
             context.configuration.analysis.mode,
             context.configuration.analysis.max_hypotheses,
+            _screening_ranks(context.associations),
         ):
             if candidate.family != "anova":
                 continue
@@ -153,11 +162,22 @@ class DeterministicAnalysisPlanner:
         question: str | None,
         mode: str,
         max_hypotheses: int,
+        screening: dict[frozenset[str], int] | None = None,
     ) -> list[_Candidate]:
+        screening = screening or {}
+        screened_columns = list(
+            dict.fromkeys(
+                column
+                for pair in sorted(screening, key=screening.__getitem__)
+                for column in sorted(pair)
+            )
+        )
         pool_size = _column_pool_size(mode, max_hypotheses)
-        numeric = _prioritized_column_pool(columns[SemanticType.NUMERIC], question, pool_size)
+        numeric = _prioritized_column_pool(
+            columns[SemanticType.NUMERIC], question, pool_size, screened_columns
+        )
         categorical = _prioritized_column_pool(
-            columns[SemanticType.CATEGORICAL], question, pool_size
+            columns[SemanticType.CATEGORICAL], question, pool_size, screened_columns
         )
         candidates: list[_Candidate] = []
         control = _explicit_control(question, numeric)
@@ -204,9 +224,26 @@ class DeterministicAnalysisPlanner:
                         priority=_question_priority(question, variables),
                     )
                 )
+        candidates = [
+            replace(candidate, screening_rank=screening.get(frozenset(candidate.variables)))
+            for candidate in candidates
+        ]
+        if screening:
+            # Screening found significant pairs: plan those plus anything the question names.
+            candidates = [
+                candidate
+                for candidate in candidates
+                if candidate.screening_rank is not None or candidate.priority > 0
+            ] or candidates
+        unranked = len(screening)
         return sorted(
             candidates,
-            key=lambda candidate: (-candidate.priority, candidate.family, candidate.variables),
+            key=lambda candidate: (
+                -candidate.priority,
+                unranked if candidate.screening_rank is None else candidate.screening_rank,
+                candidate.family,
+                candidate.variables,
+            ),
         )
 
     def _bounded_plan(
@@ -320,11 +357,26 @@ def _column_pool_size(mode: str, max_hypotheses: int) -> int:
     return min(MAX_COLUMN_POOL_SIZE, max(FAST_COLUMN_POOL_SIZE, max_hypotheses + 1))
 
 
-def _prioritized_column_pool(columns: list[str], question: str | None, pool_size: int) -> list[str]:
-    """Keep a bounded deterministic pool, with exact question mentions first."""
+def _prioritized_column_pool(
+    columns: list[str],
+    question: str | None,
+    pool_size: int,
+    screened: list[str] | None = None,
+) -> list[str]:
+    """Keep a bounded deterministic pool: question mentions, then screened columns by rank."""
     mentioned = [column for column in columns if question and _mentioned(question, column)]
-    unmentioned = [column for column in columns if column not in mentioned]
-    return (mentioned + unmentioned)[:pool_size]
+    ranked = [column for column in screened or [] if column in columns and column not in mentioned]
+    rest = [column for column in columns if column not in mentioned and column not in ranked]
+    return (mentioned + ranked + rest)[:pool_size]
+
+
+def _screening_ranks(associations: list[AssociationResult]) -> dict[frozenset[str], int]:
+    """Rank column pairs by first appearance; screening lists the strongest pairs first."""
+    ranks: dict[frozenset[str], int] = {}
+    for association in associations:
+        if len(association.variables) == 2:
+            ranks.setdefault(frozenset(association.variables), len(ranks))
+    return ranks
 
 
 def _explicit_control(question: str | None, numeric_columns: list[str]) -> str | None:

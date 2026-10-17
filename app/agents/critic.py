@@ -24,6 +24,12 @@ class CriticAgent(SkeletonAgent):
     SUBGROUP_HETEROGENEITY_THRESHOLD = 0.50
     TEMPORAL_VARIATION_THRESHOLD = 0.50
 
+    # Resultados que se reportan como preliminares si no hay pruebas de robustez
+    PRELIMINARY_ALPHA = 0.05
+    PRELIMINARY_METHODS = frozenset(
+        {"pearson", "spearman", "chi_square", "cramers_v", "anova_one_way"}
+    )
+
     # PASO 70: Evitar alertas por cambios de signo cercanos a cero
     MIN_SIGN_CHANGE_MAGNITUDE = 0.30
 
@@ -504,7 +510,58 @@ class CriticAgent(SkeletonAgent):
 
             new_assessments.append(assessment)
 
-        # 15. Omitir si no existe evidencia evaluable
+        # 15. Hallazgos preliminares: asociaciones significativas sin pruebas de robustez
+        assessed = {frozenset(item.variables) for item in new_assessments}
+        preliminary: dict[frozenset[str], list[Evidence]] = {}
+        for analysis in context.analysis_results:
+            pair = frozenset(analysis.variables)
+            if (
+                analysis.status != AnalysisStatus.SUCCESS
+                or analysis.method not in self.PRELIMINARY_METHODS
+                or len(pair) != 2
+                or pair in assessed
+                or analysis.p_value is None
+                or analysis.p_value > self.PRELIMINARY_ALPHA
+            ):
+                continue
+            preliminary.setdefault(pair, []).append(
+                Evidence(
+                    evidence_id=str(uuid4()),
+                    analysis_id=analysis.analysis_id,
+                    description=(
+                        f"Resultado de {analysis.method} con valor p "
+                        f"{analysis.p_value:.4g}, sin pruebas de robustez disponibles."
+                    ),
+                    limitations=[
+                        "La asociación estadística no demuestra causalidad.",
+                        "No se evaluaron variables de control, outliers, subgrupos "
+                        "ni estabilidad temporal.",
+                    ],
+                )
+            )
+        for analysis in context.analysis_results:
+            evidences = preliminary.pop(frozenset(analysis.variables), None)
+            if evidences is None:
+                continue
+            new_evidence.extend(evidences)
+            new_assessments.append(
+                RelationshipAssessment(
+                    variables=list(analysis.variables),
+                    evidence_ids=[item.evidence_id for item in evidences],
+                    potentially_spurious=None,
+                    rationale=(
+                        "Hallazgo preliminar: la asociación es estadísticamente "
+                        f"significativa (p <= {self.PRELIMINARY_ALPHA}), pero no se "
+                        "ejecutaron pruebas de robustez, como el control por otra variable."
+                    ),
+                    limitations=[
+                        "Evaluación preliminar sin pruebas de robustez.",
+                        "La asociación estadística no demuestra causalidad.",
+                    ],
+                )
+            )
+
+        # 16. Omitir si no existe evidencia evaluable
         if not new_assessments:
             return AgentResult(
                 agent_name=self.name,
@@ -512,7 +569,7 @@ class CriticAgent(SkeletonAgent):
                 warnings=["Critic: no hay resultados estadísticos válidos para evaluar."],
             )
 
-        # 16. Devolver evidencias y evaluaciones
+        # 17. Devolver evidencias y evaluaciones
         return AgentResult(
             agent_name=self.name,
             status=AnalysisStatus.SUCCESS,

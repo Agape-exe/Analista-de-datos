@@ -60,3 +60,10 @@ async def test_numeric_conversion_does_not_round_large_codes(tmp_path: Path) -> 
     path.write_text("customer_id\n9007199254740993\n1.5\n", encoding="utf-8")
     dataset = await CsvDataSource().read(CsvSourceSpec(path=path))
     assert dataset.table.column("customer_id") == ["9007199254740993", "1.5"]
+
+
+async def test_full_precision_decimals_stay_numeric(tmp_path: Path) -> None:
+    path = tmp_path / "decimals.csv"
+    path.write_text("income\n14173.124078682275\n-0.5\n1e-5\n\n", encoding="utf-8")
+    dataset = await CsvDataSource().read(CsvSourceSpec(path=path))
+    assert dataset.table.column("income") == [14173.124078682275, -0.5, 1e-5]

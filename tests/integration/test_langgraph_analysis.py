@@ -34,15 +34,17 @@ async def test_langgraph_executes_planner_analysis_with_csv(tmp_path: Path) -> N
 
     report = await build_use_case(Settings(_env_file=None)).execute(input_for(path))
 
-    assert report.status == AnalysisStatus.SKIPPED
-    assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
-    assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+    assert report.status == AnalysisStatus.SUCCESS
+    assert report.stage_statuses["Association"] == AnalysisStatus.SUCCESS
+    assert report.stage_statuses["Critic"] == AnalysisStatus.SUCCESS
+    assert report.stage_statuses["Insight"] == AnalysisStatus.SUCCESS
+    assert report.insights
     assert {result.method for result in report.analysis_results} >= {"pearson", "spearman"}
     assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
     assert report.stage_statuses["DataUnderstanding"] == AnalysisStatus.SUCCESS
     assert report.stage_statuses["Planner"] == AnalysisStatus.SUCCESS
     assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
-    assert len(report.stage_durations) == 5
+    assert len(report.stage_durations) == 6
 
 
 async def test_build_use_case_produces_real_analysis_results(tmp_path: Path) -> None:
@@ -80,7 +82,7 @@ async def test_workflow_respects_fast_mode_limits(tmp_path: Path) -> None:
     assert zero.status == AnalysisStatus.SKIPPED
     assert zero.analysis_results == []
     assert zero.metrics.tool_calls == 0
-    assert one.status == AnalysisStatus.SKIPPED
+    assert one.status == AnalysisStatus.SUCCESS
     assert one.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
     assert one.analysis_results[0].status == AnalysisStatus.SUCCESS
     assert len(one.analysis_results) == one.metrics.tool_calls == 1
@@ -128,10 +130,10 @@ async def test_workflow_isolates_sequential_and_concurrent_runs(tmp_path: Path) 
     )
 
     for report in (first, second, concurrent_first, concurrent_second):
-        assert report.status == AnalysisStatus.SKIPPED
+        assert report.status == AnalysisStatus.SUCCESS
         assert report.stage_statuses["Analysis"] == AnalysisStatus.SUCCESS
-        assert report.stage_statuses["Critic"] == AnalysisStatus.SKIPPED
-        assert report.stage_statuses["Insight"] == AnalysisStatus.SKIPPED
+        assert report.stage_statuses["Critic"] == AnalysisStatus.SUCCESS
+        assert report.stage_statuses["Insight"] == AnalysisStatus.SUCCESS
         assert report.analysis_results
         assert all(result.status == AnalysisStatus.SUCCESS for result in report.analysis_results)
 

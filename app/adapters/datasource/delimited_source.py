@@ -13,6 +13,7 @@ from app.domain.models.dataset import ColumnSchema, DatasetSchema
 
 NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?\Z")
 LEADING_ZERO = re.compile(r"[+-]?0\d")
+FRACTIONAL = re.compile(r"[.eE]")
 
 
 @dataclass(frozen=True)
@@ -33,8 +34,12 @@ def _typed_column(values: list[str | None]) -> pd.Series:
     if all(value.lower() in {"true", "false"} for value in observed):
         return column.str.strip().str.lower().map({"true": True, "false": False}).astype("boolean")
     if all(NUMBER.fullmatch(value) and not LEADING_ZERO.match(value) for value in observed):
+        stripped = column.str.strip()
+        if any(FRACTIONAL.search(value) for value in observed):
+            # pandas' fast parser can miss the last digit; Python float round-trips exactly.
+            stripped = stripped.astype(object).map(float, na_action="ignore")
         try:
-            numeric = pd.to_numeric(column.str.strip(), errors="raise").convert_dtypes()
+            numeric = pd.to_numeric(stripped, errors="raise").convert_dtypes()
             if all(
                 Decimal(original.strip()) == Decimal(str(converted))
                 for original, converted in zip(values, numeric.tolist(), strict=True)

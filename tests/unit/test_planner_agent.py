@@ -7,6 +7,7 @@ from app.application.dto.llm import LLMRequest, LLMResponse
 from app.config.settings import Settings
 from app.domain.enums.semantic_type import SemanticType
 from app.domain.enums.statuses import DictionarySource
+from app.domain.models.analysis import AssociationResult
 from app.domain.models.data_dictionary import DataDictionary, DataDictionaryEntry
 from app.domain.models.dataset import ColumnProfile, DatasetProfile
 
@@ -370,3 +371,34 @@ async def test_anova_summary_requests_stay_bounded_and_prioritize_question() -> 
 
     assert len(calls) == 1 and len(calls[0]) == 16
     assert ("group_099", "value_099") in calls[0]
+
+
+async def test_planner_prioritizes_screened_associations() -> None:
+    columns = [(name, SemanticType.NUMERIC) for name in ("a", "b", "c", "d", "e")]
+    screened = context(columns).model_copy(
+        update={
+            "associations": [
+                AssociationResult(method="pearson", variables=["e", "d"], strength=0.9),
+                AssociationResult(method="spearman", variables=["e", "d"], strength=0.88),
+            ]
+        }
+    )
+
+    result = await PlannerAgent(MustNotCallLLM()).run(screened)
+
+    assert result.update.analysis_plan is not None
+    assert {tuple(step.request.variables) for step in result.update.analysis_plan.steps} == {
+        ("d", "e")
+    }
+
+
+async def test_planner_keeps_question_pairs_outside_screening() -> None:
+    columns = [(name, SemanticType.NUMERIC) for name in ("a", "b", "c")]
+    screened = context(columns, question="Relación entre a y b").model_copy(
+        update={"associations": [AssociationResult(method="pearson", variables=["b", "c"])]}
+    )
+
+    result = await PlannerAgent(MustNotCallLLM()).run(screened)
+
+    assert result.update.analysis_plan is not None
+    assert result.update.analysis_plan.steps[0].request.variables == ["a", "b"]
