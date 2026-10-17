@@ -97,3 +97,14 @@ grupos antes de planificar ANOVA.
 
 La prueba utiliza datos sintéticos. No valida los umbrales
 del crítico ni demuestra causalidad o rendimiento general.
+
+## Recuperación del reporte después del reinicio
+
+Se consultó el reporte bd97f271-f5a3-4897-9dcd-366713baba5c
+después de reiniciar el backend, sin volver a cargar el CSV.
+
+El reporte almacenado en analysis_reports.db conservó
+el estado SUCCESS y un insight.
+
+Esta comprobación verifica la persistencia y recuperación
+del reporte correspondiente a la prueba sintética.
