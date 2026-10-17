@@ -127,7 +127,10 @@ def _validate_plan(plan: AnalysisPlan, context: AgentContext) -> list[str]:
     step_ids = [step.step_id for step in plan.steps]
     if len(set(step_ids)) != len(step_ids):
         errors.append("Analysis plan contains duplicate step ids.")
-    hypothesis_ids = {hypothesis.hypothesis_id for hypothesis in plan.hypotheses}
+    hypothesis_id_list = [hypothesis.hypothesis_id for hypothesis in plan.hypotheses]
+    if len(set(hypothesis_id_list)) != len(hypothesis_id_list):
+        errors.append("Analysis plan contains duplicate hypothesis ids.")
+    hypothesis_ids = set(hypothesis_id_list)
     if len(plan.hypotheses) > context.configuration.analysis.max_hypotheses:
         errors.append("Analysis plan exceeds the configured hypothesis limit.")
     for step in plan.steps:

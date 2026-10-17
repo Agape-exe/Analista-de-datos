@@ -80,7 +80,6 @@ trata como fallo real de planificación.
 
 ### Propuesto para una implementación posterior
 
-- Cablear el registry y ciclo de vida de datasets al workflow/bootstrapping.
 - Ejecutar tools en paralelo cuando la configuración y la semántica de dependencias
   lo permitan, y definir la coordinación de cancelación y timeouts CPU-bound.
 
@@ -188,9 +187,8 @@ degenerados. ANOVA exige al menos dos observaciones por grupo válido, no realiz
 post-hoc y advierte que sus supuestos no se evalúan automáticamente.
 
 `ToolRegistry.execute(request)` resuelve la tool por el método de `ToolRequest` y
-exige que `supports(request)` sea verdadero antes de delegar la ejecución. No hay
-registro global ni conexión al workflow: las tools se registrarán por ejecución
-cuando se acuerde el ciclo de vida del dataset.
+exige que `supports(request)` sea verdadero antes de delegar la ejecución. El
+workflow crea y registra las tools por ejecución; no hay registry global.
 
 El repositorio conserva espacios para `profiling`, `association`, `anomalies` y
 `clustering`; no se implementan aquí otras técnicas estadísticas ni agentes por
