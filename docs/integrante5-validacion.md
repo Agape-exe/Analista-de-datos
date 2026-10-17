@@ -80,3 +80,31 @@ Pearson y Spearman finalizaron correctamente, pero el ANOVA
 falló porque cada producto tenía una sola observación.
 Queda pendiente coordinar la validación del tamaño de los
 grupos antes de planificar ANOVA.
+
+## Integración de Critic con Analysis e Insight
+
+- Backend: 210 pruebas aprobadas y Ruff sin errores.
+- Se adaptó Critic para utilizar correlaciones exitosas
+  recibidas en analysis_results.
+- Se añadió compatibilidad con control_variable,
+  conservando el soporte de control_variables.
+- La prueba manual con prueba_critic.csv finalizó con
+  las cinco etapas en SUCCESS.
+- Pearson fue aproximadamente 0.9973, Spearman 0.9808
+  y la correlación parcial fue -1.
+- Critic registró un cambio de signo relevante.
+- No se mostraron advertencias ni errores globales.
+
+La prueba utiliza datos sintéticos. No valida los umbrales
+del crítico ni demuestra causalidad o rendimiento general.
+
+## Recuperación del reporte después del reinicio
+
+Se consultó el reporte bd97f271-f5a3-4897-9dcd-366713baba5c
+después de reiniciar el backend, sin volver a cargar el CSV.
+
+El reporte almacenado en analysis_reports.db conservó
+el estado SUCCESS y un insight.
+
+Esta comprobación verifica la persistencia y recuperación
+del reporte correspondiente a la prueba sintética.
