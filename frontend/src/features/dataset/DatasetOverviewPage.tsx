@@ -21,7 +21,7 @@ export function DatasetOverviewPage() {
     <div className="provenance-bar"><Badge tone="info">Measured from your dataset</Badge><span>Deterministic intake · no LLM interpretation</span></div>
     <div className="page-heading with-actions"><div><p className="eyebrow">Data / Dataset</p><h1>Dataset Overview</h1>
       <p>Understand what the system detected before exploring your results.</p></div>
-      <Button disabled title="Statistical tools are not implemented yet">Explore Associations <ArrowRight size={14} /></Button>
+      <Button asChild><Link to="/associations">Explore Associations <ArrowRight size={14} /></Link></Button>
     </div>
     <DatasetMetrics result={result} />
     <ColumnUnderstandingTable result={result} />
@@ -44,7 +44,7 @@ export function DatasetOverviewPage() {
         <Button variant="outline" onClick={() => downloadJson(`${baseName}.dictionary.json`, result.summary.data_dictionary)}>
           <Download size={14} />Download dictionary</Button></div>
     </div>
-    <div className="info-note"><Info size={16} /><div><strong>Intake completed. Analysis comes next.</strong>
-      <p>This view contains measured structure and clearly marked inferences. Associations, robustness checks and insights will be enabled as their tools become available.</p></div></div>
+    <div className="info-note"><Info size={16} /><div><strong>Intake completed. Explore associations next.</strong>
+      <p>This view contains measured structure and clearly marked inferences. Associations are available as statistical candidates; robustness checks and insights will be enabled as their tools become available.</p></div></div>
   </div>;
 }

@@ -60,6 +60,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tools */
+        get: operations["tools_tools_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/datasets/{dataset_id}/tools/{tool_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Tool
+         * @description SKIPPED/FAILED tool outcomes are returned with 200; they are analysis results.
+         */
+        post: operations["run_tool_datasets__dataset_id__tools__tool_name__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -436,6 +473,23 @@ export interface components {
              */
             encoding: string;
         };
+        /** ToolCatalog */
+        ToolCatalog: {
+            /** Tools */
+            tools: string[];
+        };
+        /**
+         * ToolRunRequest
+         * @description HTTP body for running one deterministic tool on an intake dataset.
+         */
+        ToolRunRequest: {
+            /** Variables */
+            variables?: string[];
+            /** Parameters */
+            parameters?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+        };
         /** TsvSourceSpec */
         TsvSourceSpec: {
             /**
@@ -557,6 +611,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IntakeResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tools_tools_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolCatalog"];
+                };
+            };
+        };
+    };
+    run_tool_datasets__dataset_id__tools__tool_name__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+                tool_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ToolRunRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisResult"];
+                };
+            };
+            /** @description Dataset not in memory or unknown tool */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

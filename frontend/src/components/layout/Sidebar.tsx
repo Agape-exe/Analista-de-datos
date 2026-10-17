@@ -12,7 +12,7 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
     { label: "Data Quality", icon: ShieldCheck }, { label: "Data Dictionary", icon: BookOpen },
   ] },
   { label: "Exploration", links: [
-    { label: "Associations", icon: ScanSearch }, { label: "Patterns", icon: Layers },
+    { label: "Associations", icon: ScanSearch, to: "/associations" }, { label: "Patterns", icon: Layers },
     { label: "Anomalies", icon: TriangleAlert },
   ] },
   { label: "Analysis", links: [
@@ -49,7 +49,7 @@ export function Sidebar() {
     </nav>
     <div className="sidebar-footer">
       <div className="evidence-note"><CircleHelp size={14} /><strong>Understand before analyzing</strong>
-        <p>Review the detected schema and provenance. Statistical evidence comes next.</p>
+        <p>Review the detected schema, then explore candidate associations.</p>
       </div>
       <p>Data intake · v0.1<br /><span>Soon = Coming Soon</span></p>
     </div>

@@ -34,8 +34,9 @@ y una tabla; su adaptador y el de TXT están pendientes.
 
 `LoadedDataset` es un dataclass local con `LocalTable` como interfaz de acceso a
 columnas. `PandasLocalTable` vive en el lector delimitado compartido. No se serializa en el estado
-del grafo y no se pasa al LLM. Una futura capa de ejecución administrará referencias
-de datasets e inyectará su acceso local a las tools.
+del grafo y no se pasa al LLM. El puerto `DatasetProvider` resuelve un `dataset_id` a
+un `RegisteredDataset` (datos locales y perfil) para las tools; `InMemoryDatasetStore`
+es su adaptador LRU. Detalles en [eda-association.md](eda-association.md).
 
 Los lectores validan encabezados y anchura de filas antes de inferir tipos físicos.
 El servicio local aplica reglas puras de clasificación y genera un perfil básico
@@ -61,8 +62,10 @@ de negocio confirmado. Las rutas se reciben por contrato.
 `build_use_case` inyecta `DataUnderstandingService` mediante el puerto
 `DataUnderstanding` en el primer agente. El servicio lee la fuente a través de
 `DataSource`, aplica reglas del dominio y devuelve datos locales y metadatos. El
-agente solo propaga perfil, diccionario, dataset_id y métricas. Los demás agentes
-siguen siendo skeletons con LLM desactivado y registry vacío.
+agente solo propaga perfil, diccionario, dataset_id y métricas. El servicio está
+decorado con `RegisteringDataUnderstanding`, que publica el dataset en el store. El
+registry contiene las tools de EDA, asociación y gráficos; los demás agentes siguen
+siendo skeletons con LLM desactivado y todavía no invocan tools.
 
 El grafo detiene la ejecución si una etapa devuelve FAILED. Después de un intake
 exitoso, las siguientes etapas siguen devolviendo SKIPPED. El reporte incluye
@@ -86,9 +89,8 @@ La URL predeterminada usa SQLite en memoria y no crea archivos al importar.
 
 ## Extensión prevista
 
-1. Administrar referencias locales de datasets para la futura ejecución de tools;
-   el intake actual devuelve datos locales pero no los guarda en un registry global.
-2. Implementar profiling avanzado y una primera tool, con test estadístico significativo.
+1. Liberar del store los datasets de cada ejecución al terminar el workflow.
+2. Exponer las tools de EDA por HTTP y dibujar sus gráficos en el frontend.
 3. Agregar proveedor LLM mediante inyección, sin cambiar el contrato de agentes.
 4. Implementar planner y ejecución con límites de hipótesis y tool calls.
 5. Agregar critic loop acotado por `max_critic_cycles`.

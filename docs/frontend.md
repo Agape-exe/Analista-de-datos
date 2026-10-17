@@ -30,9 +30,14 @@ FAST/DEEP, TXT y SQL están señalados como Coming Soon.
 tipos, nulos por columna, valores únicos, descripciones, procedencia y confianza
 suministrada. El perfil y diccionario se descargan como JSON.
 
+**Associations** (`/associations`) ejecuta las tools de EDA sobre el dataset del
+intake: ranking de relaciones candidatas, scatter/boxplot del par seleccionado,
+matriz de correlación e histograma/boxplot por columna. Detalles en
+[eda-association.md](eda-association.md).
+
 Una confianza ausente se presenta como Not evaluated. No se inventa un score de
-calidad ni indicadores de duplicados/outliers. Las asociaciones y demás destinos
-futuros se muestran deshabilitados. El estado es Intake completed, no una afirmación
+calidad ni indicadores de duplicados/outliers. Los demás destinos futuros se muestran
+deshabilitados. El estado es Intake completed, no una afirmación
 de análisis multiagente terminado.
 
 El resultado vive en memoria del navegador: recargar la página lo descarta. New

@@ -15,7 +15,8 @@ describe("intake workflow", () => {
   it("does not allow submitting without a file and explains unavailable features", () => {
     renderApp();
     expect(screen.getByRole("button", { name: "Understand Dataset" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Associations Soon" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Patterns Soon" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Associations" })).toHaveAttribute("href", "/associations");
     expect(screen.getByLabelText("What would you like to investigate?", { exact: false })).toBeDisabled();
   });
 
@@ -47,7 +48,7 @@ describe("intake workflow", () => {
     expect(screen.getByText("80%")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Review notes" })).toBeInTheDocument();
     expect(screen.getAllByText("Not evaluated")).toHaveLength(3);
-    expect(screen.getByRole("button", { name: "Explore Associations" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Explore Associations" })).toHaveAttribute("href", "/associations");
     await user.click(screen.getByRole("button", { name: "Download dictionary" }));
     expect(createUrl).toHaveBeenCalledOnce();
     expect(click).toHaveBeenCalledOnce();
