@@ -34,6 +34,55 @@ FAST/DEEP, TXT y SQL están señalados como Coming Soon.
 tipos, nulos por columna, valores únicos, descripciones, procedencia y confianza
 suministrada. El perfil y diccionario se descargan como JSON.
 
+**Diccionario de datos** (`/dictionary`, Datos → Diccionario de datos) completa
+AUD-011: consulta y descarga del diccionario del dataset activo, exclusivamente
+de solo lectura. Reutiliza `IntakeProvider`, `IntakeResponse.summary.data_dictionary`,
+`DatasetProfile`/`ColumnProfile`, los componentes visuales y `downloadJson`.
+La consulta no relee el archivo ni solicita datos adicionales al backend.
+
+La tabla incluye todas las columnas observadas y las entradas del diccionario:
+tipo técnico observado, tipo declarado, semántica del diccionario, rol del perfil,
+descripción, unidad, fuente, confianza, campos inferidos, justificación y
+advertencias. `inferred_fields` distingue los agregados inferidos incluso en
+entradas oficiales/manuales; una entrada `source=inferred` también se identifica
+como inferida. El tipo técnico completado por inferencia no se presenta como
+declarado. La semántica proporcionada y el rol del perfil se muestran por separado
+para no ocultar discrepancias. La confianza ausente aparece como «No evaluada»,
+los demás valores ausentes como «No disponible»; no se generan puntuaciones.
+
+Los textos estructurales conocidos se traducen en la presentación; los metadatos
+proporcionados y mensajes no reconocidos conservan su texto. React los representa
+como texto, sin interpretar HTML. Las descripciones inferidas señalan que su
+significado de negocio no está verificado. La tabla admite desplazamiento
+horizontal por teclado y nombres largos con salto de línea.
+
+Flujo: cargar CSV/TSV (con diccionario JSON opcional), pulsar «Comprender dataset»,
+abrir Datos → Diccionario de datos y pulsar «Descargar diccionario JSON».
+`<nombre>.dictionary.json` serializa el diccionario recibido, conserva nombres,
+nulos y procedencia y no añade filas, perfil ni rutas internas. La descarga del
+resumen del dataset sigue usando el mismo contrato y utilidad.
+
+`DataDictionaryPage` consume los estados existentes de intake: sin resultado
+ofrece «Ir a Nuevo análisis»; en carga oculta los metadatos anteriores; ante fallo
+de carga ofrece «Revisar carga». Un diccionario vacío informa de la ausencia de
+metadatos, muestra los tipos observados si existen y deshabilita la descarga.
+Un error local de descarga permite reintentar. Cambiar el resultado o reiniciar
+el proveedor actualiza o limpia la página; no hay un segundo estado de dataset.
+Recargar el navegador elimina el resultado y devuelve la pantalla sin dataset.
+
+Componentes: `features/dataset/DataDictionaryPage.tsx`, `DataDictionaryTable.tsx`
+y `dictionary-presentation.ts`; composición en `app/App.tsx`, enlace en
+`components/layout/Sidebar.tsx` y estilos limitados a la tabla en `globals.css`.
+No cambia el backend ni OpenAPI: el módulo propietario continúa siendo
+`app/modules/data_intake/`. No necesita un endpoint, puerto o persistencia nuevos.
+No depende de `ColumnExplorer` y no incorpora edición ni versionado.
+
+Limitación: esta pantalla consulta los metadatos ya calculados en el navegador.
+No comprueba la expulsión del dataset del almacén del servidor ni simula una
+expiración que intake no comunica. Puede mostrar esos metadatos mientras exista
+el resultado de intake; para recuperar un resultado perdido hay que cargar de
+nuevo el archivo. La traducción no altera los valores del JSON exportado.
+
 **Associations** (`/associations`) ejecuta las tools de EDA sobre el dataset del
 intake: ranking de relaciones candidatas, scatter/boxplot del par seleccionado,
 matriz de correlación e histograma/boxplot por columna. Detalles en
@@ -160,3 +209,61 @@ Los tests unitarios usan respuestas de prueba solo en archivos de testing;
 las pantallas de producción no incluyen datasets o resultados simulados.
 
 Desde la raíz, ejecutar también pytest y Ruff antes de integrar cambios.
+
+### Validación de AUD-011 — 17 de octubre de 2026
+
+Base exclusiva: `origin/develop` actualizado mediante `git fetch origin`, SHA
+`61d189b24bc316462bfe8c41fca2f72597ad0661` (merge del PR #28). Implementación en
+`feat/aud-011-data-dictionary`, worktree aislado `Analista-de-datos-aud011`.
+No se modificaron backend, contratos generados, algoritmos, dependencias ni
+worktrees anteriores; no se realizaron commits, push, PR ni merges.
+
+Las comprobaciones se ejecutaron antes y después sobre el mismo worktree:
+
+| Comprobación | Línea base sin cambios | Resultado con AUD-011 |
+| --- | --- | --- |
+| `uv sync --locked` | Correcto | Correcto |
+| `uv run python scripts/check_architecture.py` | Correcto, 162 archivos Python | Igual |
+| `uv run python -m pytest tests/architecture -q` | 24 aprobadas | 24 aprobadas |
+| `uv run python -m pytest` | 375 aprobadas, 4 fallidas | 375 aprobadas, las mismas 4 fallidas |
+| `uv run ruff check .` | 2 errores ajenos | Los mismos 2 errores |
+| `uv run ruff format --check .` | 249 archivos formateados | Igual |
+| `npm ci` | Correcto | Correcto |
+| `npm test` | 18 aprobadas, 1 fallida | 35 aprobadas, la misma 1 fallida |
+| `npm run lint` | 1 error ajeno | El mismo error |
+| `npm run build` | Correcto | Correcto (incluye TypeScript) |
+
+Fallos preexistentes de pytest, reproducidos sin cambios:
+
+- `tests/integration/test_anova_planning.py::test_fast_mode_uses_next_valid_anova_after_omitting_sparse_pair`.
+- `tests/integration/test_critic_pipeline.py::test_default_csv_produces_measured_critic_and_insights_without_a_question`.
+- `tests/unit/test_critic.py::test_critic_reports_significant_results_without_robustness_as_preliminary`.
+- `tests/unit/test_critic.py::test_critic_skips_when_no_result_is_significant`.
+
+Ruff conserva F841 (`unranked`) en
+`app/modules/analysis/application/services/analysis_planning.py:273` y F401
+(`AssociationResult`) en `tests/unit/test_planner_agent.py:10`.
+Frontend conserva el fallo `null metrics stay unmeasured and no insights are
+invented` de `ReportPage.test.tsx` y el import sin uso `methodLabel` de
+`features/reports/ReportPage.tsx:6` en ESLint. No se corrigieron módulos ajenos.
+
+Pruebas específicas: **17/17 aprobadas** en `DataDictionaryPage.test.tsx`. Cubren
+navegación y ruta directa, ausencia de dataset, visualización, valores declarados
+e inferidos, opcionales ausentes, diccionario vacío, advertencias, JSON y nulos,
+reintento de descarga, cambio de dataset, reinicio, carga fallida, respuesta tardía
+tras cancelación y contenido no confiable. La descarga se compara con el contrato
+recibido sin transformarlo. ESLint limitado a los archivos TypeScript de AUD-011
+termina sin errores.
+
+Comprobación adicional con backend real y Edge: **1/1 E2E aprobada**, ejecutando
+`npm run test:e2e -- e2e/dictionary.spec.ts` con `PLAYWRIGHT_CHANNEL=msedge`.
+Carga CSV con diccionario oficial parcial y después TSV sin diccionario,
+comprueba procedencia, confianza, inferencias, ambas descargas y sus nombres,
+cambio/reinicio, pérdida del estado al recargar y ausencia de errores JavaScript.
+Comprueba anchos de 1440, 1024 y 390 px sin desbordamiento de la página y con
+desplazamiento interno de la tabla; las capturas se revisaron visualmente.
+Para guardar capturas, establecer `UI_SCREENSHOT_DIR` a una carpeta existente.
+
+Fallos nuevos pendientes de AUD-011: **0**. No se añadieron pruebas backend porque
+no hay cambios backend. La suite completa sigue teniendo los fallos anteriores:
+AUD-011 está listo para revisión funcional, con esos fallos ajenos documentados.
