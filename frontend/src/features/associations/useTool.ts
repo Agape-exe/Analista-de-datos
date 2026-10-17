@@ -34,7 +34,7 @@ export function useTool(
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setState({ key, error: {
-          message: error instanceof Error ? error.message : "An unexpected error occurred.",
+          message: error instanceof Error ? error.message : "Ocurrió un error inesperado.",
           requestId: error instanceof ApiError ? error.requestId : undefined,
           expired: error instanceof DatasetExpiredError,
         } });

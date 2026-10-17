@@ -1,3 +1,4 @@
+import math
 import re
 from datetime import date, datetime
 from numbers import Real
@@ -10,8 +11,14 @@ from app.domain.models.dataset import ColumnProfile, ColumnSchema, ProfilingOpti
 
 
 def _name_tokens(name: str) -> set[str]:
-    separated = re.sub(r"([a-z])([A-Z])", r"\1_\2", name)
-    return set(re.findall(r"\w+", separated.casefold().replace("_", " ")))
+    # "N°" (degree sign) is a common spelling of "Nº"; unify it so both form one token.
+    separated = re.sub(r"([a-z])([A-Z])", r"\1_\2", name.replace("°", "º"))
+    text = separated.casefold().replace("_", " ")
+    tokens = set(re.findall(r"\w+", text))
+    # "Nº de pagos" counts things, whereas "Nº predio" names one; only the latter is an ID.
+    if re.search(r"\bnº\s+de\b", text):
+        tokens.discard("nº")
+    return tokens
 
 
 def _is_uuid(value: object) -> bool:
@@ -27,15 +34,18 @@ def _date_format(values: list[object], options: ProfilingOptions) -> str | None:
         return "native datetime"
     if not all(isinstance(value, str) for value in values):
         return None
+    # A format is abandoned once its failures make the configured ratio unreachable.
+    allowed_failures = len(values) - math.ceil(options.temporal_parse_ratio * len(values))
     for date_format in options.temporal_formats:
-        matched = 0
+        failures = 0
         for value in values:
             try:
                 datetime.strptime(str(value).strip(), date_format)
-                matched += 1
             except ValueError:
-                pass
-        if matched / len(values) >= options.temporal_parse_ratio:
+                failures += 1
+                if failures > allowed_failures:
+                    break
+        else:
             return date_format
     return None
 

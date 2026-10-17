@@ -13,9 +13,9 @@ export function RelationshipTable({ relationships, selected, onSelect }: {
   selected: string | null;
   onSelect: (item: RankedRelationship) => void;
 }) {
-  return <div className="table-scroll" role="region" aria-label="Ranked relationships" tabIndex={0}>
+  return <div className="table-scroll" role="region" aria-label="Relaciones ordenadas" tabIndex={0}>
     <table className="ranking-table"><thead><tr>
-      <th>#</th><th>Variables</th><th>Method</th><th>Score</th><th>Strength</th><th>Adj. p-value</th><th>n</th><th>Notes</th><th />
+      <th>#</th><th>Variables</th><th>Método</th><th>Puntaje</th><th>Fuerza</th><th>Valor p ajust.</th><th>n</th><th>Notas</th><th />
     </tr></thead>
       <tbody>{relationships.map((item, index) => {
         const key = relationshipKey(item);
@@ -33,7 +33,7 @@ export function RelationshipTable({ relationships, selected, onSelect }: {
             ? <Badge tone="warning" title={item.warnings.join("\n")}><TriangleAlert size={10} />{item.warnings.length}</Badge>
             : <span className="muted">—</span>}</td>
           <td><button type="button" className="link-button" aria-pressed={active}
-            aria-label={`View ${item.x} and ${item.y}`} onClick={() => onSelect(item)}>{active ? "Viewing" : "View"}</button></td>
+            aria-label={`Ver ${item.x} y ${item.y}`} onClick={() => onSelect(item)}>{active ? "Viendo" : "Ver"}</button></td>
         </tr>;
       })}</tbody>
     </table>

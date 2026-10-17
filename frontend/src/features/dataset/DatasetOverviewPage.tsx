@@ -12,39 +12,39 @@ import { DatasetMetrics } from "./DatasetMetrics";
 export function DatasetOverviewPage() {
   const { result } = useIntake();
   if (!result) return <Card className="empty-state"><span className="upload-icon"><Database size={28} /></span>
-    <h1>No dataset yet</h1><p>Upload a CSV or TSV to understand its structure and review the detected columns.</p>
-    <Button asChild><Link to="/">Upload dataset <ArrowRight size={15} /></Link></Button>
+    <h1>Aún no hay dataset</h1><p>Sube un CSV o TSV para comprender su estructura y revisar las columnas detectadas.</p>
+    <Button asChild><Link to="/">Subir dataset <ArrowRight size={15} /></Link></Button>
   </Card>;
   const baseName = result.filename.replace(/\.[^.]+$/, "");
   const warnings = result.warnings ?? [];
   return <div className="dataset-page">
-    <div className="provenance-bar"><Badge tone="info">Measured from your dataset</Badge><span>Deterministic intake · no LLM interpretation</span></div>
-    <div className="page-heading with-actions"><div><p className="eyebrow">Data / Dataset</p><h1>Dataset Overview</h1>
-      <p>Understand what the system detected before exploring your results.</p></div>
-      <Button asChild><Link to="/associations">Explore Associations <ArrowRight size={14} /></Link></Button>
+    <div className="provenance-bar"><Badge tone="info">Medido a partir de tu dataset</Badge><span>Ingesta determinista · sin interpretación de LLM</span></div>
+    <div className="page-heading with-actions"><div><p className="eyebrow">Datos / Dataset</p><h1>Resumen del dataset</h1>
+      <p>Comprende lo que detectó el sistema antes de explorar tus resultados.</p></div>
+      <Button asChild><Link to="/associations">Explorar asociaciones <ArrowRight size={14} /></Link></Button>
     </div>
     <DatasetMetrics result={result} />
     <ColumnUnderstandingTable result={result} />
-    <Card className="quality-card"><div className="card-heading"><div><h2>Data quality at a glance</h2>
-      <p>Measured completeness and validation status. Advanced quality checks come next.</p></div></div>
+    <Card className="quality-card"><div className="card-heading"><div><h2>Calidad de datos de un vistazo</h2>
+      <p>Completitud medida y estado de validación. Los controles de calidad avanzados vienen después.</p></div></div>
       <div className="quality-grid">
-        <div><CheckCircle2 size={16} className="success-text" /><strong>Structure validated</strong><p>Unique headers and consistent row widths</p></div>
-        <div><Info size={16} /><strong>{formatNumber(result.completeness.missing_cells)} missing cells</strong><p>Out of {formatNumber(result.completeness.total_cells)} total cells</p></div>
-        <div><span className="quality-dash">—</span><strong>Duplicates · not evaluated</strong><p>Record-level checks are planned</p></div>
-        <div><span className="quality-dash">—</span><strong>Outliers · not evaluated</strong><p>No anomaly screening has run</p></div>
+        <div><CheckCircle2 size={16} className="success-text" /><strong>Estructura validada</strong><p>Encabezados únicos y filas con ancho consistente</p></div>
+        <div><Info size={16} /><strong>{formatNumber(result.completeness.missing_cells)} celdas faltantes</strong><p>De {formatNumber(result.completeness.total_cells)} celdas en total</p></div>
+        <div><span className="quality-dash">—</span><strong>Duplicados · no evaluado</strong><p>Los controles por registro están planificados</p></div>
+        <div><span className="quality-dash">—</span><strong>Valores atípicos · no evaluado</strong><p>No se ha ejecutado detección de anomalías</p></div>
       </div>
     </Card>
-    {warnings.length > 0 && <Card className="warnings-card"><div className="card-heading"><h2><TriangleAlert size={17} />Review notes</h2>
-      <Badge tone="warning">{warnings.length} warnings</Badge></div>
+    {warnings.length > 0 && <Card className="warnings-card"><div className="card-heading"><h2><TriangleAlert size={17} />Notas de revisión</h2>
+      <Badge tone="warning">{warnings.length} {warnings.length === 1 ? "advertencia" : "advertencias"}</Badge></div>
       <ul>{warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>
     </Card>}
-    <div className="results-footer"><div><h2>Your understanding starts here</h2><p>Download the metadata to review it or share it with your team.</p></div>
+    <div className="results-footer"><div><h2>Tu comprensión empieza aquí</h2><p>Descarga los metadatos para revisarlos o compartirlos con tu equipo.</p></div>
       <div className="inline-actions"><Button variant="outline" onClick={() => downloadJson(`${baseName}.profile.json`, result.profile)}>
-        <Download size={14} />Download profile</Button>
+        <Download size={14} />Descargar perfil</Button>
         <Button variant="outline" onClick={() => downloadJson(`${baseName}.dictionary.json`, result.summary.data_dictionary)}>
-          <Download size={14} />Download dictionary</Button></div>
+          <Download size={14} />Descargar diccionario</Button></div>
     </div>
-    <div className="info-note"><Info size={16} /><div><strong>Intake completed. Explore associations next.</strong>
-      <p>This view contains measured structure and clearly marked inferences. Associations are available as statistical candidates; robustness checks and insights will be enabled as their tools become available.</p></div></div>
+    <div className="info-note"><Info size={16} /><div><strong>Ingesta completada. Ahora explora las asociaciones.</strong>
+      <p>Esta vista contiene la estructura medida y las inferencias claramente marcadas. Las asociaciones están disponibles como candidatas estadísticas y, en Hallazgos, puedes generar el reporte con su evidencia sobre este mismo dataset.</p></div></div>
   </div>;
 }

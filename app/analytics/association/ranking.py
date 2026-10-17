@@ -121,6 +121,7 @@ class RelationshipRankingTool(DatasetTool):
                     y_values,
                     self.options.mutual_information_neighbors,
                     self.options.random_seed,
+                    self.options.mutual_information_max_rows,
                 )
             )
         except AnalysisNotApplicableError:

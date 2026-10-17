@@ -6,7 +6,13 @@ from app.adapters.reporting.markdown import MarkdownReportRenderer
 from app.api.protection import enforce_request_limit, reserve_operation_capacity
 from app.application.dto.analysis_input import AnalysisInput
 from app.application.dto.intake import IntakeOptions
-from app.application.errors import DataSourceError, UploadTooLargeError, UploadValidationError
+from app.application.errors import (
+    DatasetNotFoundError,
+    DataSourceError,
+    UploadTooLargeError,
+    UploadValidationError,
+)
+from app.domain.models.base import DomainModel
 from app.domain.models.metrics import ExperimentMetrics
 from app.domain.models.report import AnalysisReport
 
@@ -50,6 +56,33 @@ async def analysis_upload(
         await file.close()
         if data_dictionary is not None:
             await data_dictionary.close()
+
+
+@router.post(
+    "/analysis/datasets/{dataset_id}",
+    response_model=AnalysisReport,
+    responses={404: {"description": "Dataset no longer in memory"}},
+)
+async def analysis_stored(
+    dataset_id: str, request: Request, body: StoredAnalysisRequest | None = None
+) -> AnalysisReport:
+    """Analyze a dataset already uploaded through intake, without re-reading or re-profiling."""
+    try:
+        await request.app.state.datasets.get(dataset_id)
+    except DatasetNotFoundError as error:
+        raise HTTPException(
+            404,
+            detail={
+                "code": "DATASET_NOT_FOUND",
+                "message": "The dataset is no longer in memory. Upload it again to analyze it.",
+            },
+        ) from error
+    question = body.user_question.strip() if body and body.user_question else None
+    return await request.app.state.analysis_use_case.execute(
+        AnalysisInput(
+            source=StoredSourceSpec(dataset_id=dataset_id), user_question=question or None
+        )
+    )
 
 
 async def get_report(run_id: str, request: Request) -> AnalysisReport:

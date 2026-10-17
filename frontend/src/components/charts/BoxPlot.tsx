@@ -19,7 +19,7 @@ export function BoxPlot({ chart, stale }: { chart: BoxPlotChart; stale?: boolean
   const ticks = niceTicks(...domain);
 
   return <ChartFrame frame={frame} onLeave={hide} stale={stale}
-    label={`Box plot of ${chart.column}${grouped ? ` by ${chart.group_by}` : ""}`}>
+    label={`Diagrama de caja de ${chart.column}${grouped ? ` por ${chart.group_by}` : ""}`}>
     <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg">
       {ticks.map((tick) => <g key={tick}>
         <line x1={sx(tick)} x2={sx(tick)} y1={M.top} y2={H - M.bottom} className="gridline" />
@@ -29,14 +29,14 @@ export function BoxPlot({ chart, stale }: { chart: BoxPlotChart; stale?: boolean
         const cy = M.top + index * ROW + ROW / 2;
         const title = grouped ? box.label : chart.column;
         const rows = [
-          { label: "median", value: formatValue(box.median) },
+          { label: "mediana", value: formatValue(box.median) },
           { label: "Q1 – Q3", value: `${formatValue(box.q1)} – ${formatValue(box.q3)}` },
-          { label: "whiskers", value: `${formatValue(box.lower_whisker)} – ${formatValue(box.upper_whisker)}` },
-          { label: "rows", value: formatValue(box.count, 0) },
-          { label: "outliers", value: formatValue(box.outlier_count, 0) },
+          { label: "bigotes", value: `${formatValue(box.lower_whisker)} – ${formatValue(box.upper_whisker)}` },
+          { label: "filas", value: formatValue(box.count, 0) },
+          { label: "atípicos", value: formatValue(box.outlier_count, 0) },
         ];
         return <g key={box.label} className="box-mark" tabIndex={0}
-          aria-label={`${title}: median ${formatValue(box.median)}, ${box.count} rows`}
+          aria-label={`${title}: mediana ${formatValue(box.median)}, ${box.count} filas`}
           onPointerMove={(event) => fromPointer(event, title, rows)}
           onFocus={(event) => fromFocus(event, title, rows)}>
           <rect x={left} y={cy - ROW / 2} width={W - left - M.right} height={ROW} fill="transparent" />

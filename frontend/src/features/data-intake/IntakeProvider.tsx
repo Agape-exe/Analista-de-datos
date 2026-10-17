@@ -53,7 +53,7 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       if (!request.signal.aborted) {
         setError({
-          message: error instanceof Error ? error.message : "An unexpected error occurred.",
+          message: error instanceof Error ? error.message : "Ocurrió un error inesperado.",
           requestId: error instanceof ApiError ? error.requestId : undefined,
         });
       }

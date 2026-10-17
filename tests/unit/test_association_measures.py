@@ -97,6 +97,17 @@ def test_groups_with_one_observation_are_excluded() -> None:
     assert "1 group(s)" in result.warnings[0]
 
 
+def test_numeric_groups_keep_row_order_and_skip_missing_pairs() -> None:
+    groups = labels(["b", "a", None, "b", "a", "c", "b"])
+    values = np.asarray([1.0, 2.0, 3.0, np.nan, 4.0, 5.0, 6.0])
+    result = measures.numeric_groups(values, groups)
+    assert list(result) == ["a", "b"]
+    assert result["a"].tolist() == [2.0, 4.0]
+    assert result["b"].tolist() == [1.0, 6.0]
+    with pytest.raises(AnalysisNotApplicableError):
+        measures.numeric_groups(np.asarray([np.nan, 1.0]), labels(["a", None]))
+
+
 def test_mutual_information_detects_non_linear_dependence() -> None:
     x = RNG.uniform(-3, 3, 500)
     y = x**2 + RNG.normal(scale=0.1, size=500)
@@ -112,6 +123,21 @@ def test_mutual_information_with_categorical_target() -> None:
     target = labels(["a", "b"] * 100)
     values = np.asarray([0.0, 10.0] * 100) + RNG.normal(scale=0.1, size=200)
     assert measures.mutual_information(values, target, neighbors=3, seed=0).score > 0.8
+
+
+def test_mutual_information_samples_large_inputs_reproducibly() -> None:
+    x = RNG.uniform(-3, 3, 2000)
+    y = x**2 + RNG.normal(scale=0.1, size=2000)
+    x[0] = np.nan
+    sampled = measures.mutual_information(x, y, neighbors=3, seed=0, max_rows=500)
+    assert sampled.sample_size == 500
+    assert sampled.details["observed_rows"] == 1999
+    assert sampled.score > 0.8
+    repeated = measures.mutual_information(x, y, neighbors=3, seed=0, max_rows=500)
+    assert repeated.statistic == sampled.statistic
+    full = measures.mutual_information(x, y, neighbors=3, seed=0, max_rows=1999)
+    assert full.sample_size == 1999
+    assert "observed_rows" not in full.details
 
 
 def test_benjamini_hochberg_matches_reference_values() -> None:

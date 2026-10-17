@@ -23,15 +23,15 @@ export function AssociationsPage() {
   const [picked, setPicked] = useState<{ x: string; y: string } | null>(null);
 
   if (!result || !datasetId) return <Card className="empty-state"><span className="upload-icon"><ScanSearch size={28} /></span>
-    <h1>No dataset yet</h1><p>Upload a CSV or TSV first. Associations are computed on the dataset kept in memory after intake.</p>
-    <Button asChild><Link to="/">Upload dataset <ArrowRight size={15} /></Link></Button>
+    <h1>Aún no hay dataset</h1><p>Primero sube un CSV o TSV. Las asociaciones se calculan sobre el dataset que queda en memoria tras la ingesta.</p>
+    <Button asChild><Link to="/">Subir dataset <ArrowRight size={15} /></Link></Button>
   </Card>;
 
   const expired = ranking.error?.expired || heatmap.error?.expired;
   if (expired) return <Card className="empty-state"><span className="upload-icon"><TriangleAlert size={28} /></span>
-    <h1>Dataset no longer available</h1>
-    <p>The server keeps a limited number of datasets in memory and forgets them on restart. Upload {result.filename} again to explore it.</p>
-    <Button asChild><Link to="/">Upload again <ArrowRight size={15} /></Link></Button>
+    <h1>El dataset ya no está disponible</h1>
+    <p>El servidor guarda una cantidad limitada de datasets en memoria y los olvida al reiniciarse. Vuelve a subir {result.filename} para explorarlo.</p>
+    <Button asChild><Link to="/">Volver a subir <ArrowRight size={15} /></Link></Button>
   </Card>;
 
   const data = ranking.data?.status === "SUCCESS" ? ranking.data.result as unknown as RelationshipRanking : null;
@@ -43,54 +43,54 @@ export function AssociationsPage() {
   const excluded = Object.entries(data?.excluded_columns ?? {});
 
   return <div className="associations-page">
-    <div className="provenance-bar"><Badge tone="info">Computed in Python</Badge>
-      <span>Deterministic statistics · no LLM interpretation</span></div>
-    <div className="page-heading"><p className="eyebrow">Exploration / Associations</p><h1>Associations</h1>
-      <p>Candidate relationships between columns of {result.filename}, ranked by a comparable strength score.</p></div>
+    <div className="provenance-bar"><Badge tone="info">Calculado en Python</Badge>
+      <span>Estadística determinista · sin interpretación de LLM</span></div>
+    <div className="page-heading"><p className="eyebrow">Exploración / Asociaciones</p><h1>Asociaciones</h1>
+      <p>Relaciones candidatas entre columnas de {result.filename}, ordenadas por un puntaje de fuerza comparable.</p></div>
 
-    <div className="info-note candidates-note"><Info size={16} /><div><strong>These are statistical candidates, not findings.</strong>
-      <p>Each pair is tested with the method that fits its column types. p-values are corrected for multiple comparisons
-        ({data?.correction ?? "Benjamini-Hochberg"}) and only pairs below α = {data?.significance_level ?? 0.05} are listed.
-        Correlation does not imply causation; robustness checks come next.</p></div></div>
+    <div className="info-note candidates-note"><Info size={16} /><div><strong>Son candidatas estadísticas, no hallazgos.</strong>
+      <p>Cada par se evalúa con el método adecuado a sus tipos de columna. Los valores p se corrigen por comparaciones múltiples
+        ({data?.correction ?? "Benjamini-Hochberg"}) y solo se listan los pares por debajo de α = {data?.significance_level ?? 0.05}.
+        Correlación no implica causalidad; los controles de robustez vienen después.</p></div></div>
 
     {ranking.loading && !ranking.data && <div className="processing-panel" role="status"><LoaderCircle size={16} className="spin" />
-      <div><strong>Screening column pairs…</strong><p>Running correlation, group and contingency tests on every eligible pair.</p></div></div>}
+      <div><strong>Evaluando pares de columnas…</strong><p>Ejecutando pruebas de correlación, de grupos y de contingencia en cada par elegible.</p></div></div>}
     {ranking.error && <ErrorPanel error={ranking.error} />}
     {ranking.data && ranking.data.status !== "SUCCESS" && <div className="info-note"><Info size={16} /><div>
-      <strong>No associations could be screened.</strong><p>{ranking.data.warnings?.[0]}</p></div></div>}
+      <strong>No se pudieron evaluar asociaciones.</strong><p>{ranking.data.warnings?.[0]}</p></div></div>}
 
     {data && <>
       <div className="metrics-grid associations-metrics">
-        <Metric label="Pairs evaluated" value={formatNumber(data.evaluated_pairs)} note="Numeric and categorical columns" />
-        <Metric label="Significant candidates" value={formatNumber(data.significant_pairs)} note={`Adjusted p ≤ ${data.significance_level}`} />
-        <Metric label="Shown" value={formatNumber(relationships.length)} note="Top ranked by score" />
-        <Metric label="Excluded columns" value={formatNumber(excluded.length)} note="Constant or too many categories" />
+        <Metric label="Pares evaluados" value={formatNumber(data.evaluated_pairs)} note="Columnas numéricas y categóricas" />
+        <Metric label="Candidatas significativas" value={formatNumber(data.significant_pairs)} note={`p ajustado ≤ ${data.significance_level}`} />
+        <Metric label="Mostradas" value={formatNumber(relationships.length)} note="Las de mayor puntaje" />
+        <Metric label="Columnas excluidas" value={formatNumber(excluded.length)} note="Constantes o con demasiadas categorías" />
       </div>
 
-      <Card className="ranking-card"><div className="card-heading"><div><h2>Ranked relationships</h2>
-        <p>Score is |r|, |ρ|, Cramér's V, η or √ε² — all on a 0–1 scale. Select a row to inspect it.</p></div>
-        <Badge>{relationships.length} candidates</Badge></div>
+      <Card className="ranking-card"><div className="card-heading"><div><h2>Relaciones ordenadas</h2>
+        <p>El puntaje es |r|, |ρ|, V de Cramér, η o √ε², todos en escala de 0 a 1. Selecciona una fila para inspeccionarla.</p></div>
+        <Badge>{relationships.length} candidatas</Badge></div>
         {relationships.length > 0
           ? <RelationshipTable relationships={relationships} selected={selectedKey}
             onSelect={(item: RankedRelationship) => setPicked({ x: item.x, y: item.y })} />
-          : <p className="muted">No pair reached significance after correction.</p>}
+          : <p className="muted">Ningún par alcanzó significancia tras la corrección.</p>}
         {pair && <RelationshipDetail key={selectedKey} datasetId={datasetId} x={pair.x} y={pair.y}
           ranked={byKey.get(selectedKey!)} numeric={numeric} />}
       </Card>
     </>}
 
-    {numeric.length >= 2 && <Card className="heatmap-card"><div className="card-heading"><div><h2>Correlation matrix</h2>
-      <p>Pearson r between numeric columns, pairwise complete rows. Select a cell to inspect the pair.</p></div></div>
+    {numeric.length >= 2 && <Card className="heatmap-card"><div className="card-heading"><div><h2>Matriz de correlación</h2>
+      <p>r de Pearson entre columnas numéricas, con filas completas por par. Selecciona una celda para inspeccionar el par.</p></div></div>
       {heatmapChart ? <CorrelationHeatmap chart={heatmapChart} stale={heatmap.stale}
         onSelect={(x, y) => setPicked({ x, y })} />
         : heatmap.error ? <ErrorPanel error={heatmap.error} />
-          : <div className="chart-placeholder"><LoaderCircle size={16} className="spin" />Computing matrix…</div>}
+          : <div className="chart-placeholder"><LoaderCircle size={16} className="spin" />Calculando matriz…</div>}
     </Card>}
 
     {numeric.length > 0 && <ColumnExplorer datasetId={datasetId} numeric={numeric} categorical={categorical} />}
 
     {(excluded.length > 0 || (data?.skipped_pairs.length ?? 0) > 0) && <Card className="warnings-card">
-      <div className="card-heading"><h2><TriangleAlert size={17} />Not screened</h2></div>
+      <div className="card-heading"><h2><TriangleAlert size={17} />No evaluado</h2></div>
       <ul>
         {excluded.map(([name, reason]) => <li key={name}><strong>{name}</strong>: {reason}</li>)}
         {data?.skipped_pairs.map((item) => <li key={`${item.x}-${item.y}`}><strong>{item.x} ↔ {item.y}</strong>: {item.reason}</li>)}
@@ -105,5 +105,5 @@ function Metric({ label, value, note }: { label: string; value: string; note: st
 
 function ErrorPanel({ error }: { error: ToolError }) {
   return <div className="error-panel" role="alert"><TriangleAlert size={16} /><div><strong>{error.message}</strong>
-    {error.requestId && <small>Request ID: {error.requestId}</small>}</div></div>;
+    {error.requestId && <small>ID de solicitud: {error.requestId}</small>}</div></div>;
 }

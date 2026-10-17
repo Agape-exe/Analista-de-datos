@@ -19,17 +19,17 @@ export function DatasetUpload({ file, disabled, onChange }: Props) {
       event.preventDefault(); setDragging(false);
       if (!disabled && event.dataTransfer.files[0]) onChange(event.dataTransfer.files[0]);
     }}>
-    <input ref={input} id="dataset-upload" type="file" className="sr-only" aria-label="Dataset file"
+    <input ref={input} id="dataset-upload" type="file" className="sr-only" aria-label="Archivo del dataset"
       accept=".csv,.tsv" disabled={disabled}
       onChange={(event) => onChange(event.target.files?.[0] || null)} />
     <span className="upload-icon">{file ? <FileSpreadsheet size={26} /> : <Upload size={26} />}</span>
-    <h2>{file ? file.name : "Drop your dataset here"}</h2>
-    <p>{file ? `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(file.size / 1024)} KB · ready for validation`
-      : "or browse files from your computer"}</p>
-    <div className="upload-formats"><Badge>CSV</Badge><Badge>TSV</Badge><Badge>TXT · Soon</Badge></div>
+    <h2>{file ? file.name : "Arrastra tu dataset aquí"}</h2>
+    <p>{file ? `${new Intl.NumberFormat("es-PE", { maximumFractionDigits: 1 }).format(file.size / 1024)} KB · listo para validar`
+      : "o busca el archivo en tu computadora"}</p>
+    <div className="upload-formats"><Badge>CSV</Badge><Badge>TSV</Badge><Badge>TXT · Pronto</Badge></div>
     <div className="inline-actions"><Button variant="outline" size="small" disabled={disabled} onClick={() => input.current?.click()}>
-      {file ? "Change file" : "Choose file"}
-    </Button>{file && <Button variant="ghost" size="small" disabled={disabled} aria-label="Remove dataset"
+      {file ? "Cambiar archivo" : "Elegir archivo"}
+    </Button>{file && <Button variant="ghost" size="small" disabled={disabled} aria-label="Quitar dataset"
       onClick={() => { onChange(null); if (input.current) input.current.value = ""; }}><X size={14} /></Button>}</div>
   </div>;
 }

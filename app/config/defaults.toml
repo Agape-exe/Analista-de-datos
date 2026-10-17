@@ -6,7 +6,7 @@ max_critic_cycles = 1
 minimum_sample_size = 20
 
 [performance]
-timeout_seconds = 15
+timeout_seconds = 120
 parallel_tools = true
 
 [llm]
@@ -22,7 +22,7 @@ database_url = "sqlite:///:memory:"
 postgres_sslmode = "require"
 
 [data_intake]
-identifier_name_tokens = ["id", "identifier", "uuid", "identificador"]
+identifier_name_tokens = ["id", "identifier", "uuid", "identificador", "nº"]
 identifier_unique_ratio = 0.95
 identifier_max_length = 128
 categorical_max_unique = 20
@@ -62,6 +62,8 @@ outlier_mad_threshold = 3.5
 max_outlier_examples = 20
 normality_alpha = 0.05
 mutual_information_neighbors = 3
+# kNN mutual information samples complete pairs beyond this many rows.
+mutual_information_max_rows = 10000
 max_scatter_points = 2000
 max_box_outliers = 200
 random_seed = 0
