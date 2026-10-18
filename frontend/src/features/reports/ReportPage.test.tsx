@@ -143,3 +143,28 @@ test("a recovered legacy report explains that dataset identity is unavailable", 
   expect(await screen.findByText("Consulta histórica: no hay un dataset activo asociado.")).toBeInTheDocument();
   expect(screen.getByText("Dataset del reporte: Identidad no disponible en este reporte histórico")).toBeInTheDocument();
 });
+
+test("insight references navigate to evidence and its measured result without inventing links", async () => {
+  const report = {
+    ...successReport,
+    insights: [{ insight_id: "ins-1", statement: "Relación observada", evidence_ids: ["ev-1", "ev-missing"], limitations: ["No demuestra causalidad."] }],
+    analysis_results: [{ analysis_id: "analysis-1", method: "pearson", variables: ["sales", "margin"], status: "SUCCESS", result: { coefficient: 0.4 }, warnings: ["Resultado descriptivo."], completeness: "partial" }],
+    evidence: [{ evidence_id: "ev-1", analysis_id: "analysis-1", description: "Coeficiente medido", limitations: ["Muestra observacional."] }],
+    warnings: ["Se omitió una etapa."], errors: [],
+  };
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(report)));
+  renderReport();
+  await userEvent.type(screen.getByLabelText("ID de ejecución"), "run-1");
+  await userEvent.click(screen.getByRole("button", { name: "Consultar" }));
+
+  expect(await screen.findByRole("heading", { name: "Relación observada" })).toBeInTheDocument();
+  await userEvent.click(screen.getByText("Ver referencias y limitaciones"));
+  expect(screen.getByRole("link", { name: "ev-1" })).toHaveAttribute("href", "#evidence-ev-1");
+  expect(screen.getByText((content) => content.includes("ev-missing"))).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Correlación de Pearson · Completado" })).toHaveAttribute("id", "analysis-analysis-1");
+  expect(screen.getByRole("link", { name: "analysis-1" })).toHaveAttribute("href", "#analysis-analysis-1");
+  expect(screen.getByText("Resultado descriptivo.")).toBeInTheDocument();
+  expect(screen.getByText("No demuestra causalidad.")).toBeInTheDocument();
+  expect(screen.getByText("Muestra observacional.")).toBeInTheDocument();
+  expect(screen.getByText("Se omitió una etapa.")).toBeInTheDocument();
+});

@@ -3,11 +3,19 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { downloadJson } from "../../lib/download";
 import { useIntake } from "../data-intake/IntakeProvider";
-import { metricLabel, stageLabel, statusLabel } from "./labels";
+import { methodLabel, metricLabel, stageLabel, statusLabel } from "./labels";
 import { ReportContextCard } from "./ReportContextCard";
 import { useReport } from "./ReportProvider";
 
 const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+
+const evidenceAnchor = (id: string) => `evidence-${encodeURIComponent(id)}`;
+const analysisAnchor = (id: string) => `analysis-${encodeURIComponent(id)}`;
+
+function NoticeList({ title, values }: { title: string; values?: string[] }) {
+  if (!values?.length) return null;
+  return <div><h4>{title}</h4><ul>{values.map((value, index) => <li key={`${value}-${index}`}>{value}</li>)}</ul></div>;
+}
 
 export function ReportPage() {
   const { result } = useIntake();
@@ -51,10 +59,16 @@ export function ReportPage() {
         <div className="inline-actions"><Button variant="outline" onClick={() => downloadJson("analysis-report.json", report)}>Descargar JSON</Button>
           <a href={`${base}/reports/${encodeURIComponent(report.run_id)}/markdown`}>Descargar informe</a></div>
       </Card>
-      <Card className="quality-card"><h2>Hallazgos</h2>
+      <Card className="quality-card" id="insights"><h2>Hallazgos</h2>
         {report.insights?.length ? report.insights.map((insight) => <article key={insight.insight_id}>
-          <p>{insight.statement}</p><details><summary>Ver referencias y limitaciones</summary><p>Evidencias: {insight.evidence_ids?.join(", ")}</p>
-          <ul>{insight.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul></details>
+          <h3 id={`insight-${encodeURIComponent(insight.insight_id)}`}>{insight.statement}</h3>
+          <details><summary>Ver referencias y limitaciones</summary>
+            {insight.evidence_ids?.length ? <p>Evidencias: {insight.evidence_ids.map((evidenceId, index) => <span key={evidenceId}>
+              {index > 0 && ", "}{report.evidence?.some((item) => item.evidence_id === evidenceId)
+                ? <a href={`#${evidenceAnchor(evidenceId)}`}>{evidenceId}</a> : evidenceId}
+            </span>)}</p> : <p>Este hallazgo no tiene evidencias referenciadas.</p>}
+            <NoticeList title="Limitaciones" values={insight.limitations} />
+          </details>
         </article>) : <p>No hay hallazgos respaldados por evidencia disponibles.</p>}
       </Card>
       <Card className="quality-card"><h2>Etapas y tiempos</h2><table><thead><tr><th>Etapa</th><th>Estado</th><th>Segundos</th></tr></thead>
@@ -65,15 +79,29 @@ export function ReportPage() {
         {Object.entries(report.metrics || {}).map(([name, value]) => <tr key={name}><th>{metricLabel(name)}</th>
           <td>{value === null ? "Sin medición" : String(value)}</td></tr>)}
       </tbody></table></Card>
-      <Card className="quality-card"><h2>Resultados y evidencia</h2>
-        {(report.analysis_results || []).map((value) => <article key={value.analysis_id}>
-          <h3>{value.method} · {value.status}</h3><p>{value.variables?.join(" / ")}</p><details><summary>Ver cálculo completo</summary><pre>{JSON.stringify(value.result, null, 2)}</pre></details>
+      <Card className="quality-card" id="results-and-evidence"><h2>Resultados y evidencia</h2>
+        {(report.analysis_results || []).map((value, index) => {
+          const resultId = value.analysis_id ?? `${value.method}-${index}`;
+          return <article key={resultId}>
+          <h3 id={analysisAnchor(resultId)}>{methodLabel(value.method)} · {statusLabel(value.status)}</h3>
+          <p>{value.variables?.join(" / ") || "Variables no especificadas"}</p>
+          <p>Estado del resultado: {statusLabel(value.status)}{value.completeness === "partial" ? " · Parcial" : ""}</p>
+          <NoticeList title="Advertencias del resultado" values={value.warnings} />
+          <details><summary>Ver cálculo completo</summary><pre>{JSON.stringify(value.result, null, 2)}</pre></details>
+        </article>;
+        })}
+        {(report.evidence || []).map((value) => <article key={value.evidence_id} id={evidenceAnchor(value.evidence_id)}>
+          <h3>{value.evidence_id}</h3><p>{value.description}</p>
+          {report.analysis_results?.some((result) => result.analysis_id === value.analysis_id)
+            ? <p>Resultado relacionado: <a href={`#${analysisAnchor(value.analysis_id)}`}>{value.analysis_id}</a></p>
+            : <p>Resultado relacionado: {value.analysis_id} (no incluido en este reporte)</p>}
+          <NoticeList title="Limitaciones de la evidencia" values={value.limitations} />
         </article>)}
-        {(report.evidence || []).map((value) => <p key={value.evidence_id}>{value.evidence_id} → {value.analysis_id}: {value.description}</p>)}
+        {!report.analysis_results?.length && !report.evidence?.length && <p>No hay resultados ni evidencias disponibles.</p>}
       </Card>
       <Card className="quality-card"><h2>Advertencias y errores</h2><ul>
-        {[...(report.warnings || []), ...(report.errors || [])].map((value, i) => <li key={i}>{value}</li>)}
-      </ul></Card>
+        {[...(report.warnings || []), ...(report.errors || [])].map((value, i) => <li key={`${value}-${i}`}>{value}</li>)}
+      </ul>{!(report.warnings?.length || report.errors?.length) && <p>No hay advertencias ni errores registrados.</p>}</Card>
     </>}
   </div>;
 }

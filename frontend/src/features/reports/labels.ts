@@ -41,6 +41,20 @@ const metricLabels: Record<string, string> = {
   invalid_analysis_rate: "Tasa de análisis inválidos",
 };
 
+const methodLabels: Record<string, string> = {
+  pearson: "Correlación de Pearson",
+  spearman: "Correlación de Spearman",
+  partial_correlation: "Correlación parcial",
+  correlation_without_outliers: "Correlación sin valores atípicos",
+  chi_square: "Chi-cuadrado",
+  cramers_v: "V de Cramér",
+  anova_one_way: "ANOVA de un factor",
+  kruskal_wallis: "Kruskal-Wallis",
+  analyze_subgroups: "Análisis por subgrupos",
+  additive_identity: "Identidad aditiva",
+};
+
 export const statusLabel = (status: string) => statusLabels[status] ?? status;
 export const stageLabel = (stage: string) => stageLabels[stage] ?? stage;
 export const metricLabel = (metric: string) => metricLabels[metric] ?? metric;
+export const methodLabel = (method: string) => methodLabels[method] ?? method;
