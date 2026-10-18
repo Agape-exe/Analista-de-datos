@@ -95,6 +95,7 @@ class EdaSettings(DomainModel):
     mutual_information_max_rows: int = Field(ge=2)
     max_scatter_points: int = Field(ge=2)
     max_box_outliers: int = Field(ge=0)
+    max_summary_groups: int = Field(ge=1)
     random_seed: int = Field(ge=0)
 
 

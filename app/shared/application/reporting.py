@@ -32,4 +32,15 @@ def assemble_report(state: Mapping[str, Any], metrics: ExperimentMetrics) -> Ana
         stage_statuses=statuses,
         stage_durations=state.get("stage_durations", {}),
         configuration=configuration.model_dump(mode="json") if configuration is not None else {},
+        audit_version="1",
+        user_question=state["input"].user_question if state.get("input") is not None else None,
+        requested_configuration=state["input"].configuration.model_dump(mode="json")
+        if state.get("input") is not None
+        else {},
+        dataset_id=state.get("dataset_id"),
+        analysis_plan=state.get("analysis_plan"),
+        planning_decisions=state.get("planning_decisions", []),
+        screening_candidates=state.get("associations", []),
+        screening_summary=state.get("screening_summary", {}),
+        capabilities={"parallel_tools": False, "critic_feedback": False, "llm": False},
     )

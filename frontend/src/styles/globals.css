@@ -218,7 +218,7 @@ tbody tr:hover { background: #fcfcff; }
 .associations-page .page-heading { margin-bottom: 20px; }
 .candidates-note { margin: 0 0 24px; }
 .associations-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.ranking-card, .heatmap-card, .explorer-card { padding: 22px; margin-top: 24px; }
+.ranking-card, .heatmap-card, .explorer-card, .patterns-card { padding: 22px; margin-top: 24px; }
 .ranking-card { margin-top: 0; }
 .ranking-table { min-width: 860px; }
 .ranking-table tr.selected td { background: #f4f5fe; }
@@ -272,6 +272,34 @@ tbody tr:hover { background: #fcfcff; }
 .chart-tooltip-row { display: flex; gap: 8px; align-items: baseline; color: #758094; }
 .chart-tooltip-row strong { color: #242c3e; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .chart-placeholder { min-height: 200px; display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 24px; border: 1px dashed #dce1ed; border-radius: 6px; color: var(--muted); font-size: 11px; background: #fafbfe; }
+.chart-placeholder.tool-notice { flex-direction: column; }
+.chart-placeholder.tool-notice small { overflow-wrap: anywhere; }
+.range-mark:focus-visible .range-box { stroke: var(--accent); stroke-width: 2; }
+.range-mark:hover .range-box { fill: #2a78d633; }
+.range-mark.small-sample .range-box { stroke-dasharray: 4 3; }
+.range-note { fill: var(--muted); }
+.anomalies-card { padding: 22px; margin-top: 24px; }
+.method-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0 0 20px; }
+.method-cards section { background: #f8f9fb; border-radius: 6px; padding: 14px 16px; }
+.method-cards h3 { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.method-cards dl > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 11px; }
+.method-cards dt { color: var(--muted); }
+.method-cards dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.anomalies-chart { max-width: 760px; overflow-x: auto; }
+.anomalies-chart .chart-svg { min-width: 560px; }
+.record-row td { background: #fafbfe; }
+.record-detail { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px; margin: 0; font-size: 11px; }
+.record-detail dt { color: var(--muted); overflow-wrap: anywhere; }
+.record-detail dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.record-detail .analysed dd { font-weight: 600; }
+@media (max-width: 720px) { .method-cards { grid-template-columns: 1fr; } .anomalies-card { padding: 16px; } }
+.patterns-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.patterns-limitations { margin: 0 0 20px; }
+.patterns-limitations h3 { display: flex; gap: 8px; align-items: center; color: #986e30; font-size: 12px; margin-bottom: 8px; }
+.patterns-table { margin-top: 16px; }
+.patterns-chart { max-width: 960px; overflow-x: auto; }
+.patterns-chart .chart-svg { min-width: 600px; }
+.patterns-card .card-heading { gap: 20px; }
 .chart-title { font-size: 11px; font-weight: 500; color: #566176; margin-bottom: 10px; }
 .chart-note { font-size: 10px; color: var(--muted); margin-top: 6px; }
 .explorer-controls { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -286,8 +314,8 @@ tbody tr:hover { background: #fcfcff; }
 @media (max-width: 1100px) { .detail-layout, .explorer-charts { grid-template-columns: 1fr; } }
 @media (max-width: 700px) {
   .associations-metrics, .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ranking-card, .heatmap-card, .explorer-card { padding: 16px; }
-  .detail-heading, .explorer-card .card-heading { flex-direction: column; align-items: flex-start; }
+  .ranking-card, .heatmap-card, .explorer-card, .patterns-card { padding: 16px; }
+  .detail-heading, .explorer-card .card-heading, .patterns-card .card-heading { flex-direction: column; align-items: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 

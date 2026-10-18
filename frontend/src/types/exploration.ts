@@ -3,6 +3,21 @@ import type { components } from "./api";
 export type AnalysisResult = components["schemas"]["AnalysisResult"];
 export type ToolRunRequest = components["schemas"]["ToolRunRequest"];
 
+export type ColumnResult = components["schemas"]["ColumnResult"];
+/** Explicit envelope variants. Partial SUCCESS still carries per-column omissions/failures. */
+export type EdaOutcome =
+  | { kind: "success"; data: AnalysisResult }
+  | { kind: "partial"; data: AnalysisResult; columns: Record<string, ColumnResult> }
+  | { kind: "skipped"; data: AnalysisResult }
+  | { kind: "failed"; data: AnalysisResult };
+
+export function edaOutcome(data: AnalysisResult): EdaOutcome {
+  if (data.status === "FAILED") return { kind: "failed", data };
+  if (data.status === "SKIPPED") return { kind: "skipped", data };
+  if (data.completeness === "partial") return { kind: "partial", data, columns: data.column_results ?? {} };
+  return { kind: "success", data };
+}
+
 // AnalysisResult.result is free JSON in OpenAPI. These shapes mirror the Python models
 // RankedRelationship (app/shared/domain/models/analysis.py) and the chart specs in
 // app/modules/exploration/adapters/visualization/charts.py; update both sides together.
@@ -96,13 +111,50 @@ export interface NumericSummary {
   skewness?: number | null;
 }
 
+/** grouped_summary: one numeric column summarised per existing category (not discovered clusters). */
+export interface GroupSummary extends NumericSummary {
+  label: string;
+  /** Rows carrying this category, including those with a missing value. */
+  rows: number;
+  q1?: number | null;
+  q3?: number | null;
+  /** Fewer observed values than minimum_sample_size: describe, do not compare. */
+  small_sample: boolean;
+}
+
+export interface GroupedSummary {
+  column: string;
+  group_by: string;
+  total_groups: number;
+  shown_groups: number;
+  max_groups: number;
+  minimum_sample_size: number;
+  groups: GroupSummary[];
+  /** Smaller groups left out by max_groups; the UI must say so explicitly. */
+  omitted: { groups: number; rows: number; observed: number };
+  /** Rows without a category: counted apart, never treated as a group. */
+  missing_group: { rows: number; observed: number };
+  overall: NumericSummary;
+}
+
 export interface OutlierSummary {
   count?: number;
   skipped?: string;
   iqr?: {
+    multiplier?: number;
     count: number; percentage: number | null; lower_fence: number | null; upper_fence: number | null;
     examples?: (number | null)[];
     example_rows?: { row_index: number; value: number | null }[];
   };
-  mad?: { count: number | null; percentage: number | null };
+  mad?: {
+    threshold?: number;
+    count: number | null; percentage: number | null;
+    /** AUD-017 detail: absent in older responses; bounds and examples are null/empty when MAD = 0. */
+    median?: number | null;
+    mad?: number | null;
+    lower_bound?: number | null;
+    upper_bound?: number | null;
+    examples?: (number | null)[];
+    example_rows?: { row_index: number; value: number | null; robust_z: number | null }[];
+  };
 }

@@ -33,6 +33,7 @@ Todas implementan `AnalyticsTool`, heredan de `DatasetTool` y se registran en
 | `distribution` | 0+ (num/cat) | histograma, forma, normalidad (D'Agostino n≥20, Shapiro n<20); frecuencias |
 | `cardinality` | 0+ | únicos, ratio y flags `constant`, `binary`, `high_cardinality`, `near_unique` |
 | `outliers` | 0+ (num) | vallas IQR de Tukey y z robusto con MAD |
+| `grouped_summary` | num + cat | por categoría existente: filas, nulos, n, media, mediana, std, cuartiles, IQR, mín/máx y `small_sample`; grupos ordenados por tamaño y limitados por `parameters.max_groups` (≤ `eda.max_summary_groups`), con `omitted` (grupos/filas omitidos), `missing_group` (filas sin categoría) y `overall` |
 | `pearson`, `spearman` | 2 num | r/ρ, p-value, IC 95 % (Pearson) |
 | `chi_square`, `cramers_v` | 2 cat | χ², gl, p-value, V de Cramér; aviso si >20 % de frecuencias esperadas < 5 |
 | `anova`, `kruskal_wallis` | num + cat | F/H, p-value, η²/ε², supuestos (Shapiro por grupo, Levene) |
@@ -131,6 +132,22 @@ SVG propios en `frontend/src/components/charts/`, sin dependencias nuevas.
 `AnalysisResult.result` es JSON libre en OpenAPI, por lo que las formas de ranking y
 gráficos se replican a mano en `frontend/src/types/exploration.ts`; actualizar ambos
 lados juntos.
+
+## AUD-017 — Detalle MAD en `outliers`
+
+`mad` conserva `threshold`, `count` y `percentage` y añade, de forma aditiva:
+
+| Campo | Contenido |
+|---|---|
+| `median`, `mad` | mediana y desviación absoluta mediana de los valores observados |
+| `lower_bound`, `upper_bound` | límites en unidades de la variable equivalentes a \|z robusto\| > `threshold`: mediana ∓ `threshold`·MAD/0.6745 |
+| `examples` | valores marcados por MAD, de mayor a menor \|z robusto\|, hasta `eda.max_outlier_examples` |
+| `example_rows` | `{row_index, value, robust_z}` por ejemplo, con la posición original como en AUD-018 |
+
+Con MAD = 0 (columna constante o mitad o más de los valores iguales a la mediana)
+`count`, `percentage` y los límites son `null` y los ejemplos quedan vacíos. La
+prueba congelada de AUD-018 excluye solo estos campos nuevos: los anteriores no
+cambian.
 
 ## AUD-018 — Referencias originales en ejemplos IQR
 

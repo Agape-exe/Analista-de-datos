@@ -12,14 +12,14 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
     { label: "Calidad de datos", icon: ShieldCheck, to: "/quality" }, { label: "Diccionario de datos", icon: BookOpen, to: "/dictionary" },
   ] },
   { label: "Exploración", links: [
-    { label: "Asociaciones", icon: ScanSearch, to: "/associations" }, { label: "Patrones", icon: Layers },
-    { label: "Anomalías", icon: TriangleAlert },
+    { label: "Asociaciones", icon: ScanSearch, to: "/associations" }, { label: "Patrones", icon: Layers, to: "/patterns" },
+    { label: "Anomalías", icon: TriangleAlert, to: "/anomalies" },
   ] },
   { label: "Análisis", links: [
     { label: "Relaciones", icon: GitBranch }, { label: "Hallazgos", icon: Sparkles, to: "/report" },
   ] },
   { label: "Evaluación", links: [
-    { label: "Traza", icon: ListChecks }, { label: "Métricas", icon: Activity },
+    { label: "Traza", icon: ListChecks, to: "/trace" }, { label: "Métricas", icon: Activity },
   ] },
   { label: "Asistente", links: [{ label: "Chat", icon: MessageSquare }] },
 ];

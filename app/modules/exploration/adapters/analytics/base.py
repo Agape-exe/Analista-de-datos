@@ -8,6 +8,7 @@ from typing import ClassVar
 from pydantic import JsonValue
 
 from app.modules.data_intake.ports.dataset_provider import DatasetProvider
+from app.modules.exploration.application.parameters import validate_parameters
 from app.shared.application.errors import (
     AnalysisNotApplicableError,
     DatasetNotFoundError,
@@ -16,7 +17,7 @@ from app.shared.application.errors import (
 from app.shared.config.settings import EdaSettings
 from app.shared.contracts.datasource import RegisteredDataset
 from app.shared.domain.enums.statuses import AnalysisStatus
-from app.shared.domain.models.analysis import AnalysisResult, ToolRequest
+from app.shared.domain.models.analysis import AnalysisResult, ColumnResult, ToolRequest
 
 
 @dataclass
@@ -30,6 +31,8 @@ class ToolOutput:
     sample_size: int | None = None
     warnings: list[str] = field(default_factory=list)
     metadata: dict[str, JsonValue] = field(default_factory=dict)
+    column_results: dict[str, ColumnResult] = field(default_factory=dict)
+    status: AnalysisStatus = AnalysisStatus.SUCCESS
 
 
 def finite(value: float | None, digits: int = 6) -> float | None:
@@ -73,6 +76,7 @@ class DatasetTool(ABC):
         output: ToolOutput | None = None
         warnings: list[str] = []
         try:
+            validate_parameters(request, max_groups=self.options.max_summary_groups)
             if not self.supports(request):
                 raise ToolInputError(
                     f"{self.name} cannot run method={request.method!r} with "
@@ -99,7 +103,7 @@ class DatasetTool(ABC):
         return AnalysisResult(
             method=self.name,
             variables=output.variables,
-            status=status,
+            status=output.status,
             result=output.result,
             p_value=probability(output.p_value),
             effect_size=finite(output.effect_size),
@@ -107,6 +111,11 @@ class DatasetTool(ABC):
             warnings=output.warnings,
             execution_time=elapsed,
             metadata=output.metadata,
+            column_results=output.column_results,
+            completeness="partial"
+            if output.status == AnalysisStatus.SUCCESS
+            and any(item.status != "SUCCESS" for item in output.column_results.values())
+            else "complete",
         )
 
     def _arity(self) -> str:

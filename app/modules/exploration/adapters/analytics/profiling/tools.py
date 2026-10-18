@@ -1,12 +1,17 @@
 import numpy as np
 
 from app.modules.exploration.adapters.analytics.base import DatasetTool, ToolOutput, finite
-from app.modules.exploration.adapters.analytics.columns import numeric_array
+from app.modules.exploration.adapters.analytics.columns import (
+    label_array,
+    numeric_array,
+    require_role,
+)
 from app.modules.exploration.adapters.analytics.profiling import measures
-from app.shared.application.errors import AnalysisNotApplicableError
+from app.shared.application.errors import AnalysisNotApplicableError, ToolInputError
 from app.shared.contracts.datasource import RegisteredDataset
 from app.shared.domain.enums.semantic_type import SemanticType
-from app.shared.domain.models.analysis import ToolRequest
+from app.shared.domain.enums.statuses import AnalysisStatus
+from app.shared.domain.models.analysis import ColumnResult, ToolRequest
 
 NUMERIC = SemanticType.NUMERIC
 CATEGORICAL = SemanticType.CATEGORICAL
@@ -21,20 +26,38 @@ class ColumnsTool(DatasetTool):
         requested = list(request.variables)
         candidates = requested or [column.column_name for column in data.profile.columns]
         columns, notes = [], []
+        outcomes = {}
         for name in candidates:
             role = data.semantic_type(name)
             if not self.roles or role in self.roles:
                 columns.append(name)
             elif requested:
                 notes.append(f"{name}: {self.name} does not apply to {role} columns.")
-        if not columns:
-            raise AnalysisNotApplicableError(f"No columns suitable for {self.name}.")
-        result = {name: self.profile(data, name, data.semantic_type(name)) for name in columns}
+                outcomes[name] = ColumnResult(status="SKIPPED", warnings=[notes[-1]])
+        result = {}
+        for name in columns:
+            try:
+                value = self.profile(data, name, data.semantic_type(name))
+                if "skipped" in value:
+                    outcomes[name] = ColumnResult(status="SKIPPED", warnings=[value["skipped"]])
+                else:
+                    result[name] = value
+                    outcomes[name] = ColumnResult(status="SUCCESS", result=value)
+            except AnalysisNotApplicableError as error:
+                outcomes[name] = ColumnResult(status="SKIPPED", warnings=[str(error)])
+            except (ValueError, ArithmeticError, TypeError) as error:
+                outcomes[name] = ColumnResult(status="FAILED", warnings=[str(error)])
         return ToolOutput(
-            result=result,
+            result=result or None,
             variables=columns,
             sample_size=data.dataset.row_count,
             warnings=notes,
+            column_results=outcomes,
+            status=AnalysisStatus.SUCCESS
+            if result
+            else AnalysisStatus.FAILED
+            if any(item.status == "FAILED" for item in outcomes.values())
+            else AnalysisStatus.SKIPPED,
         )
 
     def profile(self, data: RegisteredDataset, name: str, role: SemanticType) -> dict:
@@ -153,3 +176,43 @@ class OutliersTool(ColumnsTool):
                 self.options.max_outlier_examples,
             ),
         }
+
+
+class GroupedSummaryTool(DatasetTool):
+    """Count, missing values, centre and spread of a numeric column per existing category."""
+
+    name = "grouped_summary"
+    min_variables = 2
+    max_variables = 2
+
+    def compute(self, data: RegisteredDataset, request: ToolRequest) -> ToolOutput:
+        column, group_by = request.variables
+        require_role(data, column, NUMERIC)
+        require_role(data, group_by, CATEGORICAL)
+        limit = self._max_groups(request)
+        values = numeric_array(data.values(column))
+        if not int((~np.isnan(values)).sum()):
+            raise AnalysisNotApplicableError(f"{column}: no observed values.")
+        result = measures.grouped_summary(
+            values, label_array(data.values(group_by)), limit, self.minimum_sample_size
+        )
+        notes = []
+        omitted = result["omitted"]
+        if isinstance(omitted, dict) and omitted["groups"]:
+            notes.append(
+                f"Showing the {result['shown_groups']} largest of {result['total_groups']} groups; "
+                f"{omitted['groups']} group(s) with {omitted['rows']} row(s) were omitted."
+            )
+        return ToolOutput(
+            result={"column": column, "group_by": group_by, **result},
+            variables=[column, group_by],
+            sample_size=data.dataset.row_count,
+            warnings=notes,
+        )
+
+    def _max_groups(self, request: ToolRequest) -> int:
+        cap = self.options.max_summary_groups
+        raw = request.parameters.get("max_groups", cap)
+        if isinstance(raw, bool) or not isinstance(raw, int) or not 1 <= raw <= cap:
+            raise ToolInputError(f"max_groups must be an integer between 1 and {cap}.")
+        return raw

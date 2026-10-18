@@ -102,7 +102,10 @@ it.each([
   [422, "VALIDATION_ERROR", "No se pudo evaluar el dataset", false],
   [500, "UNKNOWN", "No se pudo cargar la calidad", false],
 ])("maneja HTTP %s / %s sin presentar errores como reglas FAIL", async (status, code, title, reload) => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ detail: { code, message: "/private/path secret" } }, status)));
+  const failure = response({ detail: { code, message: "/private/path secret" } }, status);
+  // A long Retry-After exhausts the client's automatic retries immediately.
+  if (status === 429) failure.headers.set("Retry-After", "60");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(failure));
   render(panel());
   const alert = await screen.findByRole("alert");
   expect(alert).toHaveTextContent(String(title));

@@ -39,6 +39,52 @@ def numeric_summary(values: np.ndarray) -> dict[str, object]:
     return summary
 
 
+def grouped_summary(
+    values: np.ndarray, labels: np.ndarray, max_groups: int, minimum_sample_size: int
+) -> dict[str, object]:
+    """Per-category numeric summary of existing groups, largest first, with omissions explicit.
+
+    Groups are the categories already present in the data; nothing is discovered or clustered.
+    Rows without a category are counted apart instead of forming a group.
+    """
+    labelled = np.not_equal(labels, None)
+    grouped: dict[str, list[int]] = {}
+    for position in np.flatnonzero(labelled):
+        grouped.setdefault(str(labels[position]), []).append(int(position))
+    ordered = sorted(grouped.items(), key=lambda item: (-len(item[1]), item[0]))
+    shown, omitted = ordered[:max_groups], ordered[max_groups:]
+    groups = []
+    for label, positions in shown:
+        summary = numeric_summary(values[positions])
+        groups.append(
+            {
+                "label": label,
+                "rows": len(positions),
+                **summary,
+                "small_sample": int(summary["count"]) < minimum_sample_size,
+            }
+        )
+    omitted_rows = sum(len(positions) for _, positions in omitted)
+    unlabelled = values[~labelled]
+    return {
+        "total_groups": len(ordered),
+        "shown_groups": len(shown),
+        "max_groups": max_groups,
+        "minimum_sample_size": minimum_sample_size,
+        "groups": groups,
+        "omitted": {
+            "groups": len(omitted),
+            "rows": omitted_rows,
+            "observed": int(sum((~np.isnan(values[positions])).sum() for _, positions in omitted)),
+        },
+        "missing_group": {
+            "rows": len(unlabelled),
+            "observed": int((~np.isnan(unlabelled)).sum()),
+        },
+        "overall": numeric_summary(values),
+    }
+
+
 def frequencies(labels: list[str], top: int) -> dict[str, object]:
     counts = Counter(labels)
     total = len(labels)
@@ -104,11 +150,39 @@ def outliers(
     lower, upper = q1 - iqr_multiplier * iqr, q3 + iqr_multiplier * iqr
     iqr_mask = (observed < lower) | (observed > upper)
     mad = float(np.median(np.abs(observed - median)))
-    mad_result: dict[str, object] = {"threshold": mad_threshold, "count": None, "percentage": None}
+    mad_result: dict[str, object] = {
+        "threshold": mad_threshold,
+        "count": None,
+        "percentage": None,
+        "median": finite(median),
+        "mad": finite(mad),
+        "lower_bound": None,
+        "upper_bound": None,
+        "examples": [],
+        "example_rows": [],
+    }
     if mad > 0:
         robust_z = 0.6745 * (observed - median) / mad
         mad_mask = np.abs(robust_z) > mad_threshold
-        mad_result.update(count=int(mad_mask.sum()), percentage=finite(100 * mad_mask.sum() / n))
+        # |robust z| > threshold  <=>  value outside median ± threshold * MAD / 0.6745.
+        spread = mad_threshold * mad / 0.6745
+        flagged_z = robust_z[mad_mask]
+        order = np.argsort(-np.abs(flagged_z), kind="stable")[:max_examples]
+        mad_values = observed[mad_mask][order]
+        mad_positions = original_positions[mad_mask][order]
+        mad_result.update(
+            count=int(mad_mask.sum()),
+            percentage=finite(100 * mad_mask.sum() / n),
+            lower_bound=finite(median - spread),
+            upper_bound=finite(median + spread),
+            examples=[finite(value) for value in mad_values],
+            example_rows=[
+                {"row_index": int(position), "value": finite(value), "robust_z": finite(z)}
+                for position, value, z in zip(
+                    mad_positions, mad_values, flagged_z[order], strict=True
+                )
+            ],
+        )
     flagged = observed[iqr_mask]
     selection = np.argsort(-np.abs(flagged - median), kind="stable")[:max_examples]
     extremes = flagged[selection]

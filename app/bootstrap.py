@@ -50,6 +50,7 @@ from app.modules.exploration.adapters.analytics.profiling.tools import (
     CardinalityTool,
     DescriptiveStatisticsTool,
     DistributionTool,
+    GroupedSummaryTool,
     MissingValuesTool,
     OutliersTool,
 )
@@ -60,9 +61,14 @@ from app.modules.exploration.adapters.visualization.charts import (
     HistogramTool,
     ScatterTool,
 )
+from app.modules.exploration.adapters.workflow_kruskal import WorkflowKruskalTool
 from app.modules.exploration.application.use_cases.explore_dataset import ExploreDataset
 from app.modules.reporting.application.agents.insight import InsightAgent
 from app.shared.adapters.llm.disabled import DisabledLLMProvider
+from app.shared.adapters.observability.telemetry import (
+    InstrumentedAnalyticsTool,
+    InstrumentedLLMProvider,
+)
 from app.shared.application.dataset_registry import DatasetRegistry
 from app.shared.application.errors import LLMDisabledError
 from app.shared.application.tool_registry import ToolRegistry
@@ -73,7 +79,7 @@ from app.shared.ports.llm_provider import LLMProvider
 def build_llm(settings: Settings) -> LLMProvider:
     if settings.llm.provider != "disabled":
         raise LLMDisabledError("Only the disabled provider adapter exists in this skeleton")
-    return DisabledLLMProvider()
+    return InstrumentedLLMProvider(DisabledLLMProvider())
 
 
 def build_datasource() -> DataSource:
@@ -90,6 +96,7 @@ EDA_TOOLS: tuple[type[DatasetTool], ...] = (
     DistributionTool,
     CardinalityTool,
     OutliersTool,
+    GroupedSummaryTool,
     PearsonTool,
     SpearmanTool,
     ChiSquareTool,
@@ -180,13 +187,18 @@ def build_use_case(settings: Settings, stored: DatasetProvider | None = None) ->
 
     def build_run() -> tuple[list[Agent], Callable[[], None]]:
         datasets = DatasetRegistry()
+        tools = build_statistical_tool_registry(datasets)
+        tools.register(WorkflowKruskalTool(datasets))
+        instrumented = ToolRegistry()
+        for name in tools.names():
+            instrumented.register(InstrumentedAnalyticsTool(tools.get(name)))
         understanding = build_data_understanding(settings)
         if stored is not None:
             understanding = StoredDataUnderstanding(understanding, stored)
         return (
             build_agents(
                 build_llm(settings),
-                build_statistical_tool_registry(datasets),
+                instrumented,
                 understanding,
                 datasets,
                 settings.eda,

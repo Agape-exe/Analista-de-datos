@@ -1,7 +1,7 @@
 from pydantic import Field, JsonValue
 
 from app.shared.domain.enums.statuses import AnalysisStatus
-from app.shared.domain.models.analysis import AnalysisResult
+from app.shared.domain.models.analysis import AnalysisPlan, AnalysisResult, AssociationResult
 from app.shared.domain.models.base import DomainModel
 from app.shared.domain.models.data_dictionary import DataDictionary
 from app.shared.domain.models.dataset import DatasetProfile
@@ -27,3 +27,13 @@ class AnalysisReport(DomainModel):
     relationship_assessments: list[RelationshipAssessment] = Field(default_factory=list)
     configuration: dict[str, JsonValue] = Field(default_factory=dict)
     execution_trace: list[dict[str, JsonValue]] = Field(default_factory=list)
+    audit_version: str | None = None
+    user_question: str | None = None
+    dataset_id: str | None = None
+    analysis_plan: AnalysisPlan | None = None
+    screening_candidates: list[AssociationResult] = Field(default_factory=list)
+    requested_configuration: dict[str, JsonValue] = Field(default_factory=dict)
+    capabilities: dict[str, bool] = Field(default_factory=dict)
+    planning_decisions: list[dict[str, JsonValue]] = Field(default_factory=list)
+    screening_configuration: dict[str, JsonValue] = Field(default_factory=dict)
+    screening_summary: dict[str, JsonValue] = Field(default_factory=dict)

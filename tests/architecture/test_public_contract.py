@@ -32,6 +32,45 @@ def test_public_http_contract_is_unchanged_by_architecture_migration() -> None:
         "path": current["paths"].pop("/datasets/{dataset_id}/preview"),
         "schema": current["components"]["schemas"].pop("DatasetPreview"),
     }
+    # Additive audit contracts preserve every pre-existing property and route.
+    schemas = current["components"]["schemas"]
+    additions = {
+        "AnalysisResult": {"completeness", "column_results"},
+        "AnalysisReport": {
+            "audit_version",
+            "user_question",
+            "dataset_id",
+            "analysis_plan",
+            "screening_candidates",
+            "requested_configuration",
+            "capabilities",
+            "planning_decisions",
+            "screening_configuration",
+            "screening_summary",
+        },
+        "ExperimentMetrics": {"screening_calls"},
+        "StoredAnalysisRequest": {"configuration"},
+    }
+    for name, properties in additions.items():
+        for prop in properties:
+            assert prop not in schemas[name].get("required", [])
+            assert prop not in baseline["components"]["schemas"][name]["properties"]
+            schemas[name]["properties"].pop(prop)
+    for name in (
+        "AnalysisPlan",
+        "AnalysisStep",
+        "Hypothesis",
+        "ToolRequest",
+        "AssociationResult",
+        "ColumnResult",
+        "StoredConfiguration",
+        "StoredAnalysisOptions",
+        "StoredPerformanceOptions",
+    ):
+        assert name not in baseline["components"]["schemas"]
+        schemas.pop(name)
+    for name, schema in schemas.items():
+        assert schema == baseline["components"]["schemas"][name], name
     assert current == baseline
     expected_preview = json.loads(
         (ROOT / "tests/fixtures/openapi_preview.json").read_text(encoding="utf-8")

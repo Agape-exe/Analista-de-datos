@@ -10,7 +10,7 @@ from langgraph.graph.state import CompiledStateGraph
 from app.modules.analysis.application.state import AgentState
 from app.modules.analysis.ports.agent import Agent
 from app.shared.adapters.observability.logging import log_stage
-from app.shared.adapters.observability.telemetry import telemetry_scope
+from app.shared.adapters.observability.telemetry import active_telemetry, telemetry_scope
 from app.shared.application.reporting import assemble_report
 from app.shared.application.timing import TimingRecorder
 from app.shared.config.settings import Settings
@@ -35,8 +35,25 @@ def _agent_node(agent: Agent) -> Node:
             {key: value for key, value in state.items() if key in CONTEXT_FIELDS}
         )
         recorder = TimingRecorder()
-        with recorder.measure(agent.name):
-            result = await agent.run(context)
+        collector = active_telemetry()
+        try:
+            with recorder.measure(agent.name):
+                result = await agent.run(context)
+        except BaseException:
+            if collector is not None:
+                collector.last_state = dict(state) | {
+                    "stage_statuses": state["stage_statuses"] | {agent.name: AnalysisStatus.FAILED},
+                    "stage_durations": state["stage_durations"]
+                    | {agent.name: recorder.durations.get(agent.name, 0)},
+                }
+                collector.record(
+                    kind="agent",
+                    agent=agent.name,
+                    status="FAILED",
+                    dataset_id=state.get("dataset_id"),
+                    duration_seconds=recorder.durations.get(agent.name, 0),
+                )
+            raise
         duration = recorder.durations[agent.name]
         log_stage(state["run_id"], agent.name, result.status, duration)
         # Retain Pydantic objects internally; serialize only at the outer boundary.
@@ -53,6 +70,46 @@ def _agent_node(agent: Agent) -> Node:
             errors=state["errors"] + result.errors,
             warnings=state["warnings"] + result.warnings,
         )
+        if collector is not None:
+            collector.last_state = dict(state) | updates
+            collector.record(
+                kind="agent",
+                agent=agent.name,
+                status=str(result.status),
+                dataset_id=collector.last_state.get("dataset_id"),
+                duration_seconds=duration,
+                warnings=result.warnings,
+                errors=result.errors,
+            )
+            if agent.name == "Analysis":
+                executed = {
+                    event.get("step_id")
+                    for event in collector.events
+                    if event.get("kind") == "tool"
+                }
+                for item in result.update.analysis_results or []:
+                    for event in collector.events:
+                        if event.get("kind") == "tool" and event.get(
+                            "step_id"
+                        ) == item.metadata.get("step_id"):
+                            event.update(
+                                analysis_id=item.analysis_id,
+                                status=str(item.status),
+                                warnings=item.warnings,
+                            )
+                    if item.metadata.get("step_id") not in executed:
+                        collector.record(
+                            kind="step",
+                            agent="Analysis",
+                            scope="analysis",
+                            step_id=item.metadata.get("step_id"),
+                            hypothesis_id=item.metadata.get("hypothesis_id"),
+                            analysis_id=item.analysis_id,
+                            method=item.method,
+                            status=str(item.status),
+                            warnings=item.warnings,
+                            duration_seconds=item.execution_time,
+                        )
         return updates
 
     return node
@@ -91,7 +148,9 @@ def initial_state(analysis_input: AnalysisInput, settings: Settings) -> AgentSta
         dataset_profile=None,
         data_dictionary=analysis_input.data_dictionary,
         associations=[],
+        screening_summary={},
         analysis_plan=None,
+        planning_decisions=[],
         analysis_results=[],
         evidence=[],
         relationship_assessments=[],
@@ -128,7 +187,7 @@ class LangGraphWorkflow:
         release = _noop_release
         graph = self.graph
 
-        with telemetry_scope() as telemetry:
+        with telemetry_scope(state["run_id"]) as telemetry:
             try:
                 with recorder.measure("total"):
                     if self._run_factory is not None:
@@ -146,6 +205,7 @@ class LangGraphWorkflow:
             finally:
                 release()
 
+        completed = completed or telemetry.last_state or state
         recorded_metrics: ExperimentMetrics = completed.get("metrics", state["metrics"])
         metrics = recorded_metrics.model_copy(
             update={
@@ -166,17 +226,16 @@ class LangGraphWorkflow:
             metrics.tokens_used = None if telemetry.missing_token_usage else telemetry.tokens_used
         if telemetry.tool_calls:
             metrics.tool_calls = telemetry.tool_calls
+        metrics.screening_calls = telemetry.screening_calls
         if failure is not None:
             log_stage(
                 state["run_id"], "workflow", AnalysisStatus.FAILED, recorder.durations["total"]
             )
-            return AnalysisReport(
-                run_id=state["run_id"],
-                status=AnalysisStatus.FAILED,
-                errors=[failure],
-                metrics=metrics,
-                execution_trace=telemetry.events,
-            )
+            completed = dict(completed) | {
+                "errors": list(completed.get("errors", [])) + [failure],
+                "analysis_results": completed.get("analysis_results") or telemetry.results,
+            }
         report = assemble_report(completed, metrics)
+        report.screening_configuration = self.settings.eda.model_dump(mode="json")
         report.execution_trace = telemetry.events
         return report

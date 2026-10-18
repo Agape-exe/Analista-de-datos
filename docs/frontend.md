@@ -27,8 +27,15 @@ skip-link, mensajes de estado y respeto por reduced-motion.
 ## Pantallas habilitadas
 
 **New Analysis** permite cargar CSV/TSV por selección o arrastre, elegir separador
-y encoding y adjuntar un DataDictionary JSON. La pregunta de investigación,
-FAST/DEEP, TXT y SQL están señalados como Coming Soon.
+y encoding y adjuntar un DataDictionary JSON. La pregunta y las opciones de
+planificación rápido/estándar están disponibles en **Hallazgos** (`/report`).
+La carga enlaza a esa capacidad. TXT y SQL continúan pendientes; no hay modo profundo.
+
+**Traza** (`/trace`) presenta el contexto del reporte, agentes, plan, decisiones,
+herramientas y omisiones, con enlaces a resultados. Consume eventos instrumentados
+del backend y señala reportes históricos sin instrumentación verificable. La
+cabecera usa la identidad del reporte cuando se consulta un reporte recuperado.
+Contratos vigentes: [auditoría de Planner y Analysis](planner-trace-audit.md).
 
 **Dataset Overview** muestra metadatos reales: filas, columnas, roles, completitud,
 tipos, nulos por columna, valores únicos, descripciones, procedencia y confianza
@@ -369,13 +376,13 @@ volver a cargar. Carga, cambios de columna y respuestas stale ocultan referencia
 anteriores. useTool ignora éxitos de solicitudes canceladas; el explorador se
 reinicia al cambiar dataset. Los gráficos mantienen su comportamiento anterior.
 
-La consulta de outliers espera histograma y descriptivas de la columna, sin
-introducir colas globales. Cambiar únicamente la agrupación del boxplot no repite
+La consulta de outliers espera histograma y descriptivas de la columna y usa la
+prioridad más baja de la cola de transporte. Cambiar únicamente la agrupación del boxplot no repite
 outliers. Los reintentos no alteran variables ni parámetros de la herramienta.
 Los valores conservan la normalización estadística anterior de seis decimales;
 un valor no representable como número JSON se presenta explícitamente como tal.
 La tabla usa caption, encabezados y región desplazable accesible por teclado,
-con diseño adaptable. «Anomalías» continúa deshabilitada como Próximamente.
+con diseño adaptable. La pantalla Anomalías se habilitó después con AUD-017.
 No hay nueva pantalla, dependencias ni cambios en Analysis, Critic o Reporting.
 
 El detalle de la correspondencia, límites y contrato aditivo está en
@@ -417,6 +424,60 @@ ReportPage.tsx. Arquitectura: 172 archivos correctos y 24 pruebas aprobadas.
 La comparación completa de línea base/backend consta en eda-association.md.
 No se identificaron regresiones nuevas en las comprobaciones ejecutadas; no
 se presentan las suites generales como completamente aprobadas.
+
+## AUD-017 — Anomalías
+
+Ruta `/anomalies` («Anomalías» en la barra lateral). Una sola consulta
+`outliers` con `variables: []` evalúa todas las columnas numéricas:
+
+- Resumen por columna: observaciones, atípicos IQR y MAD (conteo y porcentaje) y
+  estado (muestra pequeña, constante, MAD = 0, IQR = 0) con las mismas reglas que
+  el explorador de Asociaciones (`classifyOutliers`). Una columna constante o sin
+  evaluar nunca se presenta como «0 atípicos».
+- Detalle de la columna elegida: regla y límites IQR (Q1 − k·IQR, Q3 + k·IQR);
+  regla MAD (|z robusto| > umbral), mediana, MAD y límites equivalentes en
+  unidades de la variable; diagrama de caja (`chart_boxplot`, agrupable).
+- Ejemplos IQR y MAD unidos por registro original (`row_index`), con el z robusto
+  cuando MAD lo marcó. «Ver registro» consulta bajo demanda la vista previa con
+  `offset = row_index` y `limit = 1` y muestra todos los valores de ese registro;
+  nunca se infiere un registro a partir del valor. Referencias inválidas o
+  ausentes se explican y no se muestran.
+- Aviso permanente: un atípico estadístico no es necesariamente un error; no se
+  corrige ni se elimina.
+
+Respuestas anteriores sin el detalle MAD siguen funcionando: los límites MAD se
+indican como no disponibles y solo se muestran ejemplos IQR.
+
+## Transporte de herramientas y capacidad del backend
+
+El backend admite `max_concurrent_operations` operaciones a la vez (1 en el perfil
+de producción) y un cupo de peticiones por minuto por IP. `api-client` coordina
+todas las peticiones del navegador para no producir esos 429 por sí mismo:
+
+- Cola compartida (`request-gate.ts`) con `VITE_MAX_CONCURRENT_REQUESTS`
+  peticiones simultáneas, 1 por defecto. Un valor mayor que la capacidad del
+  backend solo convierte peticiones en 429.
+- Prioridades: ranking, heatmap y Patrones (`PRIORITY.primary`) antes que el
+  explorador de columnas; `outliers` (`PRIORITY.secondary`) al final. Las
+  peticiones de un mismo render se ordenan juntas antes de enviarse.
+- Cancelación: una petición en cola se descarta sin enviarse. Una herramienta ya
+  enviada sigue calculándose en el servidor, así que conserva su plaza hasta la
+  respuesta (máximo 60 s) aunque su resultado ya no se muestre.
+- `useTool` reutiliza resultados `SUCCESS`/`SKIPPED` (deterministas para un
+  dataset en memoria; máximo 200) y comparte una sola petición entre llamadas
+  idénticas. Volver a una columna o a la página no repite consultas.
+- `ANALYSIS_CAPACITY_EXCEEDED`: backoff exponencial con jitter (1, 2, 4 y 8 s,
+  nunca menor que `Retry-After`), 5 intentos como máximo; después, error con
+  botón Reintentar. Un `Retry-After` mayor de 10 s falla de inmediato.
+- `REQUEST_RATE_LIMITED`: se respeta `Retry-After` (hasta 10 s, 2 reintentos).
+  Esperas más largas, o un `Retry-After` ilegible, fallan de inmediato, pausan la
+  cola y rechazan las peticiones en espera con el mismo mensaje, sin ráfagas.
+- Errores de red y resultados `FAILED` no se reintentan automáticamente.
+
+`Retry-After` y `X-Request-ID` se exponen por CORS (`app/api/main.py`); sin ello
+el navegador no puede leerlas cuando frontend y backend tienen orígenes
+distintos (Vercel y Render). Detrás de un proxy, el cupo por IP puede ser
+compartido por todas las personas usuarias (docs/backend-production-readiness.md).
 
 ## Backend y contratos
 
@@ -477,7 +538,8 @@ npm.cmd run dev
 
 Abrir `http://localhost:5173`. El proxy Vite transforma `/api/intake` en `/intake`
 contra `http://127.0.0.1:8000`; no requiere CORS para este flujo.
-`frontend/.env.example` documenta VITE_API_BASE_URL y API_PROXY_TARGET.
+`frontend/.env.example` documenta VITE_API_BASE_URL, API_PROXY_TARGET y
+VITE_MAX_CONCURRENT_REQUESTS.
 
 Generar nuevamente contratos después de cambiar modelos o rutas:
 
