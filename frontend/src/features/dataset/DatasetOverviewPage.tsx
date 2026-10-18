@@ -8,10 +8,11 @@ import { formatNumber } from "../../lib/utils";
 import { useIntake } from "../data-intake/IntakeProvider";
 import { ColumnUnderstandingTable } from "./ColumnUnderstandingTable";
 import { DatasetMetrics } from "./DatasetMetrics";
+import { DatasetPreviewPanel } from "./DatasetPreview";
 
 export function DatasetOverviewPage() {
   const { result } = useIntake();
-  if (!result) return <Card className="empty-state"><span className="upload-icon"><Database size={28} /></span>
+  if (!result || !result.profile.dataset_id) return <Card className="empty-state"><span className="upload-icon"><Database size={28} /></span>
     <h1>Aún no hay dataset</h1><p>Sube un CSV o TSV para comprender su estructura y revisar las columnas detectadas.</p>
     <Button asChild><Link to="/">Subir dataset <ArrowRight size={15} /></Link></Button>
   </Card>;
@@ -24,6 +25,7 @@ export function DatasetOverviewPage() {
       <Button asChild><Link to="/associations">Explorar asociaciones <ArrowRight size={14} /></Link></Button>
     </div>
     <DatasetMetrics result={result} />
+    <DatasetPreviewPanel key={result.profile.dataset_id} datasetId={result.profile.dataset_id} />
     <ColumnUnderstandingTable result={result} />
     <Card className="quality-card"><div className="card-heading"><div><h2>Calidad de datos de un vistazo</h2>
       <p>Completitud medida y estado de validación. Los controles de calidad avanzados vienen después.</p></div></div>
