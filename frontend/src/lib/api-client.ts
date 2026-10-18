@@ -1,5 +1,8 @@
 import type { components, operations } from "../types/api";
 import type { AnalysisResult, ToolRunRequest } from "../types/exploration";
+import { validQuality, type DatasetQuality } from "./quality-response";
+
+export type { DatasetQuality } from "./quality-response";
 import type { IntakeDraft, IntakeResponse } from "../types/intake";
 
 export class ApiError extends Error {
@@ -36,6 +39,13 @@ export async function submitIntake(draft: IntakeDraft, signal?: AbortSignal): Pr
 
 export class DatasetExpiredError extends ApiError {}
 export class PreviewTooLargeError extends ApiError {}
+
+export async function getDatasetQuality(datasetId: string, signal?: AbortSignal): Promise<DatasetQuality> {
+  if (!datasetId) throw new ApiError("El identificador del dataset no es válido.", undefined, "VALIDATION_ERROR");
+  const payload = await request<unknown>(`/datasets/${encodeURIComponent(datasetId)}/quality`, { method: "GET", signal });
+  if (!validQuality(payload, datasetId)) throw new ApiError("La respuesta de calidad es inválida.", undefined, "INVALID_RESPONSE");
+  return payload;
+}
 
 export type DatasetPreview = components["schemas"]["DatasetPreview"];
 type PreviewQuery = NonNullable<operations["preview_dataset_datasets__dataset_id__preview_get"]["parameters"]["query"]>;

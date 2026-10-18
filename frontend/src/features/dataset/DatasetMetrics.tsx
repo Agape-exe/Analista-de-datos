@@ -10,9 +10,9 @@ export function DatasetMetrics({ result }: { result: IntakeResponse }) {
     { label: "Variables numéricas", value: formatNumber(summary.numeric_columns.length), note: "Valores numéricos observados" },
     { label: "Variables categóricas", value: formatNumber(summary.categorical_columns.length), note: "Etiquetas y categorías discretas" },
     { label: "Valores faltantes", value: formatPercentage(completeness.missing_percentage), note: `${formatNumber(completeness.missing_cells)} de ${formatNumber(completeness.total_cells)} celdas` },
-    { label: "Puntaje de calidad", value: "—", note: "No evaluado", unavailable: true },
+    { label: "Controles de calidad", value: "Disponibles", note: "Consulta Calidad de datos" },
   ];
   return <div className="metrics-grid">{metrics.map((metric) => <Card className="metric-card" key={metric.label}>
-    <p>{metric.label}</p><strong className={metric.unavailable ? "muted" : ""}>{metric.value}</strong><small>{metric.note}</small>
+    <p>{metric.label}</p><strong>{metric.value}</strong><small>{metric.note}</small>
   </Card>)}</div>;
 }

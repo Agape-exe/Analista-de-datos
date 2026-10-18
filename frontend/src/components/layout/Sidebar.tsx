@@ -9,7 +9,7 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
   { links: [{ label: "Resumen", icon: LayoutDashboard }] },
   { label: "Datos", links: [
     { label: "Dataset", icon: Database, to: "/dataset" },
-    { label: "Calidad de datos", icon: ShieldCheck }, { label: "Diccionario de datos", icon: BookOpen, to: "/dictionary" },
+    { label: "Calidad de datos", icon: ShieldCheck, to: "/quality" }, { label: "Diccionario de datos", icon: BookOpen, to: "/dictionary" },
   ] },
   { label: "Exploración", links: [
     { label: "Asociaciones", icon: ScanSearch, to: "/associations" }, { label: "Patrones", icon: Layers },

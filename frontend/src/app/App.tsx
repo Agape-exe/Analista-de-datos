@@ -5,6 +5,7 @@ import { IntakeProvider } from "../features/data-intake/IntakeProvider";
 import { NewAnalysisPage } from "../features/data-intake/NewAnalysisPage";
 import { DatasetOverviewPage } from "../features/dataset/DatasetOverviewPage";
 import { DataDictionaryPage } from "../features/dataset/DataDictionaryPage";
+import { DataQualityPage } from "../features/quality/DataQualityPage";
 import { ReportPage } from "../features/reports/ReportPage";
 import { ReportProvider } from "../features/reports/ReportProvider";
 
@@ -14,6 +15,7 @@ export function App() {
     <Route path="report" element={<ReportPage />} />
     <Route path="dataset" element={<DatasetOverviewPage />} />
     <Route path="dictionary" element={<DataDictionaryPage />} />
+    <Route path="quality" element={<DataQualityPage />} />
     <Route path="associations" element={<AssociationsPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Route></Routes></ReportProvider></IntakeProvider>;

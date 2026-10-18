@@ -128,6 +128,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/datasets/{dataset_id}/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dataset Quality
+         * @description Evaluate exact quality aggregates on the registered, unmodified dataset.
+         */
+        get: operations["dataset_quality_datasets__dataset_id__quality_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/datasets/{dataset_id}/preview": {
         parameters: {
             query?: never;
@@ -469,6 +489,32 @@ export interface components {
             /** Columns */
             columns?: components["schemas"]["ColumnProfile"][];
         };
+        /**
+         * DatasetQuality
+         * @description Exact aggregates only, never raw rows. Percentages use a 0–100 scale.
+         *
+         *     Zero denominators yield 0%; rules on empty tables are NOT_EVALUATED.
+         *     Unsupported/over-budget evaluations fail as a whole, without partial metrics.
+         */
+        DatasetQuality: {
+            /** Dataset Id */
+            dataset_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "EVALUATED" | "NOT_EVALUATED";
+            /** Total Rows */
+            total_rows: number;
+            /** Total Columns */
+            total_columns: number;
+            /** Total Cells */
+            total_cells: number;
+            missing: components["schemas"]["QualityMissingMetrics"];
+            duplicates: components["schemas"]["QualityDuplicateMetrics"];
+            /** Rules */
+            rules: components["schemas"]["QualityRuleResult"][];
+        };
         /** DatasetSchema */
         DatasetSchema: {
             /** Columns */
@@ -613,6 +659,59 @@ export interface components {
             /** Parallel Tools */
             parallel_tools?: boolean | null;
         };
+        /** QualityColumnMetrics */
+        QualityColumnMetrics: {
+            /** Column Name */
+            column_name: string;
+            /** Data Type */
+            data_type: string;
+            /** Missing Count */
+            missing_count: number;
+            /** Missing Percentage */
+            missing_percentage: number;
+        };
+        /**
+         * QualityDuplicateMetrics
+         * @description Full-row equality; duplicate_rows excludes each group's first occurrence.
+         */
+        QualityDuplicateMetrics: {
+            /** Duplicate Rows */
+            duplicate_rows: number;
+            /** Duplicate Percentage */
+            duplicate_percentage: number;
+            /** Duplicate Groups */
+            duplicate_groups: number;
+        };
+        /** QualityMissingMetrics */
+        QualityMissingMetrics: {
+            /** Missing Cells */
+            missing_cells: number;
+            /** Missing Percentage */
+            missing_percentage: number;
+            /** Incomplete Rows */
+            incomplete_rows: number;
+            /** Complete Rows */
+            complete_rows: number;
+            /** Columns */
+            columns: components["schemas"]["QualityColumnMetrics"][];
+        };
+        /** QualityRuleResult */
+        QualityRuleResult: {
+            /** Rule Id */
+            rule_id: string;
+            /** Description */
+            description: string;
+            status: components["schemas"]["QualityRuleStatus"];
+            /** Observed Count */
+            observed_count?: number | null;
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * QualityRuleStatus
+         * @enum {string}
+         */
+        QualityRuleStatus: "PASS" | "FAIL" | "NOT_EVALUATED";
         /** RelationshipAssessment */
         RelationshipAssessment: {
             /** Variables */
@@ -954,6 +1053,56 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    dataset_quality_datasets__dataset_id__quality_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetQuality"];
+                };
+            };
+            /** @description Dataset no longer registered in memory */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Exact quality evaluation exceeds resource budgets */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unsupported local table, structure or value */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Shared exploration rate or operation capacity exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

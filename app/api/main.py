@@ -12,6 +12,7 @@ from app.bootstrap import (
     build_exploration_use_case,
     build_intake_use_case,
     build_preview_use_case,
+    build_quality_use_case,
     build_repository,
     build_use_case,
 )
@@ -68,6 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.datasets = datasets
     application.state.intake_use_case = build_intake_use_case(application.state.settings, datasets)
     application.state.preview_use_case = build_preview_use_case(datasets)
+    application.state.quality_use_case = build_quality_use_case(datasets)
     application.state.exploration_use_case = build_exploration_use_case(
         application.state.settings, datasets
     )
