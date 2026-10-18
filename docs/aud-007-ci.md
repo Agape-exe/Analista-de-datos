@@ -295,13 +295,14 @@ Validación local posterior a la integración:
 | `npm run build` y `npm run lint -- --quiet` | Correctos |
 | E2E Chromium `associations.spec.ts` + `patterns.spec.ts` | 0/2: Chromium Windows no inicia (`spawn UNKNOWN`) antes de aserciones |
 
-AUD-004 sí está presente en el transporte: cola global de 2 solicitudes,
+AUD-004 está presente en el transporte: cola global de 2 solicitudes,
 cancelación de solicitudes en espera, pausa global por `Retry-After` y hasta
-tres reintentos acotados. Las pruebas unitarias de transporte pasan. Sin
-embargo, la ejecución E2E no llegó a enviar peticiones, así que no existe
-evidencia local nueva para afirmar que los 429 `ANALYSIS_CAPACITY_EXCEEDED`
-quedaron resueltos en el recorrido real; se clasifican como **pendiente de
-confirmación en Chromium Linux/Actions**, no como resueltos ni como regresión.
+tres reintentos acotados. Las pruebas unitarias pasan. La CI Linux
+`39151856082` confirma que `e2e/associations.spec.ts` terminó **1 passed** en
+12,9 s; por tanto, los 429 `ANALYSIS_CAPACITY_EXCEEDED` de Asociaciones quedan
+clasificados como **resueltos por AUD-004** en ese recorrido. El job E2E sigue
+fallando después, en otra suite, que debe identificarse y corregirse antes de
+aprobar el PR.
 
 Dependencias pendientes: Planner/Analysis/Critic conservan los cuatro fallos
 backend y F841/F401 ya reproducidos en develop; I5 no modificó esos algoritmos
