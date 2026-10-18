@@ -126,9 +126,20 @@ export interface OutlierSummary {
   count?: number;
   skipped?: string;
   iqr?: {
+    multiplier?: number;
     count: number; percentage: number | null; lower_fence: number | null; upper_fence: number | null;
     examples?: (number | null)[];
     example_rows?: { row_index: number; value: number | null }[];
   };
-  mad?: { count: number | null; percentage: number | null };
+  mad?: {
+    threshold?: number;
+    count: number | null; percentage: number | null;
+    /** AUD-017 detail: absent in older responses; bounds and examples are null/empty when MAD = 0. */
+    median?: number | null;
+    mad?: number | null;
+    lower_bound?: number | null;
+    upper_bound?: number | null;
+    examples?: (number | null)[];
+    example_rows?: { row_index: number; value: number | null; robust_z: number | null }[];
+  };
 }

@@ -31,7 +31,7 @@ test("AUD-018: IQR real, nulos, repeticiones y posiciones originales consistente
   await expect(region.getByRole("rowheader")).toHaveText(["Registro 2", "Registro 45", "Registro 46"]);
   await expect(region.getByRole("cell", { name: "500", exact: true })).toHaveCount(2);
   await expect(region.getByText(/puede ser una observación válida/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Anomalías Pronto" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "Anomalías", exact: true })).toHaveAttribute("href", "/anomalies");
   await capture(page, "outliers-original-positions.png");
   if (process.env.UI_SCREENSHOT_DIR) {
     await region.screenshot({ path: join(process.env.UI_SCREENSHOT_DIR, "outliers-repeated-values.png") });
