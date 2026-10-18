@@ -11,7 +11,7 @@ test("member 5 report reuses the intake dataset and retrieves report", async ({ 
   });
   await page.getByRole("button", { name: "Comprender dataset", exact: true }).click();
   await page.getByRole("link", { name: "Explorar asociaciones" }).waitFor();
-  await page.getByRole("link", { name: "Hallazgos", exact: true }).click();
+  await page.getByLabel("Hallazgos", { exact: true }).click();
   await expect(page.getByText(/Dataset: sample\.csv/)).toBeVisible();
   await page.getByRole("button", { name: "Generar reporte" }).click();
   await expect(page.getByRole("heading", { name: "Estado: Pendiente" })).toBeVisible();
@@ -22,7 +22,7 @@ test("member 5 report reuses the intake dataset and retrieves report", async ({ 
   await page.getByRole("link", { name: "Descargar informe" }).click();
   expect((await downloadEvent).suggestedFilename()).toBe("analysis-report.md");
   await page.getByRole("link", { name: "Dataset", exact: true }).click();
-  await page.getByRole("link", { name: "Hallazgos", exact: true }).click();
+  await page.getByLabel("Hallazgos", { exact: true }).click();
   await expect(page.getByRole("heading", { name: "Estado: Pendiente" })).toBeVisible();
   await expect(page.getByLabel("ID de ejecución")).toHaveValue(id);
   await page.getByRole("button", { name: "Consultar", exact: true }).click();
@@ -48,7 +48,7 @@ test("EDA and a complete report coexist with recovery and downloads", async ({ p
   await page.getByRole("link", { name: "Explorar asociaciones" }).click();
   const relationships = page.getByRole("region", { name: "Relaciones ordenadas" });
   await expect(relationships.getByText(/x ↔ partial_y|partial_y ↔ x/)).toBeVisible();
-  await page.getByRole("link", { name: "Hallazgos", exact: true }).click();
+  await page.getByLabel("Hallazgos", { exact: true }).click();
   await page.getByLabel("Pregunta del análisis").fill("Evaluar x y partial_y controlando por control.");
   await page.getByLabel("Personalizar configuración").check();
   await page.getByLabel("Presupuesto de herramientas").fill("4");
@@ -85,7 +85,7 @@ test("EDA and a complete report coexist with recovery and downloads", async ({ p
   expect(await readFile((await markdown.path())!, "utf8")).toContain("SUCCESS");
   await page.getByRole("link", { name: "Asociaciones", exact: true }).click();
   await expect(relationships.getByText(/x ↔ partial_y|partial_y ↔ x/)).toBeVisible();
-  await page.getByRole("link", { name: "Hallazgos", exact: true }).click();
+  await page.getByLabel("Hallazgos", { exact: true }).click();
   await page.reload();
   await page.getByLabel("ID de ejecución").fill(runId);
   await page.getByRole("button", { name: "Consultar", exact: true }).click();
@@ -123,7 +123,7 @@ test("default dated payments produce critical evidence and traceable insights", 
   const profile = JSON.parse(await readFile((await profileFile.path())!, "utf8"));
   expect(profile.columns.find((item: { column_name: string }) => item.column_name === "Nº contribuyente").semantic_type).toBe("identifier");
   expect(profile.columns.find((item: { column_name: string }) => item.column_name === "Fecha de pago").semantic_type).toBe("temporal");
-  await page.getByRole("link", { name: "Hallazgos", exact: true }).click();
+  await page.getByLabel("Hallazgos", { exact: true }).click();
   await page.getByRole("button", { name: "Generar reporte", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Estado: Completado" })).toBeVisible();
   const event = page.waitForEvent("download");
