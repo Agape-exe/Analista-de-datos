@@ -28,11 +28,12 @@ export function DatasetOverviewPage() {
     <DatasetPreviewPanel key={result.profile.dataset_id} datasetId={result.profile.dataset_id} />
     <ColumnUnderstandingTable result={result} />
     <Card className="quality-card"><div className="card-heading"><div><h2>Calidad de datos de un vistazo</h2>
-      <p>Completitud medida y estado de validación. Los controles de calidad avanzados vienen después.</p></div></div>
+      <p>Completitud medida durante la carga. Consulta los controles de faltantes, duplicados y reglas en la evaluación completa.</p></div>
+      <Button variant="outline" asChild><Link to="/quality">Ver calidad de datos <ArrowRight size={14} /></Link></Button></div>
       <div className="quality-grid">
         <div><CheckCircle2 size={16} className="success-text" /><strong>Estructura validada</strong><p>Encabezados únicos y filas con ancho consistente</p></div>
         <div><Info size={16} /><strong>{formatNumber(result.completeness.missing_cells)} celdas faltantes</strong><p>De {formatNumber(result.completeness.total_cells)} celdas en total</p></div>
-        <div><span className="quality-dash">—</span><strong>Duplicados · no evaluado</strong><p>Los controles por registro están planificados</p></div>
+        <div><Info size={16} /><strong>Control de duplicados disponible</strong><p>Consulta la evaluación completa en Calidad de datos</p></div>
         <div><span className="quality-dash">—</span><strong>Valores atípicos · no evaluado</strong><p>No se ha ejecutado detección de anomalías</p></div>
       </div>
     </Card>

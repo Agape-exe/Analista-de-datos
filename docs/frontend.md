@@ -187,6 +187,167 @@ muestra resultados, evidencia, métricas y estados, y descarga JSON/Markdown. Un
 reporte se puede recuperar por run_id después de recargar la página; para conservarlo
 tras reiniciar el backend se requiere una URL de SQLite persistente explícita.
 
+## AUD-014 — Calidad de datos
+
+La opción **Calidad de datos** del menú abre `/quality`. Cargar un CSV o TSV en
+Nuevo análisis, abrir Calidad desde el menú o «Ver calidad de datos» en Dataset.
+La pantalla consulta únicamente `GET /datasets/{dataset_id}/quality` de AUD-013;
+el identificador procede de `IntakeResponse.profile.dataset_id`. No vuelve a
+subir ni leer el archivo, no ejecuta tools de Exploration y no calcula métricas
+de calidad en React. IntakeProvider continúa como única fuente del dataset activo.
+
+Se presentan nombre del archivo, procedencia y estado de evaluación, dimensiones,
+celdas faltantes y su porcentaje, filas completas/incompletas, duplicadas
+adicionales, porcentaje de duplicados y grupos repetidos. La tabla de faltantes
+conserva nombres, tipos técnicos y orden del contrato. Los porcentajes se toman
+del servidor, con el formateador existente (hasta dos decimales); 0% se muestra
+explícitamente. La sección de duplicados explica la igualdad de filas completas
+y la exclusión de la primera aparición de cada grupo. No inventa registros,
+posiciones, ejemplos individuales, limpieza ni un puntaje global.
+
+`rules` se renderiza dinámicamente, sin asumir que siempre habrá dos reglas:
+
+- **PASS · Cumplida:** la regla fue evaluada y se cumplió.
+- **FAIL · Incumplida:** fue evaluada y hay incumplimientos; se muestra el conteo
+  observado cuando existe y el motivo proporcionado por el backend.
+- **NOT_EVALUATED · No evaluada:** no se acreditan condiciones suficientes. Se
+  muestra el motivo y no se atribuye un conteo a la regla.
+
+El estado global EVALUATED significa evaluación completada, no calidad general
+acreditada. Tablas sin filas o columnas se muestran como NOT_EVALUATED, sin
+confundirlo con FAIL. Los conteos vacíos devueltos por el servidor se presentan
+como tales. No se infieren métricas o decisiones que el contrato no proporciona.
+
+### Componentes, transporte y sincronización
+
+- `features/quality/DataQualityPage.tsx`: página conectada a IntakeProvider y
+  panel de resultados con tarjetas, tabla semántica, resumen de duplicados y reglas.
+- `features/quality/useDatasetQuality.ts`: consulta bajo demanda, reintento,
+  AbortController y descarte de respuestas obsoletas. El panel se monta con key
+  del dataset; cambiar o reiniciar intake elimina el estado anterior. Un cambio
+  de consulta oculta inmediatamente datos previos. Al desmontar se aborta la
+  solicitud. La microtarea inicial evita el GET duplicado del efecto descartado
+  por React StrictMode. No hay polling, precarga de otras pantallas ni caché durable.
+- `lib/api-client.ts`: `getDatasetQuality(datasetId, signal)` reutiliza el helper
+  HTTP, codifica el identificador y devuelve DatasetQuality tipado.
+- `lib/quality-response.ts`: valida identidad, estados, enteros seguros no
+  negativos, finitud/rango de porcentajes, dimensiones y coherencia de conteos,
+  columnas únicas, reglas y opcionales. HTTP 200 inconsistente genera
+  INVALID_RESPONSE. Estas comprobaciones no sustituyen ni recalculan porcentajes
+  o algoritmos backend para su presentación.
+- `types/api.ts` se regenera con `npm run generate:api`, sin edición manual.
+  Se incorporan la ruta/operación de calidad y sus seis esquemas. La comparación
+  de declaraciones TypeScript conserva todos los contratos anteriores.
+
+Se reutilizan Card, Badge, Button, iconos Lucide, formateadores y estilos del
+proyecto. La tabla tiene encabezados, caption y región desplazable enfocables
+por teclado; los estados se anuncian mediante status/alert. Las etiquetas de
+reglas incluyen texto y colores con contraste reforzado. La cuadrícula se adapta
+a escritorio, tablet y móvil; las columnas anchas desplazan dentro de la tabla.
+React representa los nombres y descripciones como texto, sin interpretar HTML.
+
+Dataset conserva resumen, métricas de intake, perfiles, preview/paginación y
+descargas. Su sección «Calidad de datos de un vistazo» invita a la evaluación
+completa y comunica que el control de duplicados está disponible. El placeholder
+«Puntaje de calidad» se sustituye por «Controles de calidad · Disponibles»:
+no afirma resultados antes de consultar la API. La prueba existente de App se
+adapta a ese cambio y conserva la comprobación de las dos confianzas de columna
+no evaluadas, las descargas y demás aserciones funcionales.
+
+### Estados, errores y limitaciones
+
+Sin dataset no hay solicitud y se ofrece volver a Nuevo análisis. Durante una
+carga de intake no se presentan resultados anteriores. Las respuestas y errores
+se muestran exclusivamente para la consulta vigente:
+
+| Situación | Presentación y acción |
+| --- | --- |
+| 404 DATASET_NOT_FOUND | Dataset ya no registrado; volver a cargar |
+| 413 QUALITY_TOO_LARGE | Presupuesto excedido, sin resultados parciales; volver a la carga |
+| 422 QUALITY_UNSUPPORTED | Evaluación no compatible, distinta de una regla FAIL |
+| 429 REQUEST_RATE_LIMITED / ANALYSIS_CAPACITY_EXCEEDED | Esperar y reintentar |
+| Fallo de red | Mensaje comprensible y Reintentar |
+| Respuesta inválida u otro error | Error controlado y Reintentar, sin métricas inconsistentes |
+
+No se muestran trazas ni mensajes internos del servidor. El dataset está en el
+almacén temporal LRU del backend, sin TTL ni persistencia durable. Un reinicio o
+expulsión requiere recarga; tampoco se conserva intake al recargar el navegador.
+AUD-013 limita evaluaciones a 250.000 filas, 1.000 columnas, 2.000.000 celdas,
+64 MiB de datos estimados (no RSS garantizado), textos de 65.536 caracteres y
+1 MiB de respuesta. AUD-014 no cambia esos límites ni el backend. No añade
+autenticación, persistencia, dependencias, AUD-018 o nuevas reglas de calidad.
+
+### Evidencias reproducibles
+
+Desde `frontend/`, con Edge instalado y los puertos libres:
+
+```powershell
+New-Item -ItemType Directory -Path '..\..\aud014-evidence' -Force | Out-Null
+$env:PLAYWRIGHT_CHANNEL = 'msedge'
+$env:E2E_BACKEND_PORT = '8024'
+$env:E2E_FRONTEND_PORT = '5194'
+$env:UI_SCREENSHOT_DIR = (Resolve-Path '..\..\aud014-evidence').Path
+npm run test:e2e -- e2e/quality.spec.ts
+npm test -- src/lib/api-client.quality.test.ts src/features/quality/DataQualityPage.test.tsx --maxWorkers=1
+npm run typecheck
+npm run build
+npm run lint
+```
+
+Playwright inicia servidores nuevos, con reuseExistingServer desactivado y proxy
+explícito, y utiliza CSV sintéticos. Comprueba la respuesta real de AUD-013 y los
+conteos, reglas FAIL/PASS, navegación Dataset/Diccionario, ausencia de consultas
+de calidad fuera de su pantalla, teclado y anchos 1440/1024/390 px. Los errores
+404, 413 y desconexión se inducen mediante interceptación controlada; el reintento
+consulta de nuevo al backend real. Esa interceptación no se presenta como un
+fallo real del servidor. Se exige ausencia de errores JavaScript de página.
+
+Las capturas quedan fuera del repositorio, en `aud014-evidence`: escritorio,
+móvil, faltantes, duplicados, reglas FAIL y PASS, sin dataset, dataset no disponible,
+desconexión y evaluación demasiado grande. Los logs de pruebas, compilación,
+arquitectura y generación se guardan en el directorio padre con prefijo aud014.
+
+### Validación local de AUD-014
+
+Base exclusiva `origin/develop`, SHA
+`9481cff2ec0b2e3fa1331edcd154ff16170914f5` (PR #36, con #28, #29, #33 y #34).
+Worktree `Analista-de-datos-aud014`, rama `feat/aud-014-quality-screen`.
+
+| Comprobación | Línea base | Con AUD-014 |
+| --- | --- | --- |
+| Tests frontend completos | 83 aprobadas, 1 fallo | 138 aprobadas, el mismo fallo |
+| Tests específicos nuevos | No existían | 55 aprobadas (33 cliente, 22 pantalla/integración) |
+| E2E específicos con Edge/backend real | No existían | 2 aprobados |
+| E2E completos | 4 aprobados, 4 fallos | 6 aprobados, los mismos 4 fallos |
+| TypeScript y build | Correctos | Correctos |
+| ESLint general | 1 error ajeno | El mismo error |
+| ESLint de archivos AUD-014 | No aplica | Correcto |
+| AST y arquitectura | 172 archivos correctos, 24 pruebas aprobadas | Igual |
+| Generación OpenAPI | Faltaban tipos de calidad | Script oficial correcto, contratos previos preservados |
+| git diff --check | Correcto | Correcto |
+
+El fallo unitario preexistente es
+`ReportPage.test.tsx::null metrics stay unmeasured and no insights are invented`.
+ESLint mantiene el import `methodLabel` sin uso en ReportPage.tsx:6.
+Los cuatro E2E fallidos, reconfirmados antes y después sin modificar sus pruebas,
+son Associations (`associations computed by the real backend are ranked and drawn`)
+y los tres de report.spec.ts (`member 5 report reuses the intake dataset and retrieves
+report`, `EDA and a complete report coexist with recovery and downloads`,
+`default dated payments produce critical evidence and traceable insights`).
+No se corrigieron algoritmos ni pantallas de esos módulos. No se presentan las
+suites generales como completamente aprobadas.
+
+Las capturas solicitadas se generaron y revisaron visualmente fuera del repositorio:
+`quality-screen-desktop.png`, `quality-screen-mobile.png`,
+`quality-missing-values.png`, `quality-duplicates.png`, `quality-rules-fail.png`,
+`quality-rules-pass.png`, `quality-no-dataset.png`, `quality-expired-dataset.png`,
+`quality-error.png`, más `quality-too-large.png`. Se comprobó ausencia de
+desbordamiento horizontal de página en 1440/1024/390 px y desplazamiento interno
+mediante teclado. No se modificaron backend, IntakeProvider, dependencias o
+snapshots HTTP. No se identificaron regresiones nuevas en las validaciones
+ejecutadas. Resultados locales, no CI. Cambios sin staging, commit ni publicación,
+pendientes de revisión técnica. Alcance exclusivo AUD-014; AUD-018 no iniciado.
+
 ## Backend y contratos
 
 `POST /intake` acepta multipart:
