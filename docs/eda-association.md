@@ -146,6 +146,22 @@ SVG propios en `frontend/src/components/charts/`, sin dependencias nuevas.
 gráficos se replican a mano en `frontend/src/types/exploration.ts`; actualizar ambos
 lados juntos.
 
+## AUD-017 — Detalle MAD en `outliers`
+
+`mad` conserva `threshold`, `count` y `percentage` y añade, de forma aditiva:
+
+| Campo | Contenido |
+|---|---|
+| `median`, `mad` | mediana y desviación absoluta mediana de los valores observados |
+| `lower_bound`, `upper_bound` | límites en unidades de la variable equivalentes a \|z robusto\| > `threshold`: mediana ∓ `threshold`·MAD/0.6745 |
+| `examples` | valores marcados por MAD, de mayor a menor \|z robusto\|, hasta `eda.max_outlier_examples` |
+| `example_rows` | `{row_index, value, robust_z}` por ejemplo, con la posición original como en AUD-018 |
+
+Con MAD = 0 (columna constante o mitad o más de los valores iguales a la mediana)
+`count`, `percentage` y los límites son `null` y los ejemplos quedan vacíos. La
+prueba congelada de AUD-018 excluye solo estos campos nuevos: los anteriores no
+cambian.
+
 ## AUD-018 — Referencias originales en ejemplos IQR
 
 `POST /datasets/{dataset_id}/tools/outliers` conserva `iqr.examples` como lista

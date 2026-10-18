@@ -87,6 +87,11 @@ def describe_result(result: AnalysisResult) -> str:
                 f"El ANOVA de una vía para {names} "
                 f"obtuvo un estadístico F de {_number(values['f_statistic'])}."
             )
+        elif result.method == "kruskal_wallis" and "h_statistic" in values:
+            detail = (
+                f"La prueba de Kruskal-Wallis para {names} "
+                f"obtuvo un estadístico H de {_number(values['h_statistic'])}."
+            )
 
     if not detail:
         serialized = json.dumps(values, ensure_ascii=False, sort_keys=True)

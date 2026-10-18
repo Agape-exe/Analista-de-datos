@@ -6,7 +6,8 @@ import { useTool } from "./useTool";
 afterEach(() => vi.unstubAllGlobals());
 
 const result = (status: AnalysisResult["status"], variables: string[]): AnalysisResult => ({
-  method: "outliers", status, variables, result: { ok: true } as never, warnings: [], execution_time: 0,
+  method: "outliers", status, completeness: "complete", variables,
+  result: status === "SUCCESS" ? { ok: true } as never : null, warnings: [], execution_time: 0,
 });
 const json = (payload: unknown) => new Response(JSON.stringify(payload), { status: 200 });
 

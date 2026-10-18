@@ -25,11 +25,12 @@ def _eligible(result: AnalysisResult) -> bool:
         if coefficient is None:
             coefficient = values.get("correlation", values.get("coefficient"))
         return _finite(coefficient) and abs(coefficient) <= 1
-    if result.method in {"chi_square", "anova_one_way", "cramers_v"}:
+    if result.method in {"chi_square", "anova_one_way", "cramers_v", "kruskal_wallis"}:
         key = {
             "chi_square": "chi_square",
             "anova_one_way": "f_statistic",
             "cramers_v": "cramers_v",
+            "kruskal_wallis": "h_statistic",
         }[result.method]
         value = values.get(key)
         return _finite(value) and value >= 0 and (key != "cramers_v" or value <= 1)

@@ -135,6 +135,13 @@ Las tablas completas permanecen locales. DatasetStore EDA y DatasetRegistry por 
 
 Reporting conserva `analysis_reports(run_id, payload)`. SQLite en memoria sigue siendo el default. PostgreSQL/Neon necesita configuración externa. No se cambian esquema, SQL, retención ni credenciales.
 
+El payload incorpora un snapshot opcional de plan, pregunta, decisiones y configuración,
+con eventos reales del workflow y compatibilidad de lectura histórica. La pantalla
+Traza consume ese reporte; no recalcula estadísticas ni reconstruye eventos ausentes.
+Ver [contrato de auditoría](planner-trace-audit.md). El adaptador de Kruskal-Wallis
+reutiliza la medida de exploración y se inyecta como AnalyticsTool en bootstrap;
+Analysis no importa esa implementación privada.
+
 ## Añadir una capacidad
 
 1. Elegir el módulo dueño y acordar entradas/salidas e invariantes.

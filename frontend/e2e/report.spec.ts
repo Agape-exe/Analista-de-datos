@@ -50,6 +50,8 @@ test("EDA and a complete report coexist with recovery and downloads", async ({ p
   await expect(relationships.getByText(/x ↔ partial_y|partial_y ↔ x/)).toBeVisible();
   await page.getByRole("link", { name: "Hallazgos", exact: true }).click();
   await page.getByLabel("Pregunta del análisis").fill("Evaluar x y partial_y controlando por control.");
+  await page.getByLabel("Personalizar configuración").check();
+  await page.getByLabel("Presupuesto de herramientas").fill("4");
   await page.getByRole("button", { name: "Generar reporte" }).click();
   await expect(page.getByRole("heading", { name: "Estado: Completado" })).toBeVisible();
   const runId = await page.getByLabel("ID de ejecución").inputValue();
@@ -64,6 +66,16 @@ test("EDA and a complete report coexist with recovery and downloads", async ({ p
   expect(report.evidence.length).toBeGreaterThan(0);
   expect(report.insights.length).toBeGreaterThan(0);
   expect(report.metrics.tokens_used).toBeNull();
+  expect(report.audit_version).toBe("1");
+  expect(report.analysis_plan.steps.length).toBe(4);
+  expect(report.metrics.screening_calls).toBe(1);
+  expect(report.execution_trace.filter((event: { kind: string; scope: string }) => event.kind === "tool" && event.scope === "analysis")).toHaveLength(4);
+  await page.getByRole("link", { name: "Traza", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Eventos reales" })).toBeVisible();
+  const resultLink = page.getByRole("link", { name: /^Ver resultado / }).first();
+  await expect(resultLink).toBeVisible();
+  await resultLink.click();
+  await expect(page).toHaveURL(/\/report#result-/);
   const markdownDownload = page.waitForEvent("download");
   await page.getByRole("link", { name: "Descargar informe" }).click();
   const markdown = await markdownDownload;
@@ -75,6 +87,9 @@ test("EDA and a complete report coexist with recovery and downloads", async ({ p
   await page.getByLabel("ID de ejecución").fill(runId);
   await page.getByRole("button", { name: "Consultar", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Estado: Completado" })).toBeVisible();
+  await page.getByRole("link", { name: "Traza", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Plan y decisiones" })).toBeVisible();
+  await page.getByRole("link", { name: "Volver al reporte", exact: true }).click();
   for (const width of [1440, 480, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

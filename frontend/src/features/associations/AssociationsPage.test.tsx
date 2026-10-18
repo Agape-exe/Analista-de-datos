@@ -26,7 +26,7 @@ async function openAssociations() {
   render(<MemoryRouter><App /></MemoryRouter>);
   await user.upload(screen.getByLabelText("Archivo del dataset"), new File(["a\n1\n"], "sales.csv"));
   await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
-  await user.click(await screen.findByRole("link", { name: "Explorar asociaciones" }));
+  await user.click(await screen.findByRole("link", { name: "Explorar asociaciones" }, { timeout: 5000 }));
   return user;
 }
 

@@ -27,8 +27,15 @@ skip-link, mensajes de estado y respeto por reduced-motion.
 ## Pantallas habilitadas
 
 **New Analysis** permite cargar CSV/TSV por selección o arrastre, elegir separador
-y encoding y adjuntar un DataDictionary JSON. La pregunta de investigación,
-FAST/DEEP, TXT y SQL están señalados como Coming Soon.
+y encoding y adjuntar un DataDictionary JSON. La pregunta y las opciones de
+planificación rápido/estándar están disponibles en **Hallazgos** (`/report`).
+La carga enlaza a esa capacidad. TXT y SQL continúan pendientes; no hay modo profundo.
+
+**Traza** (`/trace`) presenta el contexto del reporte, agentes, plan, decisiones,
+herramientas y omisiones, con enlaces a resultados. Consume eventos instrumentados
+del backend y señala reportes históricos sin instrumentación verificable. La
+cabecera usa la identidad del reporte cuando se consulta un reporte recuperado.
+Contratos vigentes: [auditoría de Planner y Analysis](planner-trace-audit.md).
 
 **Dataset Overview** muestra metadatos reales: filas, columnas, roles, completitud,
 tipos, nulos por columna, valores únicos, descripciones, procedencia y confianza
@@ -375,7 +382,7 @@ outliers. Los reintentos no alteran variables ni parámetros de la herramienta.
 Los valores conservan la normalización estadística anterior de seis decimales;
 un valor no representable como número JSON se presenta explícitamente como tal.
 La tabla usa caption, encabezados y región desplazable accesible por teclado,
-con diseño adaptable. «Anomalías» continúa deshabilitada como Próximamente.
+con diseño adaptable. La pantalla Anomalías se habilitó después con AUD-017.
 No hay nueva pantalla, dependencias ni cambios en Analysis, Critic o Reporting.
 
 El detalle de la correspondencia, límites y contrato aditivo está en
@@ -428,9 +435,33 @@ porcentaje muestra la distribución global. Las celdas con frecuencia esperada
 menor que 5 llevan †. Las advertencias se redactan desde los contadores
 estructurados (frecuencias esperadas < 5 y < 1, combinaciones ausentes, filas
 excluidas, categorías agrupadas en «Otras») y siempre recuerdan que una
-asociación no implica causalidad. `contingency-contract.ts` es el único punto a
-adaptar cuando exista el contrato de resultados AUD-022; el mock acordado está en
-`src/test/contingency-fixture.ts`. El e2e usa `tests/fixtures/contingency.csv`.
+asociación no implica causalidad. `contingency-contract.ts` lee el resultado con
+`edaOutcome` (AUD-022): la tabla es de un par, así que solo acepta un resultado
+completo y trata uno parcial como no válido. `src/test/contingency-fixture.ts`
+contiene el resultado de ejemplo y el e2e usa `tests/fixtures/contingency.csv`.
+
+## AUD-017 — Anomalías
+
+Ruta `/anomalies` («Anomalías» en la barra lateral). Una sola consulta
+`outliers` con `variables: []` evalúa todas las columnas numéricas:
+
+- Resumen por columna: observaciones, atípicos IQR y MAD (conteo y porcentaje) y
+  estado (muestra pequeña, constante, MAD = 0, IQR = 0) con las mismas reglas que
+  el explorador de Asociaciones (`classifyOutliers`). Una columna constante o sin
+  evaluar nunca se presenta como «0 atípicos».
+- Detalle de la columna elegida: regla y límites IQR (Q1 − k·IQR, Q3 + k·IQR);
+  regla MAD (|z robusto| > umbral), mediana, MAD y límites equivalentes en
+  unidades de la variable; diagrama de caja (`chart_boxplot`, agrupable).
+- Ejemplos IQR y MAD unidos por registro original (`row_index`), con el z robusto
+  cuando MAD lo marcó. «Ver registro» consulta bajo demanda la vista previa con
+  `offset = row_index` y `limit = 1` y muestra todos los valores de ese registro;
+  nunca se infiere un registro a partir del valor. Referencias inválidas o
+  ausentes se explican y no se muestran.
+- Aviso permanente: un atípico estadístico no es necesariamente un error; no se
+  corrige ni se elimina.
+
+Respuestas anteriores sin el detalle MAD siguen funcionando: los límites MAD se
+indican como no disponibles y solo se muestran ejemplos IQR.
 
 ## Transporte de herramientas y capacidad del backend
 

@@ -59,7 +59,14 @@ class AnalysisAgent(SkeletonAgent):
                 else:
                     calls += 1
                     try:
-                        result = await tool.execute(step.request)
+                        result = await tool.execute(
+                            step.request.model_copy(
+                                update={
+                                    "step_id": step.step_id,
+                                    "hypothesis_id": step.hypothesis_id,
+                                }
+                            )
+                        )
                     except asyncio.CancelledError:
                         raise
                     except Exception as error:  # Tool boundaries must not discard prior results.

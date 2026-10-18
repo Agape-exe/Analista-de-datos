@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { capacityDelay, getDatasetQuality, RateLimitedError, requestGate, retryAfterMs, runTool } from "./api-client";
 
-const ok = () => new Response(JSON.stringify({ tool: "outliers" }), { status: 200 });
+const success = { method: "outliers", status: "SUCCESS", result: {}, completeness: "complete" };
+const ok = () => new Response(JSON.stringify(success), { status: 200 });
 const limited = (retryAfter: string | null, code = "REQUEST_RATE_LIMITED") => new Response(
   JSON.stringify({ detail: { code, message: "Too many requests. Try again later." } }),
   { status: 429, headers: retryAfter === null ? {} : { "Retry-After": retryAfter } },
@@ -74,7 +75,7 @@ describe("API transport", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(fetch).toHaveBeenCalledTimes(2);
     pending[1](ok());
-    await expect(next).resolves.toEqual({ tool: "outliers" });
+    await expect(next).resolves.toEqual(success);
   });
 
   it("backs off exponentially when the analysis capacity is busy, then recovers", async () => {
@@ -89,7 +90,7 @@ describe("API transport", () => {
     await vi.advanceTimersByTimeAsync(1_999);
     expect(fetch).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(1);
-    await expect(result).resolves.toEqual({ tool: "outliers" });
+    await expect(result).resolves.toEqual(success);
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
@@ -119,7 +120,7 @@ describe("API transport", () => {
     await vi.advanceTimersByTimeAsync(1_999);
     expect(fetch).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1);
-    await expect(result).resolves.toEqual({ tool: "outliers" });
+    await expect(result).resolves.toEqual(success);
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
@@ -153,7 +154,7 @@ describe("API transport", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(15_000);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
-    await expect(call()).resolves.toEqual({ tool: "outliers" });
+    await expect(call()).resolves.toEqual(success);
   });
 
   it("reads Retry-After as seconds or an HTTP date and reports unreadable values", () => {

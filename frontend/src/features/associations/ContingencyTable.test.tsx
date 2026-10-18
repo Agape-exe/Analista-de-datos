@@ -17,6 +17,10 @@ describe("contingency contract", () => {
     expect(readContingency(tool(contingencyResult()), "canal", "region")).toEqual({ kind: "invalid" });
     expect(readContingency(tool(contingencyResult({ row_totals: [1, 2, 3] })), "region", "canal")).toEqual({ kind: "invalid" });
     expect(readContingency(tool(contingencyResult({ counts: [[1, 2], [3, 4]] })), "region", "canal")).toEqual({ kind: "invalid" });
+    // AUD-022: a pair table has no per-column outcomes, so a partial envelope is not accepted.
+    const partial = { ...contingencyResult(), completeness: "partial" as const, column_results: {
+      region: { status: "SUCCESS" as const, result: null, warnings: [] }, canal: { status: "SKIPPED" as const, result: null, warnings: [] } } };
+    expect(readContingency(tool(partial), "region", "canal")).toEqual({ kind: "invalid" });
   });
 
   it("states every statistical warning and never implies causation", () => {

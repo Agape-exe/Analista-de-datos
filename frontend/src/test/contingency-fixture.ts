@@ -1,8 +1,8 @@
 import type { AnalysisResult, ContingencyChart } from "../types/exploration";
 
 /**
- * Agreed mock of the `chart_contingency` response used by the categorical pair view
- * until the shared results contract (AUD-022) is available.
+ * Typed `chart_contingency` example used by the categorical pair view (AUD-021),
+ * wrapped in the shared complete-result envelope formalized by AUD-022.
  */
 export function contingencyTable(override: Partial<ContingencyChart> = {}, x = "region", y = "canal"): ContingencyChart {
   const counts = override.counts ?? [[40, 6, 4], [5, 30, 3], [2, 4, 1]];
@@ -25,5 +25,6 @@ export function contingencyResult(override: Partial<ContingencyChart> = {}, x = 
   return {
     method: "chart_contingency", status: "SUCCESS", variables: [x, y], execution_time: 0.01,
     sample_size: table.total, warnings: [], result: table as never, metadata: { chart: "contingency" },
+    completeness: "complete", column_results: {},
   };
 }

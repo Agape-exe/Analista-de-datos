@@ -67,7 +67,6 @@ async def test_warns_about_small_expected_frequencies_and_counts_excluded_rows()
     ("variables", "settings"),
     [
         (("region", "monto"), {}),
-        (("region", "region"), {}),
         (("color", "codigo_id"), {}),
         (("region", "canal"), {"max_categories": 2}),
     ],
@@ -76,3 +75,8 @@ async def test_is_not_applicable_outside_two_bounded_categorical_columns(
     variables: tuple[str, str], settings: dict[str, object]
 ) -> None:
     assert (await run(await registry_for(**settings), *variables)).status == "SKIPPED"
+
+
+async def test_repeated_columns_are_rejected_by_the_shared_parameter_contract() -> None:
+    result = await run(await registry_for(), "region", "region")
+    assert result.status == "FAILED" and "distinct" in result.warnings[0]

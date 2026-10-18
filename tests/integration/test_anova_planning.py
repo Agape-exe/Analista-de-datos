@@ -76,8 +76,10 @@ async def test_workflow_keeps_valid_anova_with_complete_groups(
     assert report.stage_statuses["Planner"] == report.stage_statuses["Analysis"] == "SUCCESS"
     assert len(report.analysis_results) == 1
     result = report.analysis_results[0]
-    assert result.method == "anova_one_way" and result.status == "SUCCESS"
-    assert result.metadata["group_count"] == 2
+    primary = report.screening_candidates[0].method if report.screening_candidates else "anova"
+    expected = "kruskal_wallis" if primary == "kruskal_wallis" else "anova_one_way"
+    assert result.method == expected and result.status == "SUCCESS"
+    assert result.metadata.get("group_count", result.metadata.get("groups")) == 2
     assert result.sample_size == sum(outcome is not None for outcome in outcomes)
     assert result.p_value is not None and result.effect_size is not None
     assert report.metrics.tool_calls == 1

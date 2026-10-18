@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, JsonValue
 
 from app.shared.contracts.analysis_input import AnalysisInput, EffectiveConfiguration
 from app.shared.domain.enums.statuses import AnalysisStatus
@@ -21,7 +21,9 @@ class AgentContext(DomainModel):
     dataset_profile: DatasetProfile | None = None
     data_dictionary: DataDictionary | None = None
     associations: list[AssociationResult] = Field(default_factory=list)
+    screening_summary: dict[str, JsonValue] = Field(default_factory=dict)
     analysis_plan: AnalysisPlan | None = None
+    planning_decisions: list[dict[str, JsonValue]] = Field(default_factory=list)
     analysis_results: list[AnalysisResult] = Field(default_factory=list)
     evidence: list[Evidence] = Field(default_factory=list)
     relationship_assessments: list[RelationshipAssessment] = Field(default_factory=list)
@@ -36,7 +38,9 @@ class AgentUpdate(DomainModel):
     dataset_profile: DatasetProfile | None = None
     data_dictionary: DataDictionary | None = None
     associations: list[AssociationResult] | None = None
+    screening_summary: dict[str, JsonValue] | None = None
     analysis_plan: AnalysisPlan | None = None
+    planning_decisions: list[dict[str, JsonValue]] | None = None
     analysis_results: list[AnalysisResult] | None = None
     evidence: list[Evidence] | None = None
     relationship_assessments: list[RelationshipAssessment] | None = None

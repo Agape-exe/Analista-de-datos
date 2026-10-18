@@ -98,3 +98,48 @@ test("a failed run shows its cause and an expired dataset asks for a new upload"
   await user.click(screen.getByRole("button", { name: "Volver a generar" }));
   expect(await screen.findByText(/ya no está en memoria/)).toBeInTheDocument();
 });
+
+test("stored analysis sends only selected operational overrides", async () => {
+  const fetchMock = vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture) : json(successReport));
+  vi.stubGlobal("fetch", fetchMock);
+  const user = await openInsightsAfterIntake();
+  await user.click(screen.getByLabelText("Personalizar configuración"));
+  await user.selectOptions(screen.getByLabelText("Modo de planificación"), "standard");
+  await user.type(screen.getByLabelText("Presupuesto de herramientas"), "2");
+  await user.click(screen.getByRole("button", { name: "Generar reporte" }));
+  await screen.findByText("Estado: Completado");
+  const call = fetchMock.mock.calls.find(([url]) => url.includes("/analysis/")) as unknown as [string, RequestInit];
+  expect(JSON.parse(String(call[1].body)).configuration).toEqual({ analysis: { mode: "standard", max_tool_calls: 2 } });
+  expect(screen.queryByLabelText(/Paralelismo/)).not.toBeInTheDocument();
+});
+
+test("trace explicitly marks historical reports and keeps their own context", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ ...successReport, dataset_profile: { dataset_id: "old-dataset" } })));
+  const user = userEvent.setup();
+  render(<MemoryRouter initialEntries={["/report"]}><App /></MemoryRouter>);
+  await user.type(screen.getByLabelText("ID de ejecución"), "run-1");
+  await user.click(screen.getByRole("button", { name: "Consultar" }));
+  await screen.findByText("Estado: Completado");
+  await user.click(screen.getByRole("link", { name: "Traza" }));
+  expect(screen.getByRole("heading", { name: "Reporte histórico sin instrumentación verificable" })).toBeInTheDocument();
+  expect(screen.getByText(/Dataset del reporte: old-dataset/)).toBeInTheDocument();
+  expect(screen.getByText("No hay eventos instrumentados disponibles.")).toBeInTheDocument();
+});
+
+test("trace links actual tool events to their report results", async () => {
+  const report = { ...successReport, audit_version: "1", dataset_id: "audited", user_question: "Compare x and y",
+    analysis_results: [{ analysis_id: "result-1", method: "pearson", status: "SUCCESS", variables: ["x", "y"], result: { correlation: 0.5 } }],
+    execution_trace: [{ event_id: "event-1", kind: "tool", scope: "analysis", agent: "Analysis", step_id: "step-1", analysis_id: "result-1", method: "pearson", status: "SUCCESS", duration_seconds: 0.01 }],
+    metrics: { tool_calls: 1, screening_calls: 1 },
+  };
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(report)));
+  const user = userEvent.setup();
+  render(<MemoryRouter initialEntries={["/report"]}><App /></MemoryRouter>);
+  await user.type(screen.getByLabelText("ID de ejecución"), "run-1");
+  await user.click(screen.getByRole("button", { name: "Consultar" }));
+  await screen.findByText("Estado: Completado");
+  await user.click(screen.getByRole("link", { name: "Traza" }));
+  expect(screen.queryByRole("heading", { name: /Reporte histórico/ })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ver resultado result-1" })).toHaveAttribute("href", "/report#result-result-1");
+  expect(screen.getByText(/Paso: step-1/)).toBeInTheDocument();
+});

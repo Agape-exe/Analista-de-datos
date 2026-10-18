@@ -1,11 +1,11 @@
-import type { ContingencyChart } from "../../types/exploration";
+import { edaOutcome, type ContingencyChart } from "../../types/exploration";
 import { toolProblem, type ToolProblem } from "./tool-state";
 import type { useTool } from "./useTool";
 
 /**
- * Seam between the categorical pair view and its data. Today it reads the
- * `chart_contingency` tool; when the shared results contract (AUD-022) lands, only
- * this module should need to change.
+ * Seam between the categorical pair view and the `chart_contingency` tool, read
+ * through the shared EDA envelope (AUD-022). A pair table has no per-column
+ * outcomes, so only a complete result is accepted.
  */
 export type ContingencyReading =
   | { kind: "pending" }
@@ -39,7 +39,8 @@ export function readContingency(tool: ReturnType<typeof useTool>, x: string, y: 
   const problem = toolProblem(tool);
   if (problem) return { kind: "problem", problem };
   if (tool.loading || tool.stale || !tool.data) return { kind: "pending" };
-  if (tool.data.method !== "chart_contingency" || !valid(tool.data.result, x, y)) return { kind: "invalid" };
+  if (edaOutcome(tool.data).kind !== "success" || tool.data.method !== "chart_contingency"
+    || !valid(tool.data.result, x, y)) return { kind: "invalid" };
   return { kind: "ready", table: tool.data.result };
 }
 

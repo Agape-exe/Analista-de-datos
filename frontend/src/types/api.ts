@@ -257,6 +257,22 @@ export interface components {
             /** Minimum Sample Size */
             minimum_sample_size?: number | null;
         };
+        /** AnalysisPlan */
+        AnalysisPlan: {
+            /** Hypotheses */
+            hypotheses?: components["schemas"]["Hypothesis"][];
+            /** Steps */
+            steps?: components["schemas"]["AnalysisStep"][];
+            /**
+             * Policy Version
+             * @default deterministic-v2
+             */
+            policy_version: string;
+            /** Decisions */
+            decisions?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[];
+        };
         /** AnalysisReport */
         AnalysisReport: {
             /** Run Id */
@@ -293,6 +309,35 @@ export interface components {
             execution_trace?: {
                 [key: string]: components["schemas"]["JsonValue"];
             }[];
+            /** Audit Version */
+            audit_version?: string | null;
+            /** User Question */
+            user_question?: string | null;
+            /** Dataset Id */
+            dataset_id?: string | null;
+            analysis_plan?: components["schemas"]["AnalysisPlan"] | null;
+            /** Screening Candidates */
+            screening_candidates?: components["schemas"]["AssociationResult"][];
+            /** Requested Configuration */
+            requested_configuration?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Capabilities */
+            capabilities?: {
+                [key: string]: boolean;
+            };
+            /** Planning Decisions */
+            planning_decisions?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[];
+            /** Screening Configuration */
+            screening_configuration?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Screening Summary */
+            screening_summary?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
         };
         /** AnalysisResult */
         AnalysisResult: {
@@ -321,12 +366,43 @@ export interface components {
             metadata?: {
                 [key: string]: components["schemas"]["JsonValue"];
             };
+            /**
+             * Completeness
+             * @default complete
+             * @enum {string}
+             */
+            completeness: "complete" | "partial";
+            /** Column Results */
+            column_results?: {
+                [key: string]: components["schemas"]["ColumnResult"];
+            };
         };
         /**
          * AnalysisStatus
          * @enum {string}
          */
         AnalysisStatus: "SUCCESS" | "FAILED" | "SKIPPED";
+        /** AnalysisStep */
+        AnalysisStep: {
+            /** Step Id */
+            step_id: string;
+            /** Hypothesis Id */
+            hypothesis_id?: string | null;
+            request: components["schemas"]["ToolRequest"];
+            /** Depends On */
+            depends_on?: string[];
+        };
+        /** AssociationResult */
+        AssociationResult: {
+            /** Method */
+            method: string;
+            /** Variables */
+            variables: string[];
+            /** Strength */
+            strength?: number | null;
+            /** P Value */
+            p_value?: number | null;
+        };
         /** Body_analysis_upload_analysis_upload_post */
         Body_analysis_upload_analysis_upload_post: {
             /** File */
@@ -377,6 +453,20 @@ export interface components {
             classification_source?: components["schemas"]["DictionarySource"] | null;
             /** Classification Reason */
             classification_reason?: string | null;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /**
+         * ColumnResult
+         * @description Per-column outcome; unsuccessful columns never carry calculated values.
+         */
+        ColumnResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "SUCCESS" | "SKIPPED" | "FAILED";
+            result?: components["schemas"]["JsonValue"];
             /** Warnings */
             warnings?: string[];
         };
@@ -588,6 +678,8 @@ export interface components {
             llm_calls?: number | null;
             /** Tool Calls */
             tool_calls?: number | null;
+            /** Screening Calls */
+            screening_calls?: number | null;
             /** Tokens Used */
             tokens_used?: number | null;
             /** Iterations */
@@ -618,6 +710,15 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** Hypothesis */
+        Hypothesis: {
+            /** Hypothesis Id */
+            hypothesis_id?: string;
+            /** Statement */
+            statement: string;
+            /** Variables */
+            variables?: string[];
         };
         /** Insight */
         Insight: {
@@ -742,10 +843,32 @@ export interface components {
             /** Table */
             table: string;
         };
+        /** StoredAnalysisOptions */
+        StoredAnalysisOptions: {
+            /** Mode */
+            mode?: ("fast" | "standard") | null;
+            /** Max Hypotheses */
+            max_hypotheses?: number | null;
+            /** Max Tool Calls */
+            max_tool_calls?: number | null;
+            /** Minimum Sample Size */
+            minimum_sample_size?: number | null;
+        };
         /** StoredAnalysisRequest */
         StoredAnalysisRequest: {
             /** User Question */
             user_question?: string | null;
+            configuration?: components["schemas"]["StoredConfiguration"];
+        };
+        /** StoredConfiguration */
+        StoredConfiguration: {
+            analysis?: components["schemas"]["StoredAnalysisOptions"];
+            performance?: components["schemas"]["StoredPerformanceOptions"];
+        };
+        /** StoredPerformanceOptions */
+        StoredPerformanceOptions: {
+            /** Timeout Seconds */
+            timeout_seconds?: number | null;
         };
         /**
          * StoredSourceSpec
@@ -784,6 +907,23 @@ export interface components {
         ToolCatalog: {
             /** Tools */
             tools: string[];
+        };
+        /** ToolRequest */
+        ToolRequest: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Method */
+            method: string;
+            /** Variables */
+            variables?: string[];
+            /** Parameters */
+            parameters?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Step Id */
+            step_id?: string | null;
+            /** Hypothesis Id */
+            hypothesis_id?: string | null;
         };
         /**
          * ToolRunRequest

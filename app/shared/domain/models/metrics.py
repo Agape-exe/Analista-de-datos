@@ -25,6 +25,7 @@ class ExperimentMetrics(DomainModel):
     time_to_first_insight: Duration | None = None
     llm_calls: Count | None = None
     tool_calls: Count | None = None
+    screening_calls: Count | None = None
     tokens_used: Count | None = None
     iterations: Count | None = None
     profiling_time: Duration | None = None

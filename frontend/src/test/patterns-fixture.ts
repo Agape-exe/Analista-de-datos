@@ -1,8 +1,8 @@
 import type { AnalysisResult, GroupedSummary, GroupSummary } from "../types/exploration";
 
 /**
- * Agreed mock of the `grouped_summary` response (AUD-019) used by the Patterns screen
- * until the shared results contract (AUD-022) is available.
+ * Typed `grouped_summary` example used by Patterns (AUD-019), wrapped in the
+ * shared successful-result envelope formalized by AUD-022.
  */
 export function groupSummary(label: string, rows: number, missing: number, centre: number, smallSample = false): GroupSummary {
   const count = rows - missing;
@@ -24,7 +24,7 @@ export function groupedSummaryFixture(override: Partial<GroupedSummary> = {}, co
     ...override,
   };
   return {
-    method: "grouped_summary", status: "SUCCESS", variables: [column, groupBy], execution_time: 0.01,
+    method: "grouped_summary", status: "SUCCESS", completeness: "complete", variables: [column, groupBy], execution_time: 0.01,
     sample_size: 235, warnings: [], result: result as never,
   };
 }
