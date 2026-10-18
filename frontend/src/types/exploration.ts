@@ -97,7 +97,12 @@ export interface NumericSummary {
 }
 
 export interface OutlierSummary {
-  count: number;
-  iqr: { count: number; percentage: number | null; lower_fence: number | null; upper_fence: number | null };
-  mad: { count: number | null; percentage: number | null };
+  count?: number;
+  skipped?: string;
+  iqr?: {
+    count: number; percentage: number | null; lower_fence: number | null; upper_fence: number | null;
+    examples?: (number | null)[];
+    example_rows?: { row_index: number; value: number | null }[];
+  };
+  mad?: { count: number | null; percentage: number | null };
 }

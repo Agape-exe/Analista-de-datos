@@ -87,7 +87,7 @@ export function AssociationsPage() {
           : <div className="chart-placeholder"><LoaderCircle size={16} className="spin" />Calculando matriz…</div>}
     </Card>}
 
-    {numeric.length > 0 && <ColumnExplorer datasetId={datasetId} numeric={numeric} categorical={categorical} />}
+    {numeric.length > 0 && <ColumnExplorer key={datasetId} datasetId={datasetId} totalRows={result.profile.row_count} numeric={numeric} categorical={categorical} />}
 
     {(excluded.length > 0 || (data?.skipped_pairs.length ?? 0) > 0) && <Card className="warnings-card">
       <div className="card-heading"><h2><TriangleAlert size={17} />No evaluado</h2></div>
