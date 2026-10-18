@@ -96,6 +96,32 @@ export interface NumericSummary {
   skewness?: number | null;
 }
 
+/** grouped_summary: one numeric column summarised per existing category (not discovered clusters). */
+export interface GroupSummary extends NumericSummary {
+  label: string;
+  /** Rows carrying this category, including those with a missing value. */
+  rows: number;
+  q1?: number | null;
+  q3?: number | null;
+  /** Fewer observed values than minimum_sample_size: describe, do not compare. */
+  small_sample: boolean;
+}
+
+export interface GroupedSummary {
+  column: string;
+  group_by: string;
+  total_groups: number;
+  shown_groups: number;
+  max_groups: number;
+  minimum_sample_size: number;
+  groups: GroupSummary[];
+  /** Smaller groups left out by max_groups; the UI must say so explicitly. */
+  omitted: { groups: number; rows: number; observed: number };
+  /** Rows without a category: counted apart, never treated as a group. */
+  missing_group: { rows: number; observed: number };
+  overall: NumericSummary;
+}
+
 export interface OutlierSummary {
   count?: number;
   skipped?: string;

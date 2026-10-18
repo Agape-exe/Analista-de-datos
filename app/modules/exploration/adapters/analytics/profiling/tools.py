@@ -1,9 +1,13 @@
 import numpy as np
 
 from app.modules.exploration.adapters.analytics.base import DatasetTool, ToolOutput, finite
-from app.modules.exploration.adapters.analytics.columns import numeric_array
+from app.modules.exploration.adapters.analytics.columns import (
+    label_array,
+    numeric_array,
+    require_role,
+)
 from app.modules.exploration.adapters.analytics.profiling import measures
-from app.shared.application.errors import AnalysisNotApplicableError
+from app.shared.application.errors import AnalysisNotApplicableError, ToolInputError
 from app.shared.contracts.datasource import RegisteredDataset
 from app.shared.domain.enums.semantic_type import SemanticType
 from app.shared.domain.models.analysis import ToolRequest
@@ -153,3 +157,43 @@ class OutliersTool(ColumnsTool):
                 self.options.max_outlier_examples,
             ),
         }
+
+
+class GroupedSummaryTool(DatasetTool):
+    """Count, missing values, centre and spread of a numeric column per existing category."""
+
+    name = "grouped_summary"
+    min_variables = 2
+    max_variables = 2
+
+    def compute(self, data: RegisteredDataset, request: ToolRequest) -> ToolOutput:
+        column, group_by = request.variables
+        require_role(data, column, NUMERIC)
+        require_role(data, group_by, CATEGORICAL)
+        limit = self._max_groups(request)
+        values = numeric_array(data.values(column))
+        if not int((~np.isnan(values)).sum()):
+            raise AnalysisNotApplicableError(f"{column}: no observed values.")
+        result = measures.grouped_summary(
+            values, label_array(data.values(group_by)), limit, self.minimum_sample_size
+        )
+        notes = []
+        omitted = result["omitted"]
+        if isinstance(omitted, dict) and omitted["groups"]:
+            notes.append(
+                f"Showing the {result['shown_groups']} largest of {result['total_groups']} groups; "
+                f"{omitted['groups']} group(s) with {omitted['rows']} row(s) were omitted."
+            )
+        return ToolOutput(
+            result={"column": column, "group_by": group_by, **result},
+            variables=[column, group_by],
+            sample_size=data.dataset.row_count,
+            warnings=notes,
+        )
+
+    def _max_groups(self, request: ToolRequest) -> int:
+        cap = self.options.max_summary_groups
+        raw = request.parameters.get("max_groups", cap)
+        if isinstance(raw, bool) or not isinstance(raw, int) or not 1 <= raw <= cap:
+            raise ToolInputError(f"max_groups must be an integer between 1 and {cap}.")
+        return raw
