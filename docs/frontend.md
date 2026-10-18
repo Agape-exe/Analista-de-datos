@@ -463,6 +463,29 @@ Ruta `/anomalies` («Anomalías» en la barra lateral). Una sola consulta
 Respuestas anteriores sin el detalle MAD siguen funcionando: los límites MAD se
 indican como no disponibles y solo se muestran ejemplos IQR.
 
+## AUD-035 — Revisión de afirmaciones estadísticas
+
+Criterio: sección 8 de critic-contract.md (AUD-002). En Asociaciones, Patrones,
+Anomalías y la tabla de contingencia se distinguen cuatro niveles:
+
+| Nivel | Qué se afirma | Dónde se dice |
+|---|---|---|
+| Descripción | Magnitud en estos datos: puntaje 0–1, tamaño del efecto, conteos, centro y dispersión | Aviso de Asociaciones, cabeceras «Puntaje (0–1)» y «Tamaño del efecto», Patrones |
+| Asociación | Las columnas varían juntas en este dataset | Aviso de Asociaciones, contingencia |
+| Significancia | p ajustado (Benjamini-Hochberg) en el ranking; el resto de p son «sin corregir» | Aviso, heatmap, pares fuera del ranking |
+| Causalidad | Nunca se infiere; la robustez se revisa en Relaciones y Hallazgos | Aviso, contingencia, recta de dispersión |
+
+Cambios: un ranking vacío aclara que no demuestra ausencia de asociación; los
+p de la matriz y de pruebas individuales se presentan como sin corregir; la
+recta de dispersión se presenta como ajuste lineal descriptivo; «Evidencia de
+apoyo» pasa a «Otras medidas del mismo par»; los avisos en inglés de las tools
+de exploración se traducen solo al mostrarse (`notes.ts`, el original se
+conserva si no se reconoce). Atípicos: Anomalías y los ejemplos IQR mantienen
+que un atípico no es necesariamente un error y no se corrige ni elimina.
+
+Fuera de alcance (código compartido de reportes): `result_descriptions.py`
+escribe «Valor p» sin indicar si está corregido.
+
 ## Transporte de herramientas y capacidad del backend
 
 El backend admite `max_concurrent_operations` operaciones a la vez (1 en el perfil
