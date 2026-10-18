@@ -21,6 +21,9 @@ from app.modules.analysis.application.use_cases.analyze_dataset import AnalyzeDa
 from app.modules.analysis.application.use_cases.analyze_uploaded_dataset import (
     AnalyzeUploadedDataset,
 )
+from app.modules.critical_review.adapters.grounded_query_routes import (
+    router as grounded_queries_router,
+)
 from app.modules.data_intake.adapters.datasource.upload_storage import TemporaryUploadStorage
 from app.modules.data_intake.adapters.http.routes import router as intake_router
 from app.modules.exploration.adapters.http.routes import router as exploration_router
@@ -36,25 +39,48 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(instance):
         repository = build_repository(instance.state.settings)
         instance.state.report_repository = repository
-        workflow = build_use_case(instance.state.settings, instance.state.datasets).workflow
-        instance.state.analysis_use_case = AnalyzeDataset(workflow, repository)
+
+        workflow = build_use_case(
+            instance.state.settings,
+            instance.state.datasets,
+        ).workflow
+
+        instance.state.analysis_use_case = AnalyzeDataset(
+            workflow,
+            repository,
+        )
+
         uploads = instance.state.settings.uploads
+
         instance.state.upload_analysis = AnalyzeUploadedDataset(
             instance.state.analysis_use_case,
-            TemporaryUploadStorage(uploads.chunk_size_bytes, uploads.temporary_directory),
+            TemporaryUploadStorage(
+                uploads.chunk_size_bytes,
+                uploads.temporary_directory,
+            ),
             uploads.max_dataset_bytes,
             uploads.max_dictionary_bytes,
         )
+
         try:
             yield
         finally:
             repository.engine.dispose()
 
-    application = FastAPI(title="Multiagent Data Analyst", version="0.1.0", lifespan=lifespan)
+    application = FastAPI(
+        title="Multiagent Data Analyst",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+
     application.state.settings = settings if settings is not None else load_settings()
+
     deployment = application.state.settings.deployment
+
     application.state.request_limiter = build_request_limiter(deployment)
+
     application.state.operation_capacity = build_operation_capacity(deployment)
+
     if deployment.cors_allowed_origins:
         application.add_middleware(
             CORSMiddleware,
@@ -64,34 +90,64 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_headers=["Content-Type"],
             expose_headers=["X-Request-ID"],
         )
+
     datasets = build_dataset_store(application.state.settings)
+
     application.state.datasets = datasets
-    application.state.intake_use_case = build_intake_use_case(application.state.settings, datasets)
+
+    application.state.intake_use_case = build_intake_use_case(
+        application.state.settings,
+        datasets,
+    )
+
     application.state.preview_use_case = build_preview_use_case(datasets)
+
     application.state.exploration_use_case = build_exploration_use_case(
-        application.state.settings, datasets
+        application.state.settings,
+        datasets,
     )
 
     @application.middleware("http")
     async def request_trace(
-        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         request_id = str(uuid4())
         request.state.request_id = request_id
+
         response = await call_next(request)
+
         response.headers["X-Request-ID"] = request_id
+
         logging.getLogger("app.api").info(
-            "request_id=%s method=%s status=%s", request_id, request.method, response.status_code
+            "request_id=%s method=%s status=%s",
+            request_id,
+            request.method,
+            response.status_code,
         )
+
         return response
+
+    # ======================================================
+    # REGISTRO DE RUTAS EXISTENTES
+    # ======================================================
 
     application.include_router(health_router)
     application.include_router(analysis_router)
     application.include_router(reporting_router)
+
     if deployment.allow_local_analysis:
         application.include_router(local_analysis_router)
+
     application.include_router(intake_router)
     application.include_router(exploration_router)
+
+    # ======================================================
+    # AUD-039: CONSULTAS FUNDAMENTADAS
+    # ======================================================
+
+    application.include_router(grounded_queries_router)
+
     return application
 
 
