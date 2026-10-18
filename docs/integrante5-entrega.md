@@ -66,6 +66,12 @@ no presenta diferencias. Se preservan la arquitectura modular, los reportes
 públicos y el límite de archivo **2 MiB (2.097.152 bytes)**. El backend E2E fija
 ese mismo límite. No se restauran capas globales ni se modifican algoritmos.
 
+Precisión sobre configuración: develop conserva `max_dataset_bytes=0` para
+desarrollo, y su validador de producción exige un valor positivo de como máximo
+2.097.152 bytes. I5 no cambia esos defaults ni la guarda pública. El servidor
+E2E sí fija explícitamente 2.097.152; tampoco se cambia el límite local de Render
+ni se afirma conocer el valor efectivo del servicio desplegado.
+
 ## Comprobaciones locales de esta revisión
 
 En el worktree aislado, con los locks existentes y sin artefactos ajenos:
@@ -131,7 +137,7 @@ Tampoco se incorporan las ramas ajenas, incluida la actualización remota de
 
 ## Diff revisado archivo por archivo
 
-37 archivos sobre la base remota; se incluyen los prerequisitos I5 indicados
+38 archivos sobre la base remota; se incluyen los prerequisitos I5 indicados
 arriba. Los documentos conservan las validaciones anteriores como historial,
 sin presentarlas como evidencia de esta revisión.
 
@@ -152,6 +158,7 @@ sin presentarlas como evidencia de esta revisión.
 | `frontend/e2e/summary.spec.ts` | Resumen sin consultas adicionales, histórico separado y anchos 1440/390. |
 | `frontend/e2e/trace.spec.ts` | Llamadas y mapas contrastados con HTTP, navegación y reset tardío. |
 | `frontend/playwright.config.ts` | Servicios locales aislados, límite 2097152; retirado override propio de Render no disponible en develop. |
+| `frontend/scripts/run-e2e-ci.mjs` | Descubre todos los archivos desde Playwright y ejecuta cada uno con servidores nuevos; conserva cuotas y fallos, con informes independientes. |
 | `frontend/src/app/App.tsx` | Providers compartidos y rutas de Resumen/Métricas/Traza integradas. |
 | `frontend/src/app/NavigationContext.test.tsx` | Carreras, cancelación, borradores y reset con rutas/providers reales. |
 | `frontend/src/components/layout/DatasetHeader.tsx` | Permite reset durante intake pendiente. |
@@ -177,7 +184,42 @@ sin presentarlas como evidencia de esta revisión.
 
 ## Publicación y evidencia remota
 
-Pendiente de registrar el PR y la consulta real de Actions para su SHA. Ningún
-resultado local de esta tabla acredita GitHub Actions o Chromium Linux.
+PR borrador [#41](https://github.com/Alexander20L/Analista-de-datos/pull/41),
+base `develop`, adjunto a la tarea. Primera ejecución real del workflow `CI`
+(`.github/workflows/ci.yml`, evento `pull_request`, Ubuntu 24.04):
+[39107327083](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083),
+SHA de cabecera `87604e3381dbe2fae90de025f6b541369880ceaf`,
+merge de prueba `d3c7f9a2dfdd9bd44844c951e7a03e2e6a9389bc`. **Resultado: failure**.
+La base consultada seguía en `986acbf96da48fa33f3648fc933dd456c0298ea4`.
+
+| Job | Resultado | Evidencia |
+| --- | --- | --- |
+| Backend / architecture-checker | success | [117615904749](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904749) |
+| Backend / architecture-tests | success | [117615904737](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904737) |
+| Backend / pytest | failure, 598 aprobadas / 4 fallidas | [117615904815](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904815); mismos cuatro casos reproducidos en base. |
+| Backend / ruff-check | failure, F841/F401 | [117615904755](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904755); mismos dos errores reproducidos en base. |
+| Backend / ruff-format | success | [117615904843](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904843) |
+| Frontend / vitest | success | [117615904787](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904787) |
+| Frontend / eslint | success | [117615904612](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904612) |
+| Frontend / build | success | [117615904790](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904790) |
+| E2E / Chromium Linux | failure, 16 aprobadas / 4 fallidas | [117615904801](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39107327083/job/117615904801) |
+
+Los cuatro E2E nuevos de Métricas/Traza pasan en Linux, incluidos identidad,
+recarga/reset y 1440/390 px. También pasan Resumen, navegación y contexto. Los
+artefactos `playwright-chromium-linux` (12128509862) contienen JUnit, capturas y
+trazas de los cuatro fallos: Asociaciones muestra rechazo de capacidad; los
+tres casos de report.spec.ts reciben `Too many requests` después de compartir
+las cuotas del mismo proceso con todos los archivos anteriores. No se declaran
+estos cuatro fallos preexistentes solo por observarlos aquí. El conflicto de
+cuotas requiere aislar la nueva suite de CI; no se elevan límites, se omiten
+aserciones ni se añaden reintentos.
+
+`run-e2e-ci.mjs` descubre los archivos mediante `playwright test --list
+--reporter=json` y lanza cada archivo en un proceso nuevo, con Uvicorn/Vite nuevos.
+Ejecuta todos aunque alguno falle, conserva un estado global fallido y guarda
+JUnit/HTML/trazas separados por archivo. No cambia el comando público
+`npm run test:e2e`, algoritmos ni guardas. La ejecución siguiente del SHA que
+incorpora este aislamiento debe consultarse antes de evaluar su resultado.
+
 Render permanece **pendiente**: no hay medición nueva del staging desplegado
 y no se realizó despliegue.

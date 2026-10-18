@@ -122,7 +122,8 @@ jobs:
         working-directory: .
       - run: npm ci
       - run: npm exec --no -- playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Run all Playwright files with isolated backend state
+        run: node scripts/run-e2e-ci.mjs
       - name: Save Playwright diagnostics
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

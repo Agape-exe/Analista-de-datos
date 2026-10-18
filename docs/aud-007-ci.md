@@ -80,6 +80,14 @@ El backend E2E usa explícitamente desarrollo, SQLite en memoria,
 LLM desactivado y el límite de 2 MiB. No requiere PostgreSQL, producción,
 credenciales, APIs LLM ni despliegues. La suite usa sus fixtures del repositorio.
 
+La revisión de entrega añade `frontend/scripts/run-e2e-ci.mjs`: descubre todos
+los archivos con el listado JSON de Playwright y ejecuta cada uno con procesos
+nuevos de Playwright/Uvicorn/Vite. Evita compartir cuotas entre escenarios de
+archivos distintos, sin aumentar límites ni reintentar. Guarda los informes por
+archivo, ejecuta todos y devuelve fallo si cualquiera falla. Las nueve
+comprobaciones siguen siendo obligatorias. Los resultados reales y el diagnóstico
+del primer Linux están en [Entrega de I5](integrante5-entrega.md).
+
 Con `always()` se suben JUnit de pytest/arquitectura/Vitest y el informe HTML,
 JUnit, capturas y trazas de Playwright cuando existan. Las capturas y trazas se
 conservan ante fallos, con retención de artefactos de siete días. Las rutas de
