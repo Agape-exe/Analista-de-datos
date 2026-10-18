@@ -1,5 +1,53 @@
 # AUD-007 — Integración continua
 
+## Revisión del PR #41 antes de publicar la siguiente ejecución
+
+Revisión local del 18 de octubre de 2026 sobre `codex/i5-aud007-metricas-traza`,
+SHA `792c60598110282c45126a775bbc8c1f042bc003`, que corresponde a
+`origin/pr-41`. La base remota disponible es `develop` en
+`986acbf96da48fa33f3648fc933dd456c0298ea4`: el PR está 10 commits adelante,
+0 atrás y no presenta conflictos de merge según `git merge-tree`. El checkout
+original con cambios locales ajenos se mantuvo intacto; la validación se hizo
+en `.pytest_cache/i5-delivery`.
+
+La comparación PR frente a `develop` permanece concluyente: los dos escenarios
+de Asociaciones responden `429 ANALYSIS_CAPACITY_EXCEEDED` en ambos lados, y el
+caso de pagos devuelve `200/SUCCESS` pero no produce `additive_identity` en
+ambos lados. Los cuatro fallos de pytest y los dos de Ruff también son iguales
+en base y cabecera; pertenecen a Planner/Analysis y Critic, no a Métricas,
+Traza ni a la configuración de I5. No se modificaron esos algoritmos, ni se
+relajaron aserciones, reintentos, cuotas o pruebas.
+
+Archivos de I5 ya presentes en el PR y revisados: `.github/workflows/ci.yml`,
+`frontend/playwright.config.ts`, `frontend/scripts/run-e2e-ci.mjs`, las pruebas
+E2E de Asociaciones/Reporte/Métricas/Traza, las pantallas y fixtures de
+Métricas/Traza, `docs/integrante5-metricas.md`,
+`docs/integrante5-entrega.md` y `docs/integrante5-integracion-linux.md`.
+El límite E2E sigue fijado estrictamente en **2.097.152 bytes (2 MiB)**.
+
+Comandos repetidos en esta revisión:
+
+- `uv run --locked python scripts/check_architecture.py` — aprobado, 172 archivos.
+- `uv run --locked pytest tests/architecture -q` — **24 aprobadas**.
+- `uv run --locked pytest -q` — **598 aprobadas, 4 fallidas**: ANOVA sin
+  advertencia para `a_sparse`, falta `additive_identity`, demasiadas
+  evaluaciones en Critic y `SUCCESS` en lugar de `SKIPPED`.
+- `uv run --locked ruff check .` — **F841** en `analysis_planning.py:273` y
+  **F401** en `tests/unit/test_planner_agent.py:10`.
+- `uv run --locked ruff format --check .` — aprobado, 274 archivos.
+- `npm test -- --maxWorkers=2 --reporter=default` — **213 aprobadas**, 16
+  archivos; `npm run lint` y `npm run build` — aprobados.
+- `npm exec --no -- playwright test e2e/associations.spec.ts e2e/report.spec.ts`
+  — no ejecutó aserciones en Windows porque Chromium terminó en
+  `browserType.launch: spawn UNKNOWN`; la evidencia funcional Linux existente
+  sigue siendo la comparación [39133154044](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39133154044)
+  y la CI completa [39133153991](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39133153991).
+
+La siguiente ejecución real de Actions se publicará contra este PR y se añadirá
+su URL, SHA y resultado por job en esta sección y en la descripción del PR.
+Hasta que todos los checks obligatorios estén aprobados, AUD-007 y el PR no se
+declaran aprobados. Render sigue fuera de alcance y no se declara validado.
+
 La [investigación Linux de integración](integrante5-integracion-linux.md)
 documenta la comparación real PR/develop, los rechazos de capacidad y las
 dependencias pendientes. No se han relajado pruebas ni límites; AUD-007 sigue
