@@ -425,6 +425,21 @@ La comparación completa de línea base/backend consta en eda-association.md.
 No se identificaron regresiones nuevas en las comprobaciones ejecutadas; no
 se presentan las suites generales como completamente aprobadas.
 
+## AUD-021 — Contingencia categórica
+
+En Asociaciones, un par de columnas categóricas muestra la tabla de
+`chart_contingency` en lugar del antiguo placeholder: conteos con sombreado de un
+solo tono (el número siempre visible), totales por fila y columna, y modos «% de
+fila», «% de columna» y «% del total»; el margen que no es la base del
+porcentaje muestra la distribución global. Las celdas con frecuencia esperada
+menor que 5 llevan †. Las advertencias se redactan desde los contadores
+estructurados (frecuencias esperadas < 5 y < 1, combinaciones ausentes, filas
+excluidas, categorías agrupadas en «Otras») y siempre recuerdan que una
+asociación no implica causalidad. `contingency-contract.ts` lee el resultado con
+`edaOutcome` (AUD-022): la tabla es de un par, así que solo acepta un resultado
+completo y trata uno parcial como no válido. `src/test/contingency-fixture.ts`
+contiene el resultado de ejemplo y el e2e usa `tests/fixtures/contingency.csv`.
+
 ## AUD-017 — Anomalías
 
 Ruta `/anomalies` («Anomalías» en la barra lateral). Una sola consulta

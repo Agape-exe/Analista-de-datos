@@ -15,6 +15,7 @@ import pandas as pd
 from scipy import stats
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 
+from app.modules.exploration.adapters.analytics.base import finite
 from app.modules.exploration.adapters.analytics.columns import present
 from app.shared.application.errors import AnalysisNotApplicableError
 
@@ -84,6 +85,52 @@ def contingency_table(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, list[st
     table = np.zeros((len(rows), len(columns)), dtype=int)
     np.add.at(table, (row_index, column_index), 1)
     return table, rows.tolist(), columns.tolist()
+
+
+def _fold(order: np.ndarray, limit: int) -> tuple[list[np.ndarray], int]:
+    """Groups of original indices to display: the `limit` largest, then one with the rest."""
+    if len(order) <= limit:
+        return [np.asarray([index]) for index in order], 0
+    kept = [np.asarray([index]) for index in order[: limit - 1]]
+    return [*kept, order[limit - 1 :]], len(order) - (limit - 1)
+
+
+def contingency_summary(x: np.ndarray, y: np.ndarray, max_display: int) -> dict[str, object]:
+    """Observed counts, totals and expected frequencies of two categorical columns.
+
+    Expected frequencies and their warnings come from the full table; only the
+    display folds the smallest categories of an axis into one trailing group.
+    """
+    table, rows, columns = contingency_table(x, y)
+    if table.shape[0] < 2 or table.shape[1] < 2:
+        raise AnalysisNotApplicableError("Both columns need at least 2 observed categories.")
+    expected = stats.contingency.expected_freq(table)
+    row_totals, column_totals = table.sum(axis=1), table.sum(axis=0)
+    row_order = np.lexsort((np.asarray(rows), -row_totals))
+    column_order = np.lexsort((np.asarray(columns), -column_totals))
+    row_groups, folded_rows = _fold(row_order, max_display)
+    column_groups, folded_columns = _fold(column_order, max_display)
+
+    def collapse(matrix: np.ndarray) -> np.ndarray:
+        return np.asarray([[matrix[np.ix_(r, c)].sum() for c in column_groups] for r in row_groups])
+
+    shown = collapse(table)
+    return {
+        "row_labels": [rows[int(group[0])] for group in row_groups],
+        "column_labels": [columns[int(group[0])] for group in column_groups],
+        "counts": shown.astype(int).tolist(),
+        "row_totals": shown.sum(axis=1).astype(int).tolist(),
+        "column_totals": shown.sum(axis=0).astype(int).tolist(),
+        "total": int(table.sum()),
+        "expected": [[finite(value, 4) for value in row] for row in collapse(expected)],
+        "folded_rows": folded_rows,
+        "folded_columns": folded_columns,
+        "cells": int(table.size),
+        "expected_below_5": int((expected < 5).sum()),
+        "expected_below_1": int((expected < 1).sum()),
+        "min_expected": finite(float(expected.min()), 4),
+        "empty_cells": int((table == 0).sum()),
+    }
 
 
 def _chi_square(table: np.ndarray) -> tuple[float, float, int, np.ndarray]:

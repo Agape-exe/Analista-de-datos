@@ -4,7 +4,10 @@ import { formatPValue, formatValue } from "../../components/charts/chart-utils";
 import { ScatterPlot } from "../../components/charts/ScatterPlot";
 import { Badge } from "../../components/ui/badge";
 import type { BoxPlotChart, ChartSpec, RankedRelationship, ScatterChart } from "../../types/exploration";
+import { ContingencyTable } from "./ContingencyTable";
+import { readContingency } from "./contingency-contract";
 import { methodLabel, pairKind } from "./methods";
+import { ToolNotice } from "./ToolNotice";
 import { useTool } from "./useTool";
 
 const TEST_FOR_KIND = { numeric: "pearson", mixed: "kruskal_wallis", categorical: "cramers_v" } as const;
@@ -21,6 +24,8 @@ export function RelationshipDetail({ datasetId, x, y, ranked, numeric }: {
   const chartTool = kind === "numeric" ? "chart_scatter" : "chart_boxplot";
   const chart = useTool(datasetId, chartTool, kind === "categorical" ? null : ordered);
   const test = useTool(datasetId, TEST_FOR_KIND[kind], ranked ? null : [x, y]);
+  const contingency = useTool(datasetId, "chart_contingency", kind === "categorical" ? [x, y] : null);
+  const table = readContingency(contingency, x, y);
   const spec = chart.data?.status === "SUCCESS" ? chart.data.result as unknown as ChartSpec : null;
 
   const stats = ranked
@@ -50,7 +55,9 @@ export function RelationshipDetail({ datasetId, x, y, ranked, numeric }: {
     <div className="detail-layout">
       <div className="detail-chart">
         {kind === "categorical"
-          ? <div className="chart-placeholder"><Info size={16} />Ambas columnas son categóricas; la vista de contingencia aún no está disponible. Usa las estadísticas de la derecha.</div>
+          ? table.kind === "ready" ? <ContingencyTable table={table.table} stale={contingency.stale} />
+            : table.kind === "invalid" ? <div className="chart-placeholder" role="alert"><Info size={16} />La tabla de contingencia recibida no corresponde a este par o está incompleta. No se muestra.</div>
+              : <ToolNotice tool={contingency} loadingLabel="Calculando tabla de contingencia…" />
           : chart.error ? <div className="error-panel" role="alert"><TriangleAlert size={16} /><div>{chart.error.message}</div></div>
             : spec?.kind === "scatter" ? <ScatterPlot chart={spec as ScatterChart} stale={chart.stale} />
               : spec?.kind === "boxplot" ? <BoxPlot chart={spec as BoxPlotChart} stale={chart.stale} />
