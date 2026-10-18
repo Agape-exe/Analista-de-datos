@@ -1,0 +1,74 @@
+name: I5 integration comparison
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/i5-diagnostics.yml
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: Linux comparison / ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [base, head]
+    env:
+      UV_LOCKED: "true"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ matrix.target == 'base' && github.event.pull_request.base.sha || github.event.pull_request.head.sha }}
+          path: comparison
+          persist-credentials: false
+      - name: Apply identical test harness, without changing application code
+        run: |
+          git -C comparison rev-parse HEAD
+          cp harness/frontend/playwright.config.ts comparison/frontend/playwright.config.ts
+          cp harness/frontend/e2e/{api-diagnostics.ts,associations.spec.ts,report.spec.ts} comparison/frontend/e2e/
+          git -C comparison diff --stat
+          git -C comparison diff > comparison/harness.patch
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.13.1"
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.18.0"
+      - run: uv sync --locked --group dev
+        working-directory: comparison
+      - run: npm ci
+        working-directory: comparison/frontend
+      - run: npm exec --no -- playwright install --with-deps chromium
+        working-directory: comparison/frontend
+      - name: Run both affected files with fresh servers and unchanged assertions
+        working-directory: comparison/frontend
+        shell: bash
+        run: |
+          result=0
+          for file in associations report; do
+            PLAYWRIGHT_HTML_OUTPUT_DIR="playwright-report/$file" \
+            PLAYWRIGHT_JUNIT_OUTPUT_FILE="test-results/$file/e2e.xml" \
+            npm exec --no -- playwright test "e2e/$file.spec.ts" --output="test-results/$file" || result=1
+          done
+          exit "$result"
+      - name: Save comparison evidence even on failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: i5-comparison-${{ matrix.target }}
+          path: |
+            comparison/harness.patch
+            comparison/frontend/playwright-report/
+            comparison/frontend/test-results/
+          retention-days: 7
