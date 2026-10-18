@@ -334,3 +334,39 @@ Pasos pendientes para cerrar AUD-007:
 4. Resolver los fallos backend/Ruff en sus tareas correspondientes y observar
    estabilidad de Vitest/E2E, conservando todas las comprobaciones obligatorias.
 5. Declarar AUD-007 validada solo con evidencia remota de los criterios completos.
+## Revalidación del PR #41 contra develop vigente
+
+El 18 de octubre de 2026 se actualizó la rama `codex/i5-aud007-metricas-traza`
+del PR #41 contra `develop` en `4d85afe2f059495f191b042f773a34be6e860eb3`.
+La integración conserva los avances fusionados de Integrantes 2 y 3 (PR #42,
+#43, #44 y #45), además de AUD-017 Anomalías y la consolidación de contratos de
+EDA/Planner/Traza presente en develop.
+
+El merge quedó en `d22267b` y la corrección frontend posterior queda pendiente
+de publicar en el siguiente commit. Los conflictos fueron: rutas/navegación en
+`App.tsx` y `Sidebar.tsx`, comportamiento de reset en `DatasetHeader.tsx`,
+`NewAnalysisPage.tsx`, `ReportPage.tsx`, `ReportPage.test.tsx` y
+`ReportProvider.tsx`, más el conflicto de `analysis_planning.py`, resuelto
+conservando exactamente la lógica I5 existente por autorización explícita.
+Se añadió únicamente la ruta `/anomalies` y se mantuvieron una sola vez
+`/summary`, `/metrics`, `/trace`, `/patterns`, `/anomalies`, `/report` y
+`/associations`.
+
+Resultados locales posteriores a la integración:
+
+| Comprobación | Resultado |
+| --- | --- |
+| `uv run python scripts/check_architecture.py` | 174 archivos OK |
+| `uv run pytest tests/architecture -q` | 24 aprobadas |
+| Vitest afectado (App, Report, Metrics, Trace) | 36 aprobadas |
+| `npm run lint` | Correcto |
+| `npm run build` | Correcto |
+
+GitHub reportó para el SHA previo `7094c26` siete checks exitosos y dos fallidos:
+pytest backend y E2E Chromium Linux. No se declara el PR aprobado mientras
+existan fallos. Los fallos de pytest permanecen clasificados como problemas
+preexistentes de Planner/Analysis/Critic; el fallo E2E permanece como problema
+de entorno/suite posterior hasta contar con la nueva ejecución remota.
+Anomalías, Critic, Relaciones y Chat siguen dependiendo de Integrante 4 según
+la disponibilidad de AUD-002/AUD-036/AUD-039; no se implementó Chat.
+

@@ -11,7 +11,7 @@ export const metricUnits = {
   conclusion_agreement: "0–1", semantic_similarity: "0–1",
   total_response_time: "s", time_to_first_insight: "s", llm_calls: "llamadas",
   tool_calls: "llamadas", tokens_used: "tokens", iterations: "iteraciones",
-  profiling_time: "s", analytics_time: "s", completion_rate: "0–1",
+  profiling_time: "s", analytics_time: "s", screening_calls: "llamadas", completion_rate: "0–1",
   human_intervention_rate: "0–1", valid_tool_selection_rate: "0–1", invalid_analysis_rate: "0–1",
 } satisfies Record<keyof Metrics, string>;
 
