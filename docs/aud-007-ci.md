@@ -305,8 +305,10 @@ fallando después, en otra suite, que debe identificarse y corregirse antes de
 aprobar el PR.
 
 Dependencias pendientes: Planner/Analysis/Critic conservan los cuatro fallos
-backend y F841/F401 ya reproducidos en develop; I5 no modificó esos algoritmos
-ni contratos. Render, staging y benchmarks permanecen fuera del PR.
+backend ya reproducidos en develop; I5 no modificó esos algoritmos ni
+contratos. Los dos avisos Ruff F841/F401 se eliminaron mecánicamente en
+`94b6f6d` y su prueba de Planner pasó 20/20. Render, staging y benchmarks
+permanecen fuera del PR.
 
 Los primeros intentos restringidos encontraron DNS inaccesible para GitHub y
 acceso denegado al caché de intérpretes de uv. La instalación y las comprobaciones
