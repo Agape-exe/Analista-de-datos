@@ -15,7 +15,8 @@ const json = (payload: unknown, status = 200) => new Response(JSON.stringify(pay
 
 const successReport = {
   run_id: "run-1", status: "SUCCESS", metrics: {}, insights: [], evidence: [], analysis_results: [],
-  stage_statuses: { DataUnderstanding: "SUCCESS" }, stage_durations: {}, warnings: [], errors: [],
+  stage_statuses: { DataUnderstanding: "SUCCESS", Association: "SUCCESS", Planner: "SUCCESS",
+    Analysis: "SUCCESS", Critic: "SUCCESS", Insight: "SUCCESS" }, stage_durations: {}, warnings: [], errors: [],
 };
 
 function renderReport() {
@@ -71,6 +72,9 @@ test("analyzes the intake dataset once and keeps the report across tabs", async 
   await user.type(screen.getByLabelText("Pregunta del análisis"), "¿Qué varía?");
   await user.click(screen.getByRole("button", { name: "Generar reporte" }));
   await screen.findByText("Estado: Completado");
+  for (const stage of ["Comprensión de datos", "Asociaciones", "Planificación", "Análisis", "Revisión crítica", "Hallazgos"]) {
+    expect(screen.getByRole("cell", { name: stage })).toBeInTheDocument();
+  }
   const analyses = fetchMock.mock.calls.filter(([url]) => url.includes("/analysis"));
   expect(analyses).toHaveLength(1);
   const [url, init] = analyses[0] as unknown as [string, RequestInit];

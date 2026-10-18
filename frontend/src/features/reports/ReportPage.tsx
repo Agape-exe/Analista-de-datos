@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { downloadJson } from "../../lib/download";
-import { methodLabel } from "../associations/methods";
 import { useIntake } from "../data-intake/IntakeProvider";
 import { metricLabel, stageLabel, statusLabel } from "./labels";
 import { useReport } from "./ReportProvider";
@@ -58,7 +57,7 @@ export function ReportPage() {
         {report.insights?.length ? report.insights.map((insight) => <article key={insight.insight_id}>
           <p>{insight.statement}</p><details><summary>Ver referencias y limitaciones</summary><p>Evidencias: {insight.evidence_ids?.join(", ")}</p>
           <ul>{insight.limitations?.map((item, i) => <li key={i}>{item}</li>)}</ul></details>
-        </article>) : <p>No hay insights respaldados por evidencia disponibles.</p>}
+        </article>) : <p>No hay hallazgos respaldados por evidencia disponibles.</p>}
       </Card>
       <Card className="quality-card"><h2>Etapas y tiempos</h2><table><thead><tr><th>Etapa</th><th>Estado</th><th>Segundos</th></tr></thead>
         <tbody>{Object.entries(report.stage_statuses || {}).map(([stage, state]) => <tr key={stage}>

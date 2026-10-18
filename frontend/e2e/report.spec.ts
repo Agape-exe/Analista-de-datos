@@ -60,7 +60,10 @@ test("EDA and a complete report coexist with recovery and downloads", async ({ p
   const report = JSON.parse(await readFile((await json.path())!, "utf8"));
   expect(report.run_id).toBe(runId);
   expect(report.status).toBe("SUCCESS");
-  expect(Object.values(report.stage_statuses)).toEqual(Array(6).fill("SUCCESS"));
+  expect(report.stage_statuses).toEqual({
+    DataUnderstanding: "SUCCESS", Association: "SUCCESS", Planner: "SUCCESS",
+    Analysis: "SUCCESS", Critic: "SUCCESS", Insight: "SUCCESS",
+  });
   expect(report.evidence.length).toBeGreaterThan(0);
   expect(report.insights.length).toBeGreaterThan(0);
   expect(report.metrics.tokens_used).toBeNull();
@@ -94,25 +97,28 @@ test("default dated payments produce critical evidence and traceable insights", 
     rows.push(`${2290000 + i},${String(i % 20 + 1).padStart(2, "0")}/03/2026,${i % 2 ? "A" : "B"},${tax.toFixed(2)},${interest.toFixed(2)},${(tax + interest).toFixed(2)}`);
   }
   await page.goto("/");
-  await page.getByLabel("Dataset file", { exact: true }).setInputFiles({
+  await page.getByLabel("Archivo del dataset", { exact: true }).setInputFiles({
     name: "dated-payments.csv", mimeType: "text/csv", buffer: Buffer.from(rows.join("\n") + "\n"),
   });
-  await page.getByRole("button", { name: "Understand Dataset", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Dataset Overview" })).toBeVisible();
+  await page.getByRole("button", { name: "Comprender dataset", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Resumen del dataset" })).toBeVisible();
   const profileEvent = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download profile", exact: true }).click();
+  await page.getByRole("button", { name: "Descargar perfil", exact: true }).click();
   const profileFile = await profileEvent;
   const profile = JSON.parse(await readFile((await profileFile.path())!, "utf8"));
   expect(profile.columns.find((item: { column_name: string }) => item.column_name === "Nº contribuyente").semantic_type).toBe("identifier");
   expect(profile.columns.find((item: { column_name: string }) => item.column_name === "Fecha de pago").semantic_type).toBe("temporal");
-  await page.getByRole("link", { name: "Insights", exact: true }).click();
+  await page.getByRole("link", { name: "Hallazgos", exact: true }).click();
   await page.getByRole("button", { name: "Generar reporte", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Estado: SUCCESS" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Estado: Completado" })).toBeVisible();
   const event = page.waitForEvent("download");
   await page.getByRole("button", { name: "Descargar JSON" }).click();
   const file = await event;
   const report = JSON.parse(await readFile((await file.path())!, "utf8"));
-  expect(Object.values(report.stage_statuses)).toEqual(Array(5).fill("SUCCESS"));
+  expect(report.stage_statuses).toEqual({
+    DataUnderstanding: "SUCCESS", Association: "SUCCESS", Planner: "SUCCESS",
+    Analysis: "SUCCESS", Critic: "SUCCESS", Insight: "SUCCESS",
+  });
   expect(report.insights.length).toBeGreaterThan(0);
   expect(report.evidence.length).toBeGreaterThan(0);
   const identity = report.analysis_results.find((item: { method: string }) => item.method === "additive_identity");
