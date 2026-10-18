@@ -25,12 +25,6 @@ class CriticAgent(SkeletonAgent):
     SUBGROUP_HETEROGENEITY_THRESHOLD = 0.50
     TEMPORAL_VARIATION_THRESHOLD = 0.50
 
-    # Resultados que se reportan como preliminares si no hay pruebas de robustez
-    PRELIMINARY_ALPHA = 0.05
-    PRELIMINARY_METHODS = frozenset(
-        {"pearson", "spearman", "chi_square", "cramers_v", "anova_one_way"}
-    )
-
     # PASO 70: Evitar alertas por cambios de signo cercanos a cero
     MIN_SIGN_CHANGE_MAGNITUDE = 0.30
 

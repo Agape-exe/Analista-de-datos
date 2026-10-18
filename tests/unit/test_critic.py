@@ -883,7 +883,7 @@ def _critic_context(results: list[AnalysisResult]) -> AgentContext:
     )
 
 
-async def test_critic_reports_significant_results_without_robustness_as_preliminary():
+async def test_critic_reviews_measured_results_as_indeterminate():
     pearson = AnalysisResult(
         method="pearson",
         variables=["ingreso", "gasto"],
@@ -893,7 +893,9 @@ async def test_critic_reports_significant_results_without_robustness_as_prelimin
         p_value=0.001,
         sample_size=100,
     )
+
     spearman = pearson.model_copy(update={"analysis_id": "spearman-1", "method": "spearman"})
+
     chi = AnalysisResult(
         method="chi_square",
         variables=["region", "segmento"],
@@ -906,17 +908,27 @@ async def test_critic_reports_significant_results_without_robustness_as_prelimin
     resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson, spearman, chi]))
 
     assert resultado.status == AnalysisStatus.SUCCESS
-    [evaluacion] = resultado.update.relationship_assessments
-    assert set(evaluacion.variables) == {"ingreso", "gasto"}
-    assert evaluacion.potentially_spurious is None
-    assert "preliminar" in evaluacion.rationale
-    assert {item.analysis_id for item in resultado.update.evidence} == {
+
+    # Tres resultados estadísticos deben generar tres evidencias.
+    assert len(resultado.update.evidence) == 3
+
+    # Se genera una evaluación por cada par de variables.
+    assert len(resultado.update.relationship_assessments) == 2
+
+    assert {evidencia.analysis_id for evidencia in resultado.update.evidence} == {
         pearson.analysis_id,
         spearman.analysis_id,
+        chi.analysis_id,
     }
 
+    # La clasificación permanece indeterminada.
+    for evaluacion in resultado.update.relationship_assessments:
+        assert evaluacion.potentially_spurious is None
+        assert evaluacion.evidence_ids
+        assert "indeterminad" in evaluacion.rationale.lower()
 
-async def test_critic_skips_when_no_result_is_significant():
+
+async def test_critic_reviews_non_significant_measured_result():
     no_significativo = AnalysisResult(
         method="pearson",
         variables=["ingreso", "ruido"],
@@ -928,4 +940,60 @@ async def test_critic_skips_when_no_result_is_significant():
 
     resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([no_significativo]))
 
+    # Un resultado medido puede revisarse descriptivamente
+    # aunque su valor p no sea significativo.
+    assert resultado.status == AnalysisStatus.SUCCESS
+
+    assert len(resultado.update.evidence) == 1
+    assert len(resultado.update.relationship_assessments) == 1
+
+    evidencia = resultado.update.evidence[0]
+    evaluacion = resultado.update.relationship_assessments[0]
+
+    assert evidencia.analysis_id == no_significativo.analysis_id
+    assert evaluacion.evidence_ids == [evidencia.evidence_id]
+    assert evaluacion.potentially_spurious is None
+
+
+# AUD-002: Revisar resultados medidos aunque no exista valor p
+async def test_critic_reviews_measured_result_without_p_value():
+    pearson = AnalysisResult(
+        method="pearson",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=0.70,
+        sample_size=100,
+        p_value=None,
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson]))
+
+    assert resultado.status == AnalysisStatus.SUCCESS
+    assert len(resultado.update.evidence) == 1
+    assert len(resultado.update.relationship_assessments) == 1
+
+    evidencia = resultado.update.evidence[0]
+    evaluacion = resultado.update.relationship_assessments[0]
+
+    assert evidencia.analysis_id == pearson.analysis_id
+    assert evaluacion.evidence_ids == [evidencia.evidence_id]
+    assert evaluacion.potentially_spurious is None
+
+
+# AUD-002: No generar evidencia si falta el cálculo estadístico
+async def test_critic_skips_significant_result_without_coefficient():
+    pearson = AnalysisResult(
+        method="pearson",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=None,
+        p_value=0.001,
+        sample_size=100,
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson]))
+
     assert resultado.status == AnalysisStatus.SKIPPED
+    assert resultado.update.evidence is None
+    assert resultado.update.relationship_assessments is None
+    assert resultado.warnings
