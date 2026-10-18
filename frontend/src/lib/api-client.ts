@@ -1,6 +1,7 @@
 import type { components, operations } from "../types/api";
 import type { AnalysisResult, ToolRunRequest } from "../types/exploration";
 import { validQuality, type DatasetQuality } from "./quality-response";
+import { RequestGate } from "./request-gate";
 
 export type { DatasetQuality } from "./quality-response";
 import type { IntakeDraft, IntakeResponse } from "../types/intake";
@@ -39,6 +40,16 @@ export async function submitIntake(draft: IntakeDraft, signal?: AbortSignal): Pr
 
 export class DatasetExpiredError extends ApiError {}
 export class PreviewTooLargeError extends ApiError {}
+export class RateLimitedError extends ApiError {
+  constructor(public readonly retryAfterSeconds: number, requestId?: string, code = "REQUEST_RATE_LIMITED") {
+    super(
+      code === "ANALYSIS_CAPACITY_EXCEEDED"
+        ? `El servicio de análisis está ocupado. Inténtalo de nuevo en ${retryAfterSeconds} s.`
+        : `Se alcanzó el límite de solicitudes al backend. Inténtalo de nuevo en ${retryAfterSeconds} s.`,
+      requestId, code,
+    );
+  }
+}
 
 export async function getDatasetQuality(datasetId: string, signal?: AbortSignal): Promise<DatasetQuality> {
   if (!datasetId) throw new ApiError("El identificador del dataset no es válido.", undefined, "VALIDATION_ERROR");
@@ -110,14 +121,49 @@ export async function getReport(runId: string, signal?: AbortSignal): Promise<An
   return request<AnalysisReport>(`/reports/${encodeURIComponent(runId.trim())}`, { signal });
 }
 
+/** Mirrors the backend's default `max_concurrent_operations`; extra requests wait their turn. */
+const MAX_CONCURRENT_REQUESTS = 2;
+const MAX_RATE_LIMIT_RETRIES = 3;
+/** Longer Retry-After waits fail fast with an explanation instead of leaving a silent spinner. */
+const MAX_AUTOMATIC_WAIT_MS = 10_000;
+const DEFAULT_RETRY_AFTER_MS = 1_000;
+
+export const requestGate = new RequestGate(MAX_CONCURRENT_REQUESTS);
+
+export function retryAfterMs(header: string | null, now = Date.now()): number {
+  if (!header) return DEFAULT_RETRY_AFTER_MS;
+  const value = header.trim();
+  if (/^\d+$/.test(value)) return Number(value) * 1000;
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? DEFAULT_RETRY_AFTER_MS : Math.max(0, date - now);
+}
+
+const seconds = (ms: number) => Math.max(1, Math.ceil(ms / 1000));
+
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
   let response: Response;
-  try {
-    response = await fetch(`${base}${path}`, init);
-  } catch (error) {
-    if (init.signal?.aborted) throw error;
-    throw new ApiError("No se puede conectar con el backend. Verifica que FastAPI esté en ejecución e inténtalo de nuevo.", undefined, "NETWORK_ERROR");
+  for (let attempt = 0; ; attempt += 1) {
+    const cooldown = requestGate.remainingPause();
+    if (cooldown > MAX_AUTOMATIC_WAIT_MS) throw new RateLimitedError(seconds(cooldown));
+    if (init.signal?.aborted) throw init.signal.reason;
+    const release = (attempt === 0 ? requestGate.tryAcquire() : null)
+      ?? await requestGate.acquire(init.signal ?? undefined, { priority: attempt > 0 });
+    try {
+      response = await fetch(`${base}${path}`, init);
+    } catch (error) {
+      if (init.signal?.aborted) throw error;
+      throw new ApiError("No se puede conectar con el backend. Verifica que FastAPI esté en ejecución e inténtalo de nuevo.", undefined, "NETWORK_ERROR");
+    } finally {
+      release();
+    }
+    if (response.status !== 429) break;
+    const wait = retryAfterMs(response.headers.get("Retry-After"));
+    requestGate.pause(wait);
+    if (attempt >= MAX_RATE_LIMIT_RETRIES || wait > MAX_AUTOMATIC_WAIT_MS) {
+      const code = errorCode(await response.json().catch(() => null));
+      throw new RateLimitedError(seconds(wait), response.headers.get("X-Request-ID") || undefined, code);
+    }
   }
   const requestId = response.headers.get("X-Request-ID") || undefined;
   let payload: unknown;
