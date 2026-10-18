@@ -12,8 +12,22 @@ def test_public_http_contract_is_unchanged_by_architecture_migration() -> None:
         (ROOT / "tests/fixtures/openapi_develop.json").read_text(encoding="utf-8")
     )
     current = create_app(Settings(_env_file=None)).openapi()
-    # AUD-009 adds exactly one route and one response DTO. All old definitions,
-    # bodies, operation IDs and paths must still match the untouched develop snapshot.
+    # Keep the original and AUD-009 snapshots intact. AUD-013 is isolated in its
+    # own additive snapshot; all previous bodies, models and operation IDs match.
+    quality_schema_names = (
+        "DatasetQuality",
+        "QualityColumnMetrics",
+        "QualityDuplicateMetrics",
+        "QualityMissingMetrics",
+        "QualityRuleResult",
+        "QualityRuleStatus",
+    )
+    quality = {
+        "path": current["paths"].pop("/datasets/{dataset_id}/quality"),
+        "schemas": {
+            name: current["components"]["schemas"].pop(name) for name in quality_schema_names
+        },
+    }
     preview = {
         "path": current["paths"].pop("/datasets/{dataset_id}/preview"),
         "schema": current["components"]["schemas"].pop("DatasetPreview"),
@@ -23,6 +37,10 @@ def test_public_http_contract_is_unchanged_by_architecture_migration() -> None:
         (ROOT / "tests/fixtures/openapi_preview.json").read_text(encoding="utf-8")
     )
     assert preview == expected_preview
+    expected_quality = json.loads(
+        (ROOT / "tests/fixtures/openapi_quality.json").read_text(encoding="utf-8")
+    )
+    assert quality == expected_quality
 
 
 def test_migration_map_points_to_existing_files() -> None:

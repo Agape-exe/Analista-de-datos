@@ -1,0 +1,262 @@
+{
+  "path": {
+    "get": {
+      "summary": "Dataset Quality",
+      "description": "Evaluate exact quality aggregates on the registered, unmodified dataset.",
+      "operationId": "dataset_quality_datasets__dataset_id__quality_get",
+      "parameters": [
+        {
+          "name": "dataset_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "title": "Dataset Id"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetQuality"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Dataset no longer registered in memory"
+        },
+        "413": {
+          "description": "Exact quality evaluation exceeds resource budgets"
+        },
+        "422": {
+          "description": "Unsupported local table, structure or value"
+        },
+        "429": {
+          "description": "Shared exploration rate or operation capacity exceeded"
+        }
+      }
+    }
+  },
+  "schemas": {
+    "DatasetQuality": {
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "title": "Dataset Id"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "EVALUATED",
+            "NOT_EVALUATED"
+          ],
+          "title": "Status"
+        },
+        "total_rows": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Total Rows"
+        },
+        "total_columns": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Total Columns"
+        },
+        "total_cells": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Total Cells"
+        },
+        "missing": {
+          "$ref": "#/components/schemas/QualityMissingMetrics"
+        },
+        "duplicates": {
+          "$ref": "#/components/schemas/QualityDuplicateMetrics"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/components/schemas/QualityRuleResult"
+          },
+          "type": "array",
+          "title": "Rules"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "dataset_id",
+        "status",
+        "total_rows",
+        "total_columns",
+        "total_cells",
+        "missing",
+        "duplicates",
+        "rules"
+      ],
+      "title": "DatasetQuality",
+      "description": "Exact aggregates only, never raw rows. Percentages use a 0–100 scale.\n\nZero denominators yield 0%; rules on empty tables are NOT_EVALUATED.\nUnsupported/over-budget evaluations fail as a whole, without partial metrics."
+    },
+    "QualityColumnMetrics": {
+      "properties": {
+        "column_name": {
+          "type": "string",
+          "title": "Column Name"
+        },
+        "data_type": {
+          "type": "string",
+          "title": "Data Type"
+        },
+        "missing_count": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Missing Count"
+        },
+        "missing_percentage": {
+          "type": "number",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Missing Percentage"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "column_name",
+        "data_type",
+        "missing_count",
+        "missing_percentage"
+      ],
+      "title": "QualityColumnMetrics"
+    },
+    "QualityDuplicateMetrics": {
+      "properties": {
+        "duplicate_rows": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Duplicate Rows"
+        },
+        "duplicate_percentage": {
+          "type": "number",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Duplicate Percentage"
+        },
+        "duplicate_groups": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Duplicate Groups"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "duplicate_rows",
+        "duplicate_percentage",
+        "duplicate_groups"
+      ],
+      "title": "QualityDuplicateMetrics",
+      "description": "Full-row equality; duplicate_rows excludes each group's first occurrence."
+    },
+    "QualityMissingMetrics": {
+      "properties": {
+        "missing_cells": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Missing Cells"
+        },
+        "missing_percentage": {
+          "type": "number",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Missing Percentage"
+        },
+        "incomplete_rows": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Incomplete Rows"
+        },
+        "complete_rows": {
+          "type": "integer",
+          "minimum": 0.0,
+          "title": "Complete Rows"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/components/schemas/QualityColumnMetrics"
+          },
+          "type": "array",
+          "title": "Columns"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "missing_cells",
+        "missing_percentage",
+        "incomplete_rows",
+        "complete_rows",
+        "columns"
+      ],
+      "title": "QualityMissingMetrics"
+    },
+    "QualityRuleResult": {
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "title": "Rule Id"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "status": {
+          "$ref": "#/components/schemas/QualityRuleStatus"
+        },
+        "observed_count": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Observed Count"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "rule_id",
+        "description",
+        "status"
+      ],
+      "title": "QualityRuleResult"
+    },
+    "QualityRuleStatus": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_EVALUATED"
+      ],
+      "title": "QualityRuleStatus"
+    }
+  }
+}

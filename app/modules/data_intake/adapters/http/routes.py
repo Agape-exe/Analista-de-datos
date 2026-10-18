@@ -15,13 +15,19 @@ from fastapi import (
 from app.modules.data_intake.adapters.http.dependencies import (
     get_intake_use_case,
     get_preview_use_case,
+    get_quality_use_case,
 )
 from app.modules.data_intake.application.dto import DatasetPreview, DatasetPreviewQuery
+from app.modules.data_intake.application.quality_dto import DatasetQuality
+from app.modules.data_intake.application.use_cases.evaluate_dataset_quality import (
+    EvaluateDatasetQuality,
+)
 from app.modules.data_intake.application.use_cases.intake_uploaded_dataset import (
     IntakeUploadedDataset,
 )
 from app.modules.data_intake.application.use_cases.preview_dataset import PreviewDataset
 from app.modules.data_intake.domain.preview import PreviewTooLargeError, PreviewUnsupportedError
+from app.modules.data_intake.domain.quality import QualityTooLargeError, QualityUnsupportedError
 from app.shared.adapters.http.protection import enforce_request_limit, reserve_operation_capacity
 from app.shared.application.errors import (
     DatasetNotFoundError,
@@ -32,6 +38,55 @@ from app.shared.application.errors import (
 from app.shared.contracts.intake import IntakeOptions, IntakeResponse
 
 router = APIRouter()
+
+
+@router.get(
+    "/datasets/{dataset_id}/quality",
+    response_model=DatasetQuality,
+    responses={
+        404: {"description": "Dataset no longer registered in memory"},
+        413: {"description": "Exact quality evaluation exceeds resource budgets"},
+        422: {"description": "Unsupported local table, structure or value"},
+        429: {"description": "Shared exploration rate or operation capacity exceeded"},
+    },
+)
+async def dataset_quality(
+    request: Request,
+    response: Response,
+    dataset_id: str,
+    use_case: Annotated[EvaluateDatasetQuality, Depends(get_quality_use_case)],
+) -> DatasetQuality:
+    """Evaluate exact quality aggregates on the registered, unmodified dataset."""
+    try:
+        await enforce_request_limit(request, "exploration")
+        async with reserve_operation_capacity(request):
+            result = await use_case.execute(dataset_id)
+    except DatasetNotFoundError as error:
+        raise HTTPException(
+            404,
+            detail={
+                "code": "DATASET_NOT_FOUND",
+                "message": "Dataset no longer in memory. Upload it again to evaluate quality.",
+            },
+        ) from error
+    except QualityTooLargeError as error:
+        raise HTTPException(
+            413,
+            detail={
+                "code": "QUALITY_TOO_LARGE",
+                "message": "Exact quality evaluation exceeds resource limits; no partial results.",
+            },
+        ) from error
+    except QualityUnsupportedError as error:
+        raise HTTPException(
+            422,
+            detail={
+                "code": "QUALITY_UNSUPPORTED",
+                "message": "Dataset cannot be evaluated safely with the supported quality rules.",
+            },
+        ) from error
+    response.headers["Cache-Control"] = "no-store"
+    return result
 
 
 @router.get(
