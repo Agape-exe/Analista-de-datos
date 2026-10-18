@@ -375,7 +375,7 @@ la disponibilidad de AUD-002/AUD-036/AUD-039; no se implementó Chat.
 La consulta remota confirma:
 
 - `develop`: `4d85afe2f059495f191b042f773a34be6e860eb3`.
-- PR #41 (`codex/i5-aud007-metricas-traza`): `cc0e59b7c410f7c34f3423db8487267b6600748d` antes de esta actualización.
+- PR #41 (`codex/i5-aud007-metricas-traza`): `fd274dad81655e41c5d3f50de5bc4113a0060c1a` (commit documental publicado; la punta final se confirmará tras esta actualización).
 - `develop` ya es ancestro de la rama del PR; no había integración pendiente ni conflictos actuales. La comprobación formal no produjo marcadores de conflicto.
 - Commits fusionados relevantes de Integrantes 2 y 3 en `develop`: PR #42 AUD-004, #43 AUD-005, #44 AUD-019 y #45 AUD-020; también están AUD-017 Anomalías y la consolidación EDA/Traza.
 
@@ -401,7 +401,7 @@ contra respuestas tardías y el límite de **2.097.152 bytes**.
 
 ### CI remota
 
-La última ejecución consultada es [CI 39171081136](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39171081136), sobre `cc0e59b`, y terminó con fallo:
+La ejecución anterior [CI 39171081136](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39171081136), sobre `cc0e59b`, terminó con fallo. La nueva [CI 39172677935](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39172677935), sobre `fd274da`, fue lanzada y estaba en cola al registrar esta evidencia:
 
 - Aprobados: architecture-tests, architecture-checker, ruff-format, Vitest, ESLint y build.
 - Fallidos: pytest backend, Ruff check y E2E Chromium Linux.
@@ -411,7 +411,8 @@ La última ejecución consultada es [CI 39171081136](https://github.com/Alexande
 - Problema de entorno/CI: el recorrido E2E no alcanza aserciones; localmente Chromium falla al iniciar y la ejecución remota sigue fallando en su job E2E. La clasificación definitiva del log Linux queda pendiente de sus artefactos.
 
 No se hizo merge ni despliegue Render. El PR permanece en borrador y no está
-aprobado mientras haya checks fallidos. Después del commit documental de esta
-sección se actualizarán aquí el SHA final y la nueva URL de CI; los pendientes
-de Integrante 4 siguen siendo Critic, Relaciones y Chat.
+aprobado mientras haya checks fallidos. La punta final y el resultado de la CI
+disparada por este documento deben confirmarse en GitHub antes de cerrar
+AUD-007; los pendientes de Integrante 4 siguen siendo Critic, Relaciones y
+Chat.
 
