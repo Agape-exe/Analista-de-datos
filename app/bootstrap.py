@@ -1,5 +1,6 @@
 from collections.abc import Callable
 
+from app.modules.analysis.adapters.analytics.correlation import PartialCorrelationTool
 from app.modules.analysis.adapters.analytics.factory import build_statistical_tool_registry
 from app.modules.analysis.adapters.analytics.mixed import AnovaGroupProfiler
 from app.modules.analysis.adapters.orchestration.graph import LangGraphWorkflow
@@ -8,6 +9,9 @@ from app.modules.analysis.application.agents.association import AssociationAgent
 from app.modules.analysis.application.agents.planner import PlannerAgent
 from app.modules.analysis.application.use_cases.analyze_dataset import AnalyzeDataset
 from app.modules.analysis.ports.agent import Agent
+from app.modules.critical_review.adapters.partial_correlation_intake import (
+    PartialCorrelationIntakeAdapter,
+)
 from app.modules.critical_review.application.agents.critic import CriticAgent
 from app.modules.data_intake.adapters.datasource.csv_source import CsvDataSource
 from app.modules.data_intake.adapters.datasource.dataset_preview import PandasDatasetPreviewReader
@@ -129,6 +133,7 @@ def build_tool_registry(settings: Settings, datasets: DatasetProvider) -> ToolRe
     registry = ToolRegistry()
     for tool in EDA_TOOLS:
         registry.register(tool(datasets, settings.eda, settings.analysis.minimum_sample_size))
+    registry.register(PartialCorrelationIntakeAdapter(datasets, PartialCorrelationTool))
     return registry
 
 

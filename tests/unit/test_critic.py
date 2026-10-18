@@ -201,6 +201,9 @@ async def test_critic_rejects_control_variable_equal_to_analyzed_variable():
     assert resultado.update.relationship_assessments is None
     assert resultado.warnings
 
+    # AUD-033: Verificar el motivo del control inválido
+    assert any("coincide con una variable analizada" in warning for warning in resultado.warnings)
+
 
 # PRUEBA 5: Detectar un cambio de signo en la correlación
 async def test_critic_detects_sign_change():
@@ -883,7 +886,7 @@ def _critic_context(results: list[AnalysisResult]) -> AgentContext:
     )
 
 
-async def test_critic_reports_significant_results_without_robustness_as_preliminary():
+async def test_critic_reviews_measured_results_as_indeterminate():
     pearson = AnalysisResult(
         method="pearson",
         variables=["ingreso", "gasto"],
@@ -893,7 +896,9 @@ async def test_critic_reports_significant_results_without_robustness_as_prelimin
         p_value=0.001,
         sample_size=100,
     )
+
     spearman = pearson.model_copy(update={"analysis_id": "spearman-1", "method": "spearman"})
+
     chi = AnalysisResult(
         method="chi_square",
         variables=["region", "segmento"],
@@ -906,17 +911,27 @@ async def test_critic_reports_significant_results_without_robustness_as_prelimin
     resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson, spearman, chi]))
 
     assert resultado.status == AnalysisStatus.SUCCESS
-    [evaluacion] = resultado.update.relationship_assessments
-    assert set(evaluacion.variables) == {"ingreso", "gasto"}
-    assert evaluacion.potentially_spurious is None
-    assert "preliminar" in evaluacion.rationale
-    assert {item.analysis_id for item in resultado.update.evidence} == {
+
+    # Tres resultados estadísticos deben generar tres evidencias.
+    assert len(resultado.update.evidence) == 3
+
+    # Se genera una evaluación por cada par de variables.
+    assert len(resultado.update.relationship_assessments) == 2
+
+    assert {evidencia.analysis_id for evidencia in resultado.update.evidence} == {
         pearson.analysis_id,
         spearman.analysis_id,
+        chi.analysis_id,
     }
 
+    # La clasificación permanece indeterminada.
+    for evaluacion in resultado.update.relationship_assessments:
+        assert evaluacion.potentially_spurious is None
+        assert evaluacion.evidence_ids
+        assert "indeterminad" in evaluacion.rationale.lower()
 
-async def test_critic_skips_when_no_result_is_significant():
+
+async def test_critic_reviews_non_significant_measured_result():
     no_significativo = AnalysisResult(
         method="pearson",
         variables=["ingreso", "ruido"],
@@ -928,4 +943,209 @@ async def test_critic_skips_when_no_result_is_significant():
 
     resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([no_significativo]))
 
+    # Un resultado medido puede revisarse descriptivamente
+    # aunque su valor p no sea significativo.
+    assert resultado.status == AnalysisStatus.SUCCESS
+
+    assert len(resultado.update.evidence) == 1
+    assert len(resultado.update.relationship_assessments) == 1
+
+    evidencia = resultado.update.evidence[0]
+    evaluacion = resultado.update.relationship_assessments[0]
+
+    assert evidencia.analysis_id == no_significativo.analysis_id
+    assert evaluacion.evidence_ids == [evidencia.evidence_id]
+    assert evaluacion.potentially_spurious is None
+
+
+# AUD-002: Revisar resultados medidos aunque no exista valor p
+async def test_critic_reviews_measured_result_without_p_value():
+    pearson = AnalysisResult(
+        method="pearson",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=0.70,
+        sample_size=100,
+        p_value=None,
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson]))
+
+    assert resultado.status == AnalysisStatus.SUCCESS
+    assert len(resultado.update.evidence) == 1
+    assert len(resultado.update.relationship_assessments) == 1
+
+    evidencia = resultado.update.evidence[0]
+    evaluacion = resultado.update.relationship_assessments[0]
+
+    assert evidencia.analysis_id == pearson.analysis_id
+    assert evaluacion.evidence_ids == [evidencia.evidence_id]
+    assert evaluacion.potentially_spurious is None
+
+
+# AUD-002: No generar evidencia si falta el cálculo estadístico
+async def test_critic_skips_significant_result_without_coefficient():
+    pearson = AnalysisResult(
+        method="pearson",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=None,
+        p_value=0.001,
+        sample_size=100,
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson]))
+
     assert resultado.status == AnalysisStatus.SKIPPED
+    assert resultado.update.evidence is None
+    assert resultado.update.relationship_assessments is None
+    assert resultado.warnings
+
+
+# AUD-033: Conservar el motivo de un análisis omitido
+async def test_critic_preserves_skipped_analysis_reason():
+    omitted = AnalysisResult(
+        analysis_id="partial-omitted-001",
+        method="partial_correlation",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SKIPPED,
+        warnings=["No hay suficientes observaciones para el cálculo."],
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([omitted]))
+
+    assert resultado.status == AnalysisStatus.SKIPPED
+    assert resultado.update.evidence is None
+    assert resultado.update.relationship_assessments is None
+    assert any(
+        "partial-omitted-001" in warning and "No hay suficientes observaciones" in warning
+        for warning in resultado.warnings
+    )
+
+
+# AUD-033: Conservar advertencias incluso cuando hay resultados válidos
+async def test_critic_preserves_warnings_with_successful_results():
+    pearson = AnalysisResult(
+        analysis_id="pearson-valid-001",
+        method="pearson",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=0.75,
+        sample_size=100,
+    )
+
+    omitted = AnalysisResult(
+        analysis_id="partial-omitted-002",
+        method="partial_correlation",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SKIPPED,
+        warnings=["La variable de control no es evaluable."],
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson, omitted]))
+
+    assert resultado.status == AnalysisStatus.SUCCESS
+
+    assert {evidencia.analysis_id for evidencia in resultado.update.evidence} == {
+        "pearson-valid-001"
+    }
+
+    assert any(
+        "partial-omitted-002" in warning and "variable de control" in warning
+        for warning in resultado.warnings
+    )
+
+
+# AUD-033: Conservar el motivo de un análisis fallido
+async def test_critic_preserves_failed_analysis_reason():
+    failed = AnalysisResult(
+        analysis_id="partial-failed-001",
+        method="partial_correlation",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.FAILED,
+        warnings=["Error durante el cálculo de correlación parcial."],
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([failed]))
+
+    # Sin cálculos válidos, Critic debe omitir la evaluación.
+    assert resultado.status == AnalysisStatus.SKIPPED
+
+    # No debe fabricar evidencias ni evaluaciones.
+    assert resultado.update.evidence is None
+    assert resultado.update.relationship_assessments is None
+
+    # Debe conservar la identificación y el motivo del fallo.
+    assert any(
+        "partial-failed-001" in warning and "Error durante el cálculo" in warning
+        for warning in resultado.warnings
+    )
+
+
+# AUD-036: Verificar la integración de la procedencia con Critic
+async def test_critic_preserves_screening_provenance():
+    screening = AnalysisResult(
+        analysis_id="screening-001",
+        method="relationship_ranking",
+        status=AnalysisStatus.SUCCESS,
+        result={
+            "top_relationships": [
+                {
+                    "x": "publicidad",
+                    "y": "ventas",
+                    "method": "pearson",
+                    "score": 0.85,
+                    "strength": 0.80,
+                    "p_value": 0.001,
+                    "adjusted_p_value": 0.008,
+                    "sample_size": 100,
+                    "warnings": ["Posible influencia de outliers."],
+                    "supporting": [
+                        {
+                            "method": "spearman",
+                            "variables": ["publicidad", "ventas"],
+                            "strength": 0.75,
+                            "p_value": 0.002,
+                        }
+                    ],
+                }
+            ],
+            "correction": "benjamini-hochberg",
+            "significance_level": 0.05,
+        },
+    )
+
+    pearson = AnalysisResult(
+        analysis_id="pearson-001",
+        method="pearson",
+        variables=["publicidad", "ventas"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=0.80,
+        result={"correlation": 0.80},
+        sample_size=100,
+        p_value=0.001,
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([screening, pearson]))
+
+    assert resultado.status == AnalysisStatus.SUCCESS
+
+    evaluacion = resultado.update.relationship_assessments[0]
+
+    # La clasificación continúa siendo indeterminada
+    assert evaluacion.potentially_spurious is None
+
+    # La evaluación conserva la procedencia del screening
+    limitaciones = " ".join(evaluacion.limitations)
+
+    assert "screening-001" in limitaciones
+    assert "pearson" in limitaciones
+    assert "n=100" in limitaciones
+    assert "p crudo=0.001" in limitaciones
+    assert "p ajustado=0.008" in limitaciones
+    assert "benjamini-hochberg" in limitaciones
+    assert "spearman" in limitaciones
+    assert "Posible influencia de outliers" in limitaciones
+
+    # No crear evidencia ficticia del screening
+    assert {evidencia.analysis_id for evidencia in resultado.update.evidence} == {"pearson-001"}
