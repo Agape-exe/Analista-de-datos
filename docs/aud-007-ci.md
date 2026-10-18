@@ -43,8 +43,30 @@ Comandos repetidos en esta revisión:
   sigue siendo la comparación [39133154044](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39133154044)
   y la CI completa [39133153991](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39133153991).
 
-La siguiente ejecución real de Actions se publicará contra este PR y se añadirá
-su URL, SHA y resultado por job en esta sección y en la descripción del PR.
+## Nueva ejecución real de Actions
+
+La ejecución sobre el SHA publicado fue [39140210176](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176),
+con [job E2E](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908164),
+[pytest](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908191) y
+[Ruff check](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908338).
+Terminó en **failure** sobre `9e6c09c8461a47da6df69dc6e9e96cc59869381b`.
+
+| Job | Resultado | Evidencia |
+| --- | --- | --- |
+| architecture-checker | aprobado | [117712908048](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908048) |
+| architecture-tests | aprobado | [117712908016](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908016) |
+| ruff-format | aprobado | [117712907999](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712907999) |
+| vitest | aprobado | [117712907867](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712907867) |
+| eslint | aprobado | [117712908097](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908097) |
+| build | aprobado | [117712908084](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908084) |
+| pytest | fallido, 598 aprobadas/4 fallidas | [117712908191](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908191) |
+| ruff-check | fallido, F841/F401 | [117712908338](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908338) |
+| E2E Chromium Linux | fallido, 2 archivos/3 casos fallidos; Métricas y Traza 4/4 aprobados | [117712908164](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39140210176/job/117712908164) |
+
+Los fallos E2E observados son `associations.spec.ts` por no obtener la relación
+esperada tras `ANALYSIS_CAPACITY_EXCEEDED`, el retorno a Asociaciones del caso
+EDA/reporte por la misma causa, y `report.spec.ts` de pagos por
+`additive_identity` ausente. La ejecución no omitió casos ni añadió reintentos.
 Hasta que todos los checks obligatorios estén aprobados, AUD-007 y el PR no se
 declaran aprobados. Render sigue fuera de alcance y no se declara validado.
 
