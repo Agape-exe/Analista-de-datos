@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { downloadJson } from "../../lib/download";
-import { methodLabel } from "../associations/methods";
 import { useIntake } from "../data-intake/IntakeProvider";
 import { metricLabel, stageLabel, statusLabel } from "./labels";
 import { useReport } from "./ReportProvider";

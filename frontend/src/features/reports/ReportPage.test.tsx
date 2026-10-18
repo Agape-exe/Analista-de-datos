@@ -42,7 +42,10 @@ test("null metrics stay unmeasured and no insights are invented", async () => {
   await screen.findByText("Estado: Pendiente");
   expect(screen.getByText("Sin medición")).toBeInTheDocument();
   expect(screen.getByText("0", { exact: true })).toBeInTheDocument();
-  expect(screen.getByText("No hay hallazgos respaldados por evidencia disponibles.")).toBeInTheDocument();
+  expect(
+  screen.getByText("No hay insights respaldados por evidencia disponibles.")
+).toBeInTheDocument();
+
 });
 
 test("missing report shows server error and enables retry", async () => {
