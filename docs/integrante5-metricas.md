@@ -468,3 +468,28 @@ pasan en Chromium Linux, con anchos de 1440/390 px. La suite completa conserva
 17 aprobadas y tres fallidas en recorridos existentes; backend/Ruff también
 siguen fallando. Se mantienen los informes y no se declara CI aprobada.
 La tabla de jobs, URL, SHA y atribución de fallos está en la revisión de entrega.
+
+## Integración final de Métricas, Hallazgos, Relaciones y Chat
+
+Con `develop` en `896f583`, Métricas continúa consumiendo el objeto compartido
+de `ReportProvider`: no solicita `/metrics` por separado, no recalcula valores y
+mantiene la distinción entre cero y ausencia. La suite focal actual aprobó los
+69 casos de Resumen, Métricas, Traza, Reportes, Chat y Relaciones.
+
+Hallazgos muestra ahora `relationship_assessments` con clasificación,
+justificación, referencias de evidencia y la procedencia literal que AUD-036
+añade a `limitations`. Sus enlaces llevan a Relaciones, Métricas, Traza y Chat;
+insight → evidencia → resultado conserva IDs reales del reporte.
+
+Chat usa únicamente `GET /questions/catalog` y
+`POST /reports/{run_id}/questions` de AUD-039. Conserva historial por reporte,
+lo mantiene al navegar, lo limpia al cambiar/resetear el contexto, permite
+cancelar la espera y descarta respuestas tardías. Las respuestas ANSWERED sin
+referencias y las abstenciones con referencias se rechazan como contrato
+inválido. No se añadió proveedor LLM ni se inventaron preguntas, evidencia o
+causalidad.
+
+La E2E local de Windows no alcanzó aserciones por el bloqueo conocido
+`browserType.launch: spawn UNKNOWN`. Las E2E de Chat y Relaciones quedan
+pendientes de la CI Linux de la cabecera publicada; no se presentan como
+validadas localmente.

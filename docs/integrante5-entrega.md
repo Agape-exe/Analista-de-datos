@@ -284,3 +284,50 @@ revisión automática por cuota se resolvió al retomar la tarea.
 
 Render permanece **pendiente**: no hay medición nueva del staging desplegado
 y no se realizó despliegue.
+
+## Cierre integral actualizado — develop 896f583
+
+Estado consultado el 18 de octubre de 2026: PR #41 abierto y en borrador;
+cabecera remota inicial `6ecca51`, base nueva `896f583`. Commits locales de esta
+continuación: merge `a54a6ab`, Chat/Hallazgos `d81faa4`, correcciones CI
+`5c80505`, retiro del override ajeno de Planner `2b3530e` y E2E de Relaciones
+`89e62bc`. La cabecera final publicada y la CI correspondiente se registran en
+la descripción del PR después del push.
+
+### Matriz AUD-046
+
+| Función | Ruta | Contrato | Unidad/componente | Integración | E2E | Estado, limitación y dependencia |
+| --- | --- | --- | --- | --- | --- | --- |
+| Intake | `/` | `POST /intake` | App/IntakeProvider | intake API | `intake.spec.ts` | Disponible; dataset en memoria, límite CI 2 MiB |
+| Preview | `/dataset` | `GET /datasets/{id}/preview` | DatasetPreview | preview API | `dataset-preview.spec.ts` | Disponible; expiración explícita |
+| Diccionario | `/dictionary` | perfil `data_dictionary` | DataDictionaryPage | intake/reportes | `dictionary.spec.ts` | Disponible; no inventa campos oficiales |
+| Calidad | `/quality` | `GET /datasets/{id}/quality` | DataQualityPage | quality API | `quality.spec.ts` | Disponible; no produce puntaje global |
+| Asociaciones | `/associations` | herramientas EDA | suite associations | tools API | `associations.spec.ts` | Disponible; candidatas, no causalidad |
+| Anomalías | `/anomalies` | IQR/MAD y referencias de fila | suite anomalies | tools API | `anomalies.spec.ts` | Disponible; atípico no equivale a error |
+| Patrones | `/patterns` | `grouped_summary` | suite patterns | tools API | `patterns.spec.ts` | Disponible; categorías no son clusters |
+| Relaciones | `/relations` | `relationship_assessments`, evidencia y partial correlation | 3 pruebas Relations + control | grounded/critic/EDA | `relations.spec.ts` nuevo | Disponible; controles solo con dataset compatible |
+| Resumen | `/summary` | IntakeProvider + ReportProvider | SummaryPage | reportes | `summary.spec.ts` | Disponible; separa dataset y reporte histórico |
+| Hallazgos | `/report` | `AnalysisReport`, insights/evidence/assessments | ReportPage | reporting API | `report*.spec.ts` | Disponible; procedencia literal y referencias verificables |
+| Métricas | `/metrics` | `AnalysisReport.metrics` | MetricsPage | reporting API | `metrics.spec.ts` | Disponible; cero ≠ ausente, sin recalcular |
+| Traza | `/trace` | estados, duraciones y `execution_trace` | TracePage | workflow/reporting | `trace.spec.ts` | Disponible; conserva orden y precisión recibidos |
+| Chat | `/chat` | catálogo + `GroundedAnswer` AUD-039 | 4 pruebas Chat | 10 pruebas grounded query | `chat.spec.ts` nuevo | Implementado; solo reporte guardado, catálogo y referencias |
+
+### Resultados actuales
+
+- Arquitectura: checker correcto y 24/24 pruebas.
+- Backend: 24/24 pruebas afectadas y 690/690 integración+unidad.
+- Calidad: Ruff check y format correctos.
+- Frontend: 40/40 afectadas y 69/69 focales; suite global 288 aprobadas y un
+  timeout transitorio en App, luego App aislado 5/5 sin cambios.
+- Build, typecheck y ESLint: correctos.
+- E2E Windows: 16 casos no ejecutaron aserciones por `spawn UNKNOWN`; quedan
+  pendientes los resultados Linux de la nueva CI.
+
+### Estado de cierre
+
+AUD-008 sigue **pendiente**: no existe staging autorizado/medido en esta
+continuación y no se desplegó Render. AUD-046 sigue **pendiente** hasta que los
+nueve jobs de la cabecera final, incluidas las E2E Linux de Chat y Relaciones,
+terminen y se revisen sus artefactos. Se conserva el límite de **2.097.152
+bytes**, no hubo merge del PR, cierre, despliegue, benchmarks ni cambios de
+algoritmos ajenos.

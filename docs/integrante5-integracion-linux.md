@@ -154,3 +154,21 @@ final añade al inventario anterior solo `api-diagnostics.ts`, la activación
 del observador en `associations.spec.ts` y este documento; `report.spec.ts` y
 los tres documentos de I5 existentes se actualizan dentro del mismo alcance.
 No hay diferencias backend, contratos, locks ni límites respecto de la base.
+
+## Comparación posterior a AUD-039 y PR #49
+
+La base vigente pasó a `896f5834c44628c79a53d06a53c4a86b82557d40`.
+El merge local del PR #41 es `a54a6ab`; la punta funcional antes de actualizar
+documentación es `89e62bc`. Ya están disponibles el catálogo y endpoint de
+consultas fundamentadas, procedencia de screening y Relaciones.
+
+En Windows, las 16 E2E seleccionadas de Resumen, Reporte, contexto, navegación,
+Métricas, Traza, Asociaciones, Patrones, Anomalías, Relaciones y Chat iniciaron
+Uvicorn/Vite, pero Chromium 1248 falló en cada caso con `spawn UNKNOWN` antes de
+la primera aserción. Este resultado solo valida descubrimiento/configuración;
+no sustituye Linux.
+
+La comparación Linux definitiva se ejecutará mediante el workflow CI del PR,
+que aísla cada archivo E2E en un proceso nuevo. Hasta registrar esa URL y sus
+jobs, AUD-007 y AUD-046 permanecen pendientes. No hubo cambios de límites,
+reintentos, locks, despliegue ni configuración de Render.
