@@ -95,7 +95,9 @@ def outliers(
     values: np.ndarray, iqr_multiplier: float, mad_threshold: float, max_examples: int
 ) -> dict[str, object]:
     """Tukey IQR fences and robust z-scores (median absolute deviation)."""
-    observed = values[~np.isnan(values)]
+    present_mask = ~np.isnan(values)
+    original_positions = np.flatnonzero(present_mask)
+    observed = values[present_mask]
     n = len(observed)
     q1, median, q3 = np.percentile(observed, [25, 50, 75])
     iqr = q3 - q1
@@ -108,7 +110,9 @@ def outliers(
         mad_mask = np.abs(robust_z) > mad_threshold
         mad_result.update(count=int(mad_mask.sum()), percentage=finite(100 * mad_mask.sum() / n))
     flagged = observed[iqr_mask]
-    extremes = flagged[np.argsort(-np.abs(flagged - median), kind="stable")][:max_examples]
+    selection = np.argsort(-np.abs(flagged - median), kind="stable")[:max_examples]
+    extremes = flagged[selection]
+    example_positions = original_positions[iqr_mask][selection]
     return {
         "count": n,
         "iqr": {
@@ -118,6 +122,10 @@ def outliers(
             "count": int(iqr_mask.sum()),
             "percentage": finite(100 * iqr_mask.sum() / n),
             "examples": [finite(value) for value in extremes],
+            "example_rows": [
+                {"row_index": int(position), "value": finite(value)}
+                for position, value in zip(example_positions, extremes, strict=True)
+            ],
         },
         "mad": mad_result,
     }

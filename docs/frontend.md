@@ -348,6 +348,76 @@ snapshots HTTP. No se identificaron regresiones nuevas en las validaciones
 ejecutadas. Resultados locales, no CI. Cambios sin staging, commit ni publicación,
 pendientes de revisión técnica. Alcance exclusivo AUD-014; AUD-018 no iniciado.
 
+## AUD-018 — Ejemplos IQR con registro original
+
+La sección existente «Distribución de columna» de Asociaciones incorpora
+«Ejemplos de valores atípicos». Consume `iqr.example_rows` de la herramienta
+outliers y muestra el registro (`row_index + 1`), valor e identificación IQR.
+Se conservan valores repetidos con sus posiciones distintas y el orden del
+servidor. La posición coincide con el preview de AUD-009; no es un identificador
+de negocio, índice de Pandas o número de línea física del archivo. Un atípico
+puede ser válido y la interfaz no propone eliminarlo automáticamente.
+
+`OutlierExamples` comprueba identidad de la columna, posiciones enteras válidas
+dentro del total del dataset, ausencia de posiciones duplicadas y correspondencia
+con `iqr.examples`. No busca valores para asignar registros. El contrato nuevo
+es opcional: las respuestas antiguas sin referencias muestran que no están
+disponibles. Sin atípicos, límite de ejemplos cero, columna insuficiente y
+resultados SKIPPED/FAILED tienen mensajes propios, sin ejemplos ficticios.
+Errores de red/capacidad permiten reintentar; dataset no disponible ofrece
+volver a cargar. Carga, cambios de columna y respuestas stale ocultan referencias
+anteriores. useTool ignora éxitos de solicitudes canceladas; el explorador se
+reinicia al cambiar dataset. Los gráficos mantienen su comportamiento anterior.
+
+La consulta de outliers espera histograma y descriptivas de la columna, sin
+introducir colas globales. Cambiar únicamente la agrupación del boxplot no repite
+outliers. Los reintentos no alteran variables ni parámetros de la herramienta.
+Los valores conservan la normalización estadística anterior de seis decimales;
+un valor no representable como número JSON se presenta explícitamente como tal.
+La tabla usa caption, encabezados y región desplazable accesible por teclado,
+con diseño adaptable. «Anomalías» continúa deshabilitada como Próximamente.
+No hay nueva pantalla, dependencias ni cambios en Analysis, Critic o Reporting.
+
+El detalle de la correspondencia, límites y contrato aditivo está en
+[EDA & Association](eda-association.md#aud-018--referencias-originales-en-ejemplos-iqr).
+AnalysisResult.result sigue siendo JSON libre: no cambia OpenAPI ni se regenera
+el archivo de tipos API. Solo se amplían las formas manuales de exploration.ts.
+
+Para reproducir desde `frontend/`, con Edge y puertos libres:
+
+```powershell
+New-Item -ItemType Directory -Path '..\..\aud018-evidence' -Force | Out-Null
+$env:PLAYWRIGHT_CHANNEL = 'msedge'
+$env:E2E_BACKEND_PORT = '8028'
+$env:E2E_FRONTEND_PORT = '5198'
+$env:UI_SCREENSHOT_DIR = (Resolve-Path '..\..\aud018-evidence').Path
+npm run test:e2e -- e2e/outlier-row-references.spec.ts
+npm test -- src/features/associations/OutlierExamples.test.tsx src/features/associations/AssociationsPage.test.tsx --maxWorkers=1
+npm run typecheck
+npm run build
+```
+
+El E2E usa backend real y CSV sintético con 47 registros, nulos previos e
+intercalados, atípicos positivos/negativos y repetidos. Contrasta las posiciones
+1/44/45 con el preview y exige registros 2/45/46 en pantalla, ausencia de errores
+JavaScript y layout sin desbordamiento en 1440/1024/390 px. Otro E2E comprueba el
+estado sin atípicos. Los servidores son nuevos, con puertos aislados y sin
+reuseExistingServer. Capturas externas: `outliers-original-positions.png`,
+`outliers-with-missing-values.png`, `outliers-repeated-values.png`,
+`outliers-column-explorer.png`, `outliers-empty-state.png` y `outliers-mobile.png`.
+La captura de nulos muestra los registros reales en Dataset; las otras vistas
+corresponden al explorador o su estado vacío. No se usan datos privados.
+
+Validación local: 20 pruebas frontend nuevas y las 3 existentes de Associations
+aprobadas; suite general con 158 aprobadas y el mismo fallo previo de ReportPage.
+Los 2 E2E nuevos pasan con Edge y backend real; la suite E2E tiene 8 aprobados y
+los mismos 4 fallos anteriores de Associations/Reporting. TypeScript, build y
+ESLint de AUD-018 correctos; ESLint general conserva methodLabel sin uso en
+ReportPage.tsx. Arquitectura: 172 archivos correctos y 24 pruebas aprobadas.
+La comparación completa de línea base/backend consta en eda-association.md.
+No se identificaron regresiones nuevas en las comprobaciones ejecutadas; no
+se presentan las suites generales como completamente aprobadas.
+
 ## Backend y contratos
 
 `POST /intake` acepta multipart:
