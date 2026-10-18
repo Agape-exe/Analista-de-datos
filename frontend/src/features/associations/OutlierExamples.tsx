@@ -4,6 +4,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { formatValue } from "../../components/charts/chart-utils";
 import type { OutlierSummary } from "../../types/exploration";
+import { readOutliers } from "./tool-state";
 import type { useTool } from "./useTool";
 
 type ExampleRow = { row_index: number; value: number | null };
@@ -22,6 +23,7 @@ export function OutlierExamples({ column, totalRows, tool }: {
   totalRows: number;
   tool: ReturnType<typeof useTool>;
 }) {
+  const reading = readOutliers(tool, column);
   let content;
   if (tool.loading || tool.stale) content = <p role="status"><LoaderCircle size={14} className="spin" />Consultando ejemplos IQR…</p>;
   else if (tool.error) content = <div role="alert"><p>{tool.error.expired
@@ -29,26 +31,25 @@ export function OutlierExamples({ column, totalRows, tool }: {
     : "No se pudieron consultar los ejemplos. Revisa la conexión o espera si el servidor está ocupado."}</p>
     {tool.error.expired ? <Button asChild variant="outline"><Link to="/">Volver a cargar</Link></Button>
       : <Button variant="outline" onClick={tool.retry}>Reintentar ejemplos</Button>}</div>;
-  else if (!column || !tool.data) content = <p>No hay datos disponibles para consultar ejemplos.</p>;
-  else if (tool.data.status !== "SUCCESS") content = <p role="status">{tool.data.status === "SKIPPED"
+  else if (reading.kind === "problem") content = <div role="status"><p>{reading.problem.kind === "skipped"
     ? "La herramienta no pudo evaluar esta columna. No se muestran ejemplos."
-    : "La herramienta falló. No se muestran ejemplos."}</p>;
+    : "La herramienta falló. No se muestran ejemplos."}</p>
+    {reading.problem.retryable && <Button variant="outline" onClick={tool.retry}>Reintentar ejemplos</Button>}</div>;
+  else if (reading.kind === "pending") content = <p>No hay datos disponibles para consultar ejemplos.</p>;
+  else if (reading.kind === "invalid") content = <p>No hay referencias de registro válidas para la columna actual.</p>;
+  else if (reading.kind === "small-sample") content = <p role="status">No hay observaciones suficientes para evaluar esta columna. Con una muestra tan pequeña los umbrales no son fiables, así que no se marca ningún valor.</p>;
+  else if (reading.constant) content = <p role="status">La columna es constante: todos los valores observados son iguales, así que no hay dispersión ni valores atípicos que evaluar.</p>;
   else {
-    const result = tool.data.result;
-    const summary = result && typeof result === "object" && !Array.isArray(result)
-      ? (result as Record<string, unknown>)[column] as OutlierSummary | undefined : undefined;
-    if (tool.data.method !== "outliers" || !Array.isArray(tool.data.variables) || tool.data.variables.length !== 1 || tool.data.variables[0] !== column || !summary) {
-      content = <p>No hay referencias de registro válidas para la columna actual.</p>;
-    } else if (summary.skipped) content = <p role="status">No hay observaciones suficientes para evaluar esta columna.</p>;
-    else if (!summary.iqr || summary.iqr.example_rows === undefined) content = <p>Esta respuesta no incluye posiciones originales. No se infieren registros a partir de los valores.</p>;
-    else if (!validRows(summary.iqr, totalRows)) content = <p role="alert">Las referencias recibidas no son válidas para el dataset actual. No se muestran ejemplos.</p>;
-    else if (!summary.iqr.example_rows.length) content = <p>{summary.iqr.count === 0
+    const { iqr } = reading.summary;
+    if (iqr.example_rows === undefined) content = <p>Esta respuesta no incluye posiciones originales. No se infieren registros a partir de los valores.</p>;
+    else if (!validRows(iqr, totalRows)) content = <p role="alert">Las referencias recibidas no son válidas para el dataset actual. No se muestran ejemplos.</p>;
+    else if (!iqr.example_rows.length) content = <p>{iqr.count === 0
       ? "No se detectaron valores atípicos IQR."
       : "No se devolvieron ejemplos con posición para esta evaluación."}</p>;
     else content = <div className="table-scroll" role="region" aria-label="Registros de ejemplos IQR" tabIndex={0}>
       <table className="outlier-examples-table"><caption className="sr-only">Ejemplos IQR de {column}</caption>
         <thead><tr><th scope="col">Registro</th><th scope="col">Valor</th><th scope="col">Método</th></tr></thead>
-        <tbody>{summary.iqr.example_rows.map((row) => <tr key={row.row_index}><th scope="row">Registro {row.row_index + 1}</th>
+        <tbody>{iqr.example_rows.map((row) => <tr key={row.row_index}><th scope="row">Registro {row.row_index + 1}</th>
           <td>{row.value === null ? "Valor no representable" : formatValue(row.value, 6)}</td><td><Badge tone="info">IQR</Badge></td></tr>)}</tbody>
       </table>
     </div>;
