@@ -1,5 +1,62 @@
 # AUD-037 — Resumen
 
+## Adaptación a develop del 18 de octubre de 2026
+
+Se consultaron de nuevo las referencias reales de GitHub. `develop` avanzó a
+`986acbf` (PR #39, AUD-018: posiciones originales de ejemplos IQR); `main` está
+en `914065b` tras el PR #40. Los PR #34, #36 y #37 de preview/calidad ya forman
+parte de esa base. La rama `feature/critic-relations-queries` tiene tres commits
+propios (AUD-002, AUD-033, AUD-034), todavía fuera de develop: no se incorporó ni
+se dan por cumplidas las dependencias de Hallazgos/Chat.
+
+La rama local `feat/aud-037-develop-adaptation` parte de `origin/develop` en
+`986acbf`. Se reaplicaron los cuatro commits propios mediante cherry-pick,
+sin merge, y se conservaron las ramas originales:
+
+| Avance | Commit original | Commit reaplicado |
+| --- | --- | --- |
+| AUD-003 | 1079701 | 532032c |
+| AUD-042 | c5711f5 | aae4011 |
+| AUD-045 | c14c2a3 | 6225d6d |
+| AUD-037 | b5c994a | ed1c91e |
+
+Resumen reutiliza ahora la tarjeta «Controles de calidad / Disponibles» del
+componente remoto DatasetMetrics y ofrece «Ver calidad de datos». No inventa
+un puntaje global ni consulta calidad automáticamente. Preview y calidad se
+solicitan solo al visitar las pantallas que los poseen. Se actualizaron las
+pruebas propias para distinguir esas solicitudes de las de análisis y para
+verificar el recorrido Resumen → Calidad → Resumen sin perder contexto ni
+producir solicitudes adicionales al regresar.
+Se ajustó la tipografía móvil de sus tarjetas para que el nuevo texto
+«Disponibles» de calidad se lea completo en la columna de indicadores.
+
+El código backend y sus pruebas permanecen idénticos a origin/develop. No se
+alteraron los algoritmos de calidad, IQR, planificación ni Critic. Las secciones
+siguientes conservan la base y validación de la primera entrega como historial.
+
+Validación de esta adaptación:
+
+- 190 pruebas frontend aprobadas (14 archivos), sin excluir suites.
+- ESLint y build TypeScript/Vite correctos.
+- 10 E2E Edge aprobados: summary, navigation-context, report-context,
+  dataset-preview, quality y outlier-row-references. El recorrido desde Resumen
+  consulta calidad al entrar en su pantalla y no añade solicitudes al volver.
+  Resumen conserva el diseño sin desbordamiento horizontal a 390 px.
+- Checker de arquitectura correcto: 172 archivos Python.
+- 154 pruebas aprobadas: tests/architecture, tests/unit/test_dataset_quality.py,
+  tests/integration/test_dataset_quality_api.py,
+  tests/unit/test_outlier_row_references.py y
+  tests/integration/test_outlier_row_references_api.py.
+- La primera ejecución tras reaplicar commits encontró tres incompatibilidades
+  de pruebas propias: expectativa del puntaje de calidad retirado y mocks que
+  contaban preview como ejecución de análisis. Se adaptaron a las rutas reales.
+- Una ejecución simultánea con pytest agotó dos esperas de navegación en
+  App.test.tsx y AssociationsPage.test.tsx. La suite completa repetida sola pasó
+  las 190 pruebas, sin cambiar plazos, aserciones ni el código de esas suites.
+- Los fallos integrales previamente documentados no se consideran resueltos por
+  estos checks; no se ejecutó la suite backend completa ni se incorporó Critic
+  desde su rama pendiente.
+
 ## Base local y GitHub
 
 Se revisaron AGENTS.md, docs/architecture.md, el árbol de trabajo y las referencias

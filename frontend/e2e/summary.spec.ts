@@ -9,6 +9,7 @@ test("AUD-037: summary reuses active intake, separates reports, and resets at ro
   });
   await page.getByRole("button", { name: "Comprender dataset", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Resumen del dataset" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Filas del dataset" })).toBeVisible();
   const extraRequests: string[] = [];
   page.on("request", (request) => { if (request.url().includes("/api/")) extraRequests.push(request.url()); });
   await page.getByRole("link", { name: "Resumen", exact: true }).click();
@@ -16,6 +17,13 @@ test("AUD-037: summary reuses active intake, separates reports, and resets at ro
   await expect(page.getByRole("region", { name: "Indicadores del dataset activo" })).toContainText("Filas");
   await expect(page.getByRole("heading", { name: "Sin análisis compatible completado" })).toBeVisible();
   expect(extraRequests).toEqual([]);
+  await page.getByRole("link", { name: "Ver calidad de datos", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Resumen de calidad" })).toBeVisible();
+  const requestsAfterQuality = [...extraRequests];
+  expect(requestsAfterQuality.some((url) => url.includes("/quality"))).toBe(true);
+  await page.getByRole("link", { name: "Resumen", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Dataset activo" })).toBeVisible();
+  expect(extraRequests).toEqual(requestsAfterQuality);
   await page.getByRole("link", { name: "Ir a Hallazgos", exact: true }).click();
   await page.getByRole("button", { name: "Generar reporte", exact: true }).click();
   // A question-free analysis is intentionally SKIPPED; its metrics must remain unavailable.

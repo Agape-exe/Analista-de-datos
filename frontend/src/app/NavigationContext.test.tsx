@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import { App } from "./App";
 import { intakeFixture } from "../test/fixture";
+import { intakePreviewFixture } from "../test/preview-fixture";
 
 const json = (value: unknown) => new Response(JSON.stringify(value), { status: 200 });
 const result = { run_id: "run-1", status: "SUCCESS", dataset_profile: intakeFixture.profile,
@@ -43,7 +44,7 @@ test("draft files and reading options survive navigation and the home logo", asy
 });
 
 test("report question and an unsubmitted recovery ID survive tab changes and reset clears both", async () => {
-  vi.stubGlobal("fetch", vi.fn(async () => json(intakeFixture)));
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => json(url.includes("/preview?") ? intakePreviewFixture : intakeFixture)));
   const user = setup();
   await load(user);
   await user.type(screen.getByLabelText("Pregunta del análisis"), "What varies?");
@@ -74,7 +75,8 @@ test("cancelled intake preserves the draft and its late response cannot replace 
   const old = deferred(), next = deferred();
   let calls = 0;
   let signal: AbortSignal | undefined;
-  const fetchMock = vi.fn((_url: string, init: RequestInit) => {
+  const fetchMock = vi.fn((url: string, init: RequestInit) => {
+    if (url.includes("/preview?")) return Promise.resolve(json(intakePreviewFixture));
     if (++calls === 1) { signal = init.signal as AbortSignal; return old.promise; }
     return next.promise;
   });
@@ -119,6 +121,7 @@ test("report cancellation marks the retained result and ignores its later respon
   let signal: AbortSignal | undefined;
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
     if (url.endsWith("/intake")) return json(intakeFixture);
+    if (url.includes("/preview?")) return json(intakePreviewFixture);
     if (++analyses === 1) return json(result);
     signal = init.signal as AbortSignal;
     return pending.promise;

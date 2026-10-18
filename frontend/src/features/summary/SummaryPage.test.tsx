@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import { App } from "../../app/App";
 import { intakeFixture } from "../../test/fixture";
+import { intakePreviewFixture } from "../../test/preview-fixture";
+import { qualityFixture } from "../../test/quality-fixture";
 import { IntakeProvider, useIntake } from "../data-intake/IntakeProvider";
 import { ReportProvider, useReport } from "../reports/ReportProvider";
 import { SummaryPage } from "./SummaryPage";
@@ -43,7 +45,9 @@ test("empty summary makes no requests; dataset indicators use intake without add
   expect(fetch).not.toHaveBeenCalled();
   await action(user, "load fixture");
   expect(screen.getByRole("heading", { name: "Dataset activo" })).toBeInTheDocument();
-  expect(screen.getByText("Puntaje de calidad")).toBeInTheDocument();
+  expect(screen.getByText("Controles de calidad")).toBeInTheDocument();
+  expect(screen.queryByText("Puntaje de calidad")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ver calidad de datos" })).toHaveAttribute("href", "/quality");
   expect(analysis().getAllByText("Sin medición disponible")).toHaveLength(4);
   expect(fetch).toHaveBeenCalledOnce();
 });
@@ -131,18 +135,33 @@ test("summary reflects pending, cancelled and failed intake without fabricated m
 });
 
 test("sidebar summary navigation preserves intake and Nuevo análisis resets at root", async () => {
-  const fetch = vi.fn(async () => json(intakeFixture));
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith("/intake")) return json(intakeFixture);
+    if (url.includes("/preview?")) return json(intakePreviewFixture);
+    if (url.endsWith("/quality")) return json(qualityFixture("test-dataset"));
+    throw new Error(`Unexpected request: ${url}`);
+  });
   vi.stubGlobal("fetch", fetch);
   const user = userEvent.setup();
   render(<MemoryRouter><App /></MemoryRouter>);
   await user.upload(screen.getByLabelText("Archivo del dataset"), new File(["x\n1"], "sales.csv"));
   await action(user, "Comprender dataset");
+  await screen.findByRole("cell", { name: "001" });
+  expect(fetch.mock.calls.filter(([url]) => url.includes("/preview?"))).toHaveLength(1);
+  const beforeSummary = fetch.mock.calls.length;
   await user.click(screen.getByRole("link", { name: "Resumen" }));
   expect(screen.getByRole("link", { name: "Resumen" })).toHaveAttribute("aria-current", "page");
   expect(screen.getByRole("heading", { name: "Dataset activo" })).toBeInTheDocument();
   await user.click(screen.getByRole("link", { name: "Ver diccionario" }));
   await user.click(screen.getByRole("link", { name: "Resumen" }));
-  expect(fetch).toHaveBeenCalledOnce();
+  expect(fetch).toHaveBeenCalledTimes(beforeSummary);
+  await user.click(screen.getByRole("link", { name: "Ver calidad de datos" }));
+  await screen.findByRole("heading", { name: "Resumen de calidad" });
+  expect(fetch.mock.calls.filter(([url]) => url.endsWith("/quality"))).toHaveLength(1);
+  const afterQuality = fetch.mock.calls.length;
+  await user.click(screen.getByRole("link", { name: "Resumen" }));
+  expect(screen.getByRole("heading", { name: "Dataset activo" })).toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledTimes(afterQuality);
   await user.click(screen.getAllByRole("button", { name: "Nuevo análisis" })[0]);
   expect(screen.getByRole("button", { name: "Comprender dataset" })).toBeDisabled();
   await user.click(screen.getByRole("link", { name: "Resumen" }));

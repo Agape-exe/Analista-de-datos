@@ -65,7 +65,8 @@ test("without an intake dataset it points to New Analysis instead of asking for 
 
 test("analyzes the intake dataset once and keeps the report across tabs", async () => {
   const fetchMock = vi.fn(async (url: string) =>
-    url.endsWith("/intake") ? json(intakeFixture) : json(successReport));
+    url.endsWith("/intake") ? json(intakeFixture)
+      : url.includes("/preview?") ? json(intakePreviewFixture) : json(successReport));
   vi.stubGlobal("fetch", fetchMock);
   const user = await openInsightsAfterIntake();
   expect(screen.getByText(/Dataset: sales\.csv · 2 filas · 3 columnas/)).toBeInTheDocument();
@@ -108,7 +109,8 @@ test("a recovered report from another dataset is visibly separated from the acti
   const historical = { ...successReport, run_id: "historical", dataset_profile: {
     ...intakeFixture.profile, dataset_id: "other-dataset",
   } };
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture) : json(historical)));
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture)
+    : url.includes("/preview?") ? json(intakePreviewFixture) : json(historical)));
   const user = await openInsightsAfterIntake();
   await user.type(screen.getByLabelText("ID de ejecución"), "historical");
   await user.click(screen.getByRole("button", { name: "Consultar" }));
@@ -122,7 +124,8 @@ test("a recovered report from another dataset is visibly separated from the acti
 test("a failed regeneration labels the retained report as previous", async () => {
   let count = 0;
   vi.stubGlobal("fetch", vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture)
-    : ++count === 1 ? json(successReport) : json({ detail: "Service unavailable" }, 503)));
+    : url.includes("/preview?") ? json(intakePreviewFixture)
+      : ++count === 1 ? json(successReport) : json({ detail: "Service unavailable" }, 503)));
   const user = await openInsightsAfterIntake();
   await user.click(screen.getByRole("button", { name: "Generar reporte" }));
   await screen.findByText("Estado: Completado");

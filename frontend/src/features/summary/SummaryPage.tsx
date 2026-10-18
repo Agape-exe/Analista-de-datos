@@ -35,6 +35,7 @@ export function SummaryPage() {
       <div className="inline-actions">
         {result ? <><Button asChild variant="outline"><Link to="/dataset">Ver dataset</Link></Button>
           <Button asChild variant="outline"><Link to="/dictionary">Ver diccionario</Link></Button>
+          <Button asChild variant="outline"><Link to="/quality">Ver calidad de datos</Link></Button>
           <Button asChild variant="outline"><Link to="/associations">Explorar asociaciones</Link></Button></>
           : <Button asChild><Link to="/">Ir a Nuevo análisis</Link></Button>}
       </div>
