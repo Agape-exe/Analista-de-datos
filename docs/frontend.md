@@ -34,6 +34,91 @@ FAST/DEEP, TXT y SQL están señalados como Coming Soon.
 tipos, nulos por columna, valores únicos, descripciones, procedencia y confianza
 suministrada. El perfil y diccionario se descargan como JSON.
 
+### AUD-010 — Consulta de filas en Dataset
+
+La ruta existente `/dataset` integra la vista previa de filas sin reemplazar el
+resumen, métricas, perfiles, completitud ni descargas. `IntakeProvider` sigue
+siendo la única fuente del dataset activo y no se modifica. El panel se monta
+con `IntakeResponse.profile.dataset_id`; al cambiar ese identificador se
+reinicia su estado local. No se introduce otra pantalla ni almacenamiento global.
+
+Flujo: cargar CSV/TSV → Comprender dataset → Dataset → Vista previa del dataset.
+`getDatasetPreview` centraliza en `lib/api-client.ts` la consulta tipada
+`GET /datasets/{dataset_id}/preview?offset=0&limit=20`. Los tipos proceden del
+OpenAPI generado mediante `npm run generate:api`, sin modificar el backend ni
+editar manualmente `types/api.ts`. El generador incorpora ruta, operación y
+`DatasetPreview`; otras diferencias textuales son de orden. Se comprobó que las
+declaraciones anteriores no cambian semánticamente.
+
+`DatasetPreviewPanel` coordina tamaño de página, carga, errores y navegación;
+`DatasetPreviewTable` muestra los valores y encabezados con sus tipos técnicos.
+Ambos viven en `features/dataset/DatasetPreview.tsx`. `useDatasetPreview.ts`
+gestiona las peticiones y su cancelación. Solo mantiene la página actual y no
+precarga el resto. Los datos de prueba están exclusivamente en archivos de test.
+
+La tabla conserva estrictamente `rows[i][j] → columns[j]`; no ordena, filtra ni
+interpreta posiciones como identificadores de negocio. Muestra total, cantidad
+devuelta y rango visible. Comienza con 20 filas y permite 10, 20, 50 o 100; un
+cambio de tamaño reinicia a offset 0. «Siguiente» usa el `next_offset` devuelto
+y se deshabilita si `has_more=false`. «Anterior» usa `offset` y `limit` de la
+respuesta, sin bajar de cero, y está deshabilitado en la primera página. Los
+controles se bloquean durante la carga para evitar solicitudes duplicadas.
+
+El cliente valida la respuesta antes de mostrarla: dataset y página solicitados,
+estructura de columnas y filas, anchos, valores escalares, conteos y metadatos
+de paginación coherentes. Una respuesta incompleta o de otro dataset no se usa.
+La página vacía válida tiene su propio mensaje. La región desplazable admite
+foco y teclado, encabezados fijos, nombres largos y celdas con salto de línea;
+no provoca desbordamiento horizontal de toda la pantalla. No trunca valores.
+
+Cada petición tiene un `AbortController` y una clave de dataset/offset/limit/
+reintento. El hook comprueba la cancelación tanto al resolver como al rechazar.
+Solo expone resultados de la clave actual; al solicitar otra página oculta las
+filas anteriores. Desmontar la pantalla, iniciar Nuevo análisis o cargar otro
+dataset cancela la solicitud anterior. Una respuesta tardía no puede reemplazar
+la del dataset o página actuales. No depende de `ColumnExplorer`.
+El envío se difiere una microtarea para que la primera ejecución cancelada por
+StrictMode en desarrollo no envíe un GET duplicado.
+
+Estados y recuperación:
+
+- Sin dataset/identificador: conserva el estado vacío y enlace de carga; no
+  solicita preview.
+- Cargando: indicador accesible, sin filas anteriores presentadas como actuales.
+- Conexión fallida o error inesperado: explicación y botón «Reintentar».
+- `DATASET_NOT_FOUND`: detecta `DatasetExpiredError`, explica la ausencia en
+  memoria y ofrece volver a Nuevo análisis. No presupone un TTL: el backend usa
+  LRU y pierde datasets al reiniciar.
+- `PREVIEW_TOO_LARGE`: explica el exceso y permite reducir las filas por página.
+  Advierte que una celda o esquema grande puede seguir fallando con menos filas.
+- Validación, respuesta incompleta, `PREVIEW_UNSUPPORTED` y límites 429: mensajes
+  controlados y reintento, sin mostrar trazas o detalles internos del servidor.
+
+Se respetan los límites de AUD-009: máximo 100 filas, 1000 columnas, 10000
+celdas, 1 MiB de respuesta y 64 KiB por valor serializado. Detalles del contrato
+y normalización en [data-intake.md](data-intake.md); esta pantalla no modifica
+esa política ni introduce un endpoint adicional.
+
+Valores: los strings conservan su contenido (incluidos ISO y ceros iniciales),
+los booleanos se muestran como `true`/`false` y los números mediante su
+representación textual disponible, sin formato que añada redondeo. `null` se
+distingue como «Sin dato»; la cadena `"null"` continúa siendo texto, y la cadena
+vacía se identifica como «Texto vacío». React representa las celdas como texto,
+sin interpretar HTML.
+
+**Precisión numérica:** el parser JSON estándar puede redondear enteros fuera
+del rango seguro de JavaScript antes de que lleguen al componente. Se verificó,
+por ejemplo, que el token `9007199254740993` se convierte en `9007199254740992`
+y no supera `Number.isSafeInteger`. Para conservar compatibilidad sin un parser
+global ni cambios backend, las celdas numéricas enteras no seguras muestran
+«Precisión no garantizada», ocultando el número potencialmente redondeado y
+ofreciendo una advertencia de página. Consultar el archivo original para el
+valor exacto. Los identificadores que llegan como string y los enteros seguros
+no cambian. Esta solución evita afirmar una precisión que no se puede recuperar.
+
+Se implementa únicamente AUD-010: no añade algoritmos, calidad avanzada,
+referencias de anomalías ni cambios de Planner, Analysis, Critic o Reporting.
+
 **Diccionario de datos** (`/dictionary`, Datos → Diccionario de datos) completa
 AUD-011: consulta y descarga del diccionario del dataset activo, exclusivamente
 de solo lectura. Reutiliza `IntakeProvider`, `IntakeResponse.summary.data_dictionary`,
@@ -209,6 +294,103 @@ Los tests unitarios usan respuestas de prueba solo en archivos de testing;
 las pantallas de producción no incluyen datasets o resultados simulados.
 
 Desde la raíz, ejecutar también pytest y Ruff antes de integrar cambios.
+
+### Evidencias reproducibles de AUD-010
+
+Desde `frontend/`, con Edge instalado:
+
+```powershell
+New-Item -ItemType Directory -Path '..\..\aud010-evidence' -Force | Out-Null
+$env:PLAYWRIGHT_CHANNEL = 'msedge'
+$env:UI_SCREENSHOT_DIR = (Resolve-Path '..\..\aud010-evidence').Path
+npm run test:e2e -- e2e/dataset-preview.spec.ts e2e/intake.spec.ts e2e/dictionary.spec.ts |
+    Tee-Object -FilePath '..\..\aud010-e2e-evidence.txt'
+
+npm test -- src/lib/api-client.preview.test.ts src/features/dataset/DatasetPreview.test.tsx --maxWorkers=1 |
+    Tee-Object -FilePath '..\..\aud010-tests-evidence.txt'
+npm run typecheck
+npm run build
+```
+
+Playwright inicia el backend y frontend reales con el proxy configurado. Si los
+puertos están ocupados, definir `E2E_BACKEND_PORT` y `E2E_FRONTEND_PORT` antes de
+ejecutar. La prueba CSV crea 45 filas sintéticas, verifica el GET de AUD-009,
+sus parámetros y respuestas, recorre primera/intermedia/última página, vuelve
+atrás, cambia tamaño y comprueba que no se solicitan páginas adicionales.
+También verifica nulos, ceros iniciales, teclado y anchos 1440/1024/390 px.
+
+La segunda prueba carga un TSV real con enteros mayores al rango seguro y
+comprueba la respuesta JSON original y la advertencia de precisión en pantalla.
+Los escenarios de desconexión y 413 se inducen mediante interceptación controlada
+del navegador; los reintentos vuelven a consultar el backend real. No se presenta
+esa interceptación como una respuesta real de tamaño excesivo del servidor.
+
+Las capturas quedan fuera del repositorio: `dataset-screen-1440.png`,
+`dataset-screen-390.png`, `dataset-preview-1440.png`, `dataset-preview-1024.png`,
+`dataset-preview-390.png`, `dataset-preview-last.png`,
+`dataset-preview-network-error.png` y `dataset-preview-too-large.png`.
+Las pruebas existentes también generan sus capturas de carga y diccionario.
+
+### Validación de AUD-010 — 17 de octubre de 2026
+
+Worktree aislado `Analista-de-datos-aud010`, rama `feat/aud-010-dataset-screen`,
+creado desde `origin/develop` actualizado en
+`0fd1dfd2427dc45bb1dd1236f05f2270fe8ffc2d`. Se verificó que incluye los PR #28,
+#29 y #33. Los worktrees de AUD-009 y AUD-011 se conservaron. No se hicieron
+commits, push, PR, merge ni rebase en esta implementación.
+
+| Verificación | Línea base | Resultado con AUD-010 |
+| --- | --- | --- |
+| `uv sync --locked` | Correcto | Correcto |
+| Comprobador de arquitectura | 167 archivos Python, correcto | Igual |
+| Tests de arquitectura | 24 aprobados | 24 aprobados |
+| Suite backend completa | 468 aprobados, 4 fallidos | Mismos resultados y fallos |
+| Ruff general | 2 errores preexistentes | Mismos errores |
+| Ruff format | 257 archivos correctos | Igual |
+| `npm ci` | Correcto | Correcto |
+| `npm run generate:api` | Preview aún no incluido en los tipos | Ruta, operación y DTO de AUD-009 incorporados por el generador |
+| `npm run typecheck` | Correcto | Correcto |
+| `npm test` | 35 aprobados, 1 fallo funcional preexistente reconfirmado | 83 aprobados, el mismo fallo |
+| Tests específicos nuevos | No existían | 48 aprobados |
+| ESLint general | 1 error preexistente | Mismo error |
+| ESLint de archivos TypeScript de AUD-010 | No aplica | Correcto |
+| `npm run build` | Correcto | Correcto |
+| E2E con Edge y backend real | Pruebas existentes de carga/diccionario | 4 aprobados: 2 nuevos de AUD-010 y 2 existentes |
+| `git diff --check` | Correcto | Correcto |
+
+Durante las primeras ejecuciones de línea base, antes de implementar, hubo
+fallos intermitentes por tiempos de espera en varias pruebas. La repetición
+posterior sin modificar pruebas ni aumentar sus tiempos quedó en 35 aprobadas
+y el fallo conocido de ReportPage. La ejecución final normal de `npm test`
+conservó únicamente ese fallo, con 83 aprobadas. No se cambiaron timeouts ni
+configuración del runner para ocultar errores.
+
+Los cuatro fallos backend de ANOVA/Planner/Critic y los dos errores Ruff son los
+mismos identificados en la validación de AUD-011 de esta página; se compararon
+las salidas de línea base y final. Frontend mantiene el fallo
+`null metrics stay unmeasured and no insights are invented` de
+`features/reports/ReportPage.test.tsx` y ESLint mantiene `methodLabel` sin uso en
+`features/reports/ReportPage.tsx:6`.
+
+Los 48 tests nuevos comprueban transporte tipado y parámetros, validación de
+respuestas, relación filas/columnas, paginación, tamaño de página, nulos y tipos,
+precisión numérica, carga y errores, reintento, cancelación y respuestas tardías,
+StrictMode sin GET duplicado, teclado, reinicio y convivencia con los perfiles
+y el diccionario. La prueba E2E comprueba por separado el diseño adaptable.
+
+Se adaptaron únicamente mocks de dos pruebas de integración existentes
+(diccionario y reportes) para reconocer el GET nuevo al pasar por Dataset, sin
+consumir respuestas reservadas a otras operaciones. Se conservaron sus
+comprobaciones funcionales; el fallo previo de ReportPage no fue modificado.
+No cambia la implementación de Reporting ni del diccionario.
+
+No se modificaron backend, instantáneas OpenAPI, IntakeProvider, dependencias,
+algoritmos, persistencia o despliegue. La comprobación de declaraciones del
+archivo generado confirmó que todos los contratos anteriores siguen iguales y
+que únicamente se agregan los tres elementos de preview. Capturas de escritorio,
+móvil, última página y errores revisadas visualmente fuera del repositorio.
+**Regresiones nuevas pendientes: 0.** La suite completa conserva los fallos
+preexistentes; AUD-010 está lista para revisión funcional y técnica.
 
 ### Validación de AUD-011 — 17 de octubre de 2026
 

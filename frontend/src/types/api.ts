@@ -20,26 +20,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/analysis": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Analysis
-         * @description Local development contract. Pending stages remain explicitly SKIPPED.
-         */
-        post: operations["analysis_analysis_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/analysis/upload": {
         parameters: {
             query?: never;
@@ -120,6 +100,46 @@ export interface paths {
         };
         /** Report Markdown */
         get: operations["report_markdown_reports__run_id__markdown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analysis
+         * @description Local development contract. Pending stages remain explicitly SKIPPED.
+         */
+        post: operations["analysis_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/datasets/{dataset_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Dataset
+         * @description Read a bounded page in original order; positions are not persistent row IDs.
+         */
+        get: operations["preview_dataset_datasets__dataset_id__preview_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -412,6 +432,33 @@ export interface components {
             column_missing_percentages: {
                 [key: string]: number;
             };
+        };
+        /**
+         * DatasetPreview
+         * @description Bounded rows in source order. rows[i][j] belongs to columns[j].
+         *
+         *     Temporal scalars use ISO 8601 strings, Decimal uses lossless decimal strings,
+         *     missing values use null. Non-finite infinities and unsupported objects are rejected.
+         */
+        DatasetPreview: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Columns */
+            columns: components["schemas"]["ColumnSchema"][];
+            /** Rows */
+            rows: (string | number | boolean | null)[][];
+            /** Total Rows */
+            total_rows: number;
+            /** Offset */
+            offset: number;
+            /** Limit */
+            limit: number;
+            /** Returned Rows */
+            returned_rows: number;
+            /** Has More */
+            has_more: boolean;
+            /** Next Offset */
+            next_offset: number | null;
         };
         /** DatasetProfile */
         DatasetProfile: {
@@ -711,39 +758,6 @@ export interface operations {
             };
         };
     };
-    analysis_analysis_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AnalysisInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnalysisReport"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     analysis_upload_analysis_upload_post: {
         parameters: {
             query?: never;
@@ -907,6 +921,92 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    analysis_analysis_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_dataset_datasets__dataset_id__preview_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetPreview"];
+                };
+            };
+            /** @description Dataset no longer registered in memory */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Preview exceeds row, cell or UTF-8 JSON budgets */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid pagination or unsupported preview value/table */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Shared exploration rate or operation capacity exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
