@@ -29,6 +29,24 @@ def test_cors_allows_explicit_origin_and_preflight() -> None:
         assert preflight.headers["access-control-allow-origin"] == origin
 
 
+def test_cors_exposes_retry_after_to_cross_origin_clients() -> None:
+    origin = "https://analyst.example.test"
+    settings = Settings(
+        _env_file=None,
+        deployment={"cors_allowed_origins": [origin], "max_upload_requests": 1},
+    )
+    payload = {"file": ("a.csv", b"a\n1\n")}
+    with TestClient(create_app(settings)) as client:
+        client.post("/intake", headers={"Origin": origin}, files=payload)
+        limited = client.post("/intake", headers={"Origin": origin}, files=payload)
+        assert limited.status_code == 429
+        exposed = {
+            name.strip().lower()
+            for name in limited.headers["access-control-expose-headers"].split(",")
+        }
+        assert {"retry-after", "x-request-id"} <= exposed
+
+
 def test_local_analysis_route_is_not_registered_when_disabled() -> None:
     settings = Settings(_env_file=None, deployment={"allow_local_analysis": False})
     application = create_app(settings)

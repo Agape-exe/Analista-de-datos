@@ -63,7 +63,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_credentials=False,
             allow_methods=["GET", "POST", "OPTIONS"],
             allow_headers=["Content-Type"],
-            expose_headers=["X-Request-ID"],
+            # Retry-After must be readable cross-origin or clients cannot honour 429 waits.
+            expose_headers=["X-Request-ID", "Retry-After"],
         )
     datasets = build_dataset_store(application.state.settings)
     application.state.datasets = datasets

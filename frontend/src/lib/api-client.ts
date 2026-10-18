@@ -41,11 +41,13 @@ export async function submitIntake(draft: IntakeDraft, signal?: AbortSignal): Pr
 export class DatasetExpiredError extends ApiError {}
 export class PreviewTooLargeError extends ApiError {}
 export class RateLimitedError extends ApiError {
-  constructor(public readonly retryAfterSeconds: number, requestId?: string, code = "REQUEST_RATE_LIMITED") {
+  /** retryAfterSeconds is null when the server's Retry-After could not be read. */
+  constructor(public readonly retryAfterSeconds: number | null, requestId?: string, code = "REQUEST_RATE_LIMITED") {
+    const when = retryAfterSeconds === null ? "en unos segundos" : `en ${retryAfterSeconds} s`;
     super(
       code === "ANALYSIS_CAPACITY_EXCEEDED"
-        ? `El servicio de análisis está ocupado. Inténtalo de nuevo en ${retryAfterSeconds} s.`
-        : `Se alcanzó el límite de solicitudes al backend. Inténtalo de nuevo en ${retryAfterSeconds} s.`,
+        ? `El servicio de análisis está ocupado. Inténtalo de nuevo ${when}.`
+        : `Se alcanzó el límite de solicitudes al backend. Inténtalo de nuevo ${when}.`,
       requestId, code,
     );
   }
@@ -97,13 +99,18 @@ export async function getDatasetPreview(datasetId: string, query: PreviewQuery =
   return payload;
 }
 
+/** Queue order for tool requests: what the page shows first is computed first. */
+export const PRIORITY = { primary: 0, normal: 1, secondary: 2 } as const;
+const RETRY_PRIORITY = -1;
+
 export async function runTool(
   datasetId: string, tool: string, body: ToolRunRequest, signal?: AbortSignal,
+  { priority = PRIORITY.normal }: { priority?: number } = {},
 ): Promise<AnalysisResult> {
   const path = `/datasets/${encodeURIComponent(datasetId)}/tools/${encodeURIComponent(tool)}`;
   return request<AnalysisResult>(path, {
     method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" }, signal,
-  });
+  }, { priority, detachOnAbort: true });
 }
 
 export type AnalysisReport = components["schemas"]["AnalysisReport"];
@@ -121,48 +128,123 @@ export async function getReport(runId: string, signal?: AbortSignal): Promise<An
   return request<AnalysisReport>(`/reports/${encodeURIComponent(runId.trim())}`, { signal });
 }
 
-/** Mirrors the backend's default `max_concurrent_operations`; extra requests wait their turn. */
-const MAX_CONCURRENT_REQUESTS = 2;
-const MAX_RATE_LIMIT_RETRIES = 3;
+/**
+ * Requests sent at once. Defaults to 1, the production `max_concurrent_operations`
+ * (docs/backend-production-readiness.md); a higher client value only turns into 429s.
+ */
+const MAX_CONCURRENT_REQUESTS = concurrency(import.meta.env.VITE_MAX_CONCURRENT_REQUESTS);
+/** ANALYSIS_CAPACITY_EXCEEDED: the server is busy with someone's work; back off, bounded. */
+const CAPACITY_BACKOFF_MS = [1_000, 2_000, 4_000, 8_000];
+const MAX_RATE_LIMIT_RETRIES = 2;
 /** Longer Retry-After waits fail fast with an explanation instead of leaving a silent spinner. */
 const MAX_AUTOMATIC_WAIT_MS = 10_000;
-const DEFAULT_RETRY_AFTER_MS = 1_000;
+/** Retry-After unreadable (e.g. not exposed via CORS): pause instead of retrying in bursts. */
+const UNKNOWN_RATE_LIMIT_PAUSE_MS = 15_000;
+/** Upper bound for keeping a slot after the caller cancelled a request already sent. */
+const DETACHED_HOLD_MAX_MS = 60_000;
+
+function concurrency(raw: unknown): number {
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value >= 1 ? value : 1;
+}
 
 export const requestGate = new RequestGate(MAX_CONCURRENT_REQUESTS);
+let cooldownCode = "REQUEST_RATE_LIMITED";
 
-export function retryAfterMs(header: string | null, now = Date.now()): number {
-  if (!header) return DEFAULT_RETRY_AFTER_MS;
+/** Milliseconds requested by Retry-After (seconds or HTTP date); null when absent or unreadable. */
+export function retryAfterMs(header: string | null, now = Date.now()): number | null {
+  if (!header) return null;
   const value = header.trim();
   if (/^\d+$/.test(value)) return Number(value) * 1000;
   const date = Date.parse(value);
-  return Number.isNaN(date) ? DEFAULT_RETRY_AFTER_MS : Math.max(0, date - now);
+  return Number.isNaN(date) ? null : Math.max(0, date - now);
+}
+
+/** Exponential backoff with ±20 % jitter, never shorter than the server's Retry-After. */
+export function capacityDelay(attempt: number, retryAfter: number | null, random = Math.random): number {
+  const base = CAPACITY_BACKOFF_MS[Math.min(attempt, CAPACITY_BACKOFF_MS.length - 1)];
+  return Math.round(Math.max(base * (0.8 + 0.4 * random()), retryAfter ?? 0));
 }
 
 const seconds = (ms: number) => Math.max(1, Math.ceil(ms / 1000));
 
-async function request<T>(path: string, init: RequestInit): Promise<T> {
+interface TransportOptions {
+  /** Queue order (see PRIORITY); omitted for requests that keep the synchronous fast path. */
+  priority?: number;
+  /**
+   * Once sent, the server keeps computing even if the browser aborts, so a cancelled tool
+   * request keeps its slot until the response arrives instead of overlapping the next one.
+   */
+  detachOnAbort?: boolean;
+}
+
+/**
+ * Sends a request holding a gate slot. Failures and cancellations free the slot here; a
+ * received response is released by the caller once handled, so a 429 cooldown is in
+ * place before the next queued request can start.
+ */
+function send(url: string, init: RequestInit, release: () => void, detach: boolean): Promise<Response> {
+  const signal = init.signal;
+  const pending = fetch(url, detach && signal ? { ...init, signal: undefined } : init);
+  pending.catch(release);
+  if (!signal) return pending;
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      if (detach) {
+        const hold = setTimeout(release, DETACHED_HOLD_MAX_MS);
+        pending.finally(() => { clearTimeout(hold); release(); }).catch(() => undefined);
+      } else {
+        // Without detach, cancelling frees the slot at once (as an aborted fetch would).
+        release();
+      }
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    pending.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+  });
+}
+
+async function request<T>(path: string, init: RequestInit, options: TransportOptions = {}): Promise<T> {
   const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
   let response: Response;
   for (let attempt = 0; ; attempt += 1) {
     const cooldown = requestGate.remainingPause();
-    if (cooldown > MAX_AUTOMATIC_WAIT_MS) throw new RateLimitedError(seconds(cooldown));
+    if (cooldown > MAX_AUTOMATIC_WAIT_MS) throw new RateLimitedError(seconds(cooldown), undefined, cooldownCode);
     if (init.signal?.aborted) throw init.signal.reason;
-    const release = (attempt === 0 ? requestGate.tryAcquire() : null)
-      ?? await requestGate.acquire(init.signal ?? undefined, { priority: attempt > 0 });
+    const release = (attempt === 0 && options.priority === undefined ? requestGate.tryAcquire() : null)
+      ?? await requestGate.acquire(init.signal ?? undefined, { priority: attempt > 0 ? RETRY_PRIORITY : options.priority ?? PRIORITY.normal });
     try {
-      response = await fetch(`${base}${path}`, init);
+      response = await send(`${base}${path}`, init, release, options.detachOnAbort ?? false);
     } catch (error) {
       if (init.signal?.aborted) throw error;
       throw new ApiError("No se puede conectar con el backend. Verifica que FastAPI esté en ejecución e inténtalo de nuevo.", undefined, "NETWORK_ERROR");
+    }
+    if (response.status !== 429) {
+      release();
+      break;
+    }
+    try {
+      const code = errorCode(await response.json().catch(() => null)) ?? "REQUEST_RATE_LIMITED";
+      const requestId = response.headers.get("X-Request-ID") || undefined;
+      const retryAfter = retryAfterMs(response.headers.get("Retry-After"));
+      if (code === "ANALYSIS_CAPACITY_EXCEEDED") {
+        if (attempt >= CAPACITY_BACKOFF_MS.length || (retryAfter ?? 0) > MAX_AUTOMATIC_WAIT_MS) {
+          throw new RateLimitedError(seconds(retryAfter ?? CAPACITY_BACKOFF_MS[0]), requestId, code);
+        }
+        requestGate.pause(capacityDelay(attempt, retryAfter));
+        continue;
+      }
+      const wait = retryAfter ?? UNKNOWN_RATE_LIMIT_PAUSE_MS;
+      requestGate.pause(wait);
+      cooldownCode = code;
+      if (retryAfter === null || wait > MAX_AUTOMATIC_WAIT_MS || attempt >= MAX_RATE_LIMIT_RETRIES) {
+        const limit = () => new RateLimitedError(retryAfter === null ? null : seconds(wait), requestId, code);
+        // Queued requests would otherwise sit behind a long cooldown with a silent spinner.
+        if (retryAfter === null || wait > MAX_AUTOMATIC_WAIT_MS) requestGate.failQueued(limit);
+        throw limit();
+      }
     } finally {
       release();
-    }
-    if (response.status !== 429) break;
-    const wait = retryAfterMs(response.headers.get("Retry-After"));
-    requestGate.pause(wait);
-    if (attempt >= MAX_RATE_LIMIT_RETRIES || wait > MAX_AUTOMATIC_WAIT_MS) {
-      const code = errorCode(await response.json().catch(() => null));
-      throw new RateLimitedError(seconds(wait), response.headers.get("X-Request-ID") || undefined, code);
     }
   }
   const requestId = response.headers.get("X-Request-ID") || undefined;

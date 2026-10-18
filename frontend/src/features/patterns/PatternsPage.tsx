@@ -2,6 +2,7 @@ import { ArrowRight, Info, Layers, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { formatValue } from "../../components/charts/chart-utils";
+import { PRIORITY } from "../../lib/api-client";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -40,7 +41,7 @@ function GroupExplorer({ datasetId, numeric, categorical }: { datasetId: string;
   const [column, setColumn] = useState(numeric[0]);
   const [groupBy, setGroupBy] = useState(categorical[0]);
   const [maxGroups, setMaxGroups] = useState(10);
-  const tool = useTool(datasetId, "grouped_summary", [column, groupBy], { max_groups: maxGroups });
+  const tool = useTool(datasetId, "grouped_summary", [column, groupBy], { max_groups: maxGroups }, { priority: PRIORITY.primary });
   const reading = readGroupedSummary(tool, column, groupBy);
   const view = reading.kind === "ready" ? reading.view : null;
 
