@@ -8,6 +8,7 @@ import { DataDictionaryPage } from "../features/dataset/DataDictionaryPage";
 import { DataQualityPage } from "../features/quality/DataQualityPage";
 import { MetricsPage } from "../features/metrics/MetricsPage";
 import { TracePage } from "../features/trace/TracePage";
+import { PatternsPage } from "../features/patterns/PatternsPage";
 import { ReportPage } from "../features/reports/ReportPage";
 import { ReportProvider } from "../features/reports/ReportProvider";
 import { SummaryPage } from "../features/summary/SummaryPage";
@@ -18,6 +19,7 @@ export function App() {
     <Route path="summary" element={<SummaryPage />} />
     <Route path="metrics" element={<MetricsPage />} />
     <Route path="trace" element={<TracePage />} />
+    <Route path="patterns" element={<PatternsPage />} />
     <Route path="report" element={<ReportPage />} />
     <Route path="dataset" element={<DatasetOverviewPage />} />
     <Route path="dictionary" element={<DataDictionaryPage />} />

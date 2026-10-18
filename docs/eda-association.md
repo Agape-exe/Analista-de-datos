@@ -33,6 +33,7 @@ Todas implementan `AnalyticsTool`, heredan de `DatasetTool` y se registran en
 | `distribution` | 0+ (num/cat) | histograma, forma, normalidad (D'Agostino n≥20, Shapiro n<20); frecuencias |
 | `cardinality` | 0+ | únicos, ratio y flags `constant`, `binary`, `high_cardinality`, `near_unique` |
 | `outliers` | 0+ (num) | vallas IQR de Tukey y z robusto con MAD |
+| `grouped_summary` | num + cat | por categoría existente: filas, nulos, n, media, mediana, std, cuartiles, IQR, mín/máx y `small_sample`; grupos ordenados por tamaño y limitados por `parameters.max_groups` (≤ `eda.max_summary_groups`), con `omitted` (grupos/filas omitidos), `missing_group` (filas sin categoría) y `overall` |
 | `pearson`, `spearman` | 2 num | r/ρ, p-value, IC 95 % (Pearson) |
 | `chi_square`, `cramers_v` | 2 cat | χ², gl, p-value, V de Cramér; aviso si >20 % de frecuencias esperadas < 5 |
 | `anova`, `kruskal_wallis` | num + cat | F/H, p-value, η²/ε², supuestos (Shapiro por grupo, Levene) |

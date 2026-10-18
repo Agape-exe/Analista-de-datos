@@ -184,7 +184,9 @@ describe("AUD-010 vista previa", () => {
     [500, { detail: "private stack trace" }, "No se pudo cargar la vista previa"],
     [200, { dataset_id: "wrong" }, "respuesta del servidor está incompleta"],
   ])("maneja error %s sin exponer detalles internos", async (status, body, expected) => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })));
+    // A long Retry-After exhausts the client's automatic retries immediately.
+    const headers = status === 429 ? { "Retry-After": "60" } : undefined;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status, headers })));
     render(panel());
     expect(await screen.findByRole("alert")).toHaveTextContent(new RegExp(expected, "i"));
     expect(screen.getByRole("alert")).not.toHaveTextContent(/secret|private/);

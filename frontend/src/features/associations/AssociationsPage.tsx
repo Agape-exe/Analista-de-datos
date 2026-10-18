@@ -11,6 +11,7 @@ import { useIntake } from "../data-intake/IntakeProvider";
 import { ColumnExplorer } from "./ColumnExplorer";
 import { RelationshipDetail } from "./RelationshipDetail";
 import { relationshipKey, RelationshipTable } from "./RelationshipTable";
+import { ToolNotice } from "./ToolNotice";
 import { useTool, type ToolError } from "./useTool";
 
 export function AssociationsPage() {
@@ -39,7 +40,7 @@ export function AssociationsPage() {
   const byKey = new Map(relationships.map((item) => [relationshipKey(item), item]));
   const pair = picked ?? relationships[0] ?? null;
   const selectedKey = pair ? relationshipKey(pair) : null;
-  const heatmapChart = heatmap.data?.status === "SUCCESS" ? heatmap.data.result as unknown as HeatmapChart : null;
+  const heatmapChart = heatmap.data?.status === "SUCCESS" && validHeatmap(heatmap.data.result) ? heatmap.data.result : null;
   const excluded = Object.entries(data?.excluded_columns ?? {});
 
   return <div className="associations-page">
@@ -83,8 +84,8 @@ export function AssociationsPage() {
       <p>r de Pearson entre columnas numéricas, con filas completas por par. Selecciona una celda para inspeccionar el par.</p></div></div>
       {heatmapChart ? <CorrelationHeatmap chart={heatmapChart} stale={heatmap.stale}
         onSelect={(x, y) => setPicked({ x, y })} />
-        : heatmap.error ? <ErrorPanel error={heatmap.error} />
-          : <div className="chart-placeholder"><LoaderCircle size={16} className="spin" />Calculando matriz…</div>}
+        : <ToolNotice tool={heatmap} loadingLabel="Calculando matriz…"
+          emptyLabel={heatmap.data?.status === "SUCCESS" ? "La matriz recibida no es válida. No se muestra." : undefined} />}
     </Card>}
 
     {numeric.length > 0 && <ColumnExplorer key={datasetId} datasetId={datasetId} totalRows={result.profile.row_count} numeric={numeric} categorical={categorical} />}
@@ -106,4 +107,14 @@ function Metric({ label, value, note }: { label: string; value: string; note: st
 function ErrorPanel({ error }: { error: ToolError }) {
   return <div className="error-panel" role="alert"><TriangleAlert size={16} /><div><strong>{error.message}</strong>
     {error.requestId && <small>ID de solicitud: {error.requestId}</small>}</div></div>;
+}
+
+/** Square, size-consistent matrix; anything else would render a broken chart. */
+function validHeatmap(value: unknown): value is HeatmapChart {
+  if (!value || typeof value !== "object") return false;
+  const chart = value as Partial<HeatmapChart>;
+  const n = Array.isArray(chart.columns) ? chart.columns.length : 0;
+  const square = (matrix: unknown) => Array.isArray(matrix) && matrix.length === n
+    && matrix.every((row) => Array.isArray(row) && row.length === n);
+  return n >= 2 && square(chart.values) && square(chart.p_values) && square(chart.sample_sizes);
 }
