@@ -26,7 +26,7 @@ async function openAssociations() {
   render(<MemoryRouter><App /></MemoryRouter>);
   await user.upload(screen.getByLabelText("Archivo del dataset"), new File(["a\n1\n"], "sales.csv"));
   await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
-  await user.click(await screen.findByRole("link", { name: "Explorar asociaciones" }));
+  await user.click(await screen.findByRole("link", { name: "Explorar asociaciones" }, { timeout: 5000 }));
   return user;
 }
 
@@ -62,6 +62,37 @@ describe("associations page", () => {
     expect(calls.find((call) => call.tool === "chart_scatter")?.variables).toEqual(["amount", "price"]);
     expect(calls.some((call) => call.tool === "chart_boxplot"
       && call.variables.join() === "amount,category")).toBe(true);
+  });
+
+  it("asks for the primary results first, one request at a time, and outliers last", async () => {
+    let active = 0, peak = 0;
+    const fetchMock = mockBackend();
+    const respond = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      peak = Math.max(peak, ++active);
+      try { return await respond(url, init); } finally { active -= 1; }
+    });
+    await openAssociations();
+    await waitFor(() => expect(requestedTools(fetchMock).some((call) => call.tool === "outliers")).toBe(true), { timeout: 3000 });
+    const tools = requestedTools(fetchMock).map((call) => call.tool);
+    expect(tools.slice(0, 2)).toEqual(["relationship_ranking", "chart_correlation_heatmap"]);
+    expect(tools.indexOf("outliers")).toBeGreaterThan(tools.indexOf("descriptive_statistics"));
+    expect(new Set(tools).size).toBe(tools.length);
+    expect(peak).toBe(1);
+  });
+
+  it("lets the user retry the ranking after the analysis service stayed busy", async () => {
+    let calls = 0;
+    mockBackend({
+      relationship_ranking: () => (calls++ === 0
+        ? new Response(JSON.stringify({ detail: { code: "ANALYSIS_CAPACITY_EXCEEDED", message: "busy" } }),
+          { status: 429, headers: { "Retry-After": "60" } })
+        : new Response(JSON.stringify(toolFixtures.relationship_ranking), { status: 200 })),
+    });
+    const user = await openAssociations();
+    const alert = await screen.findByText(/El servicio de análisis está ocupado/);
+    await user.click(within(alert.closest("[role=alert]") as HTMLElement).getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("Candidatas significativas")).toBeInTheDocument();
   });
 
   it("explains when the dataset is no longer in server memory", async () => {

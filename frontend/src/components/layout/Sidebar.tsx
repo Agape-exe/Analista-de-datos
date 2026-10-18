@@ -13,7 +13,7 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
   ] },
   { label: "Exploración", links: [
     { label: "Asociaciones", icon: ScanSearch, to: "/associations" }, { label: "Patrones", icon: Layers, to: "/patterns" },
-    { label: "Anomalías", icon: TriangleAlert },
+    { label: "Anomalías", icon: TriangleAlert, to: "/anomalies" },
   ] },
   { label: "Análisis", links: [
     { label: "Relaciones", icon: GitBranch }, { label: "Hallazgos", icon: Sparkles, to: "/report" },

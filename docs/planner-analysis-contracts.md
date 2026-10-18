@@ -1,5 +1,8 @@
 # Contratos de Planner y Analysis
 
+> Contrato de auditoría vigente: [política, variantes EDA, snapshots y eventos](planner-trace-audit.md).
+> Incluye las tareas AUD-001/006/015/022/025/026/027/028/029.
+
 ## 1. Objetivo del módulo
 
 El módulo Planner & Analysis debe convertir una pregunta de análisis y el resumen
@@ -22,8 +25,9 @@ no se consideran una conclusión final de negocio.
   sólo a partir de `AgentContext`, perfil, diccionario y configuración efectiva.
 - Genera hipótesis exploratorias sin conclusiones causales y devuelve
   `AnalysisPlan` mediante `AgentUpdate.analysis_plan` cuando tiene pasos válidos.
-- Prioriza columnas mencionadas en la pregunta; los empates se resuelven por tipo
-  y nombre de columna para mantener orden estable.
+- Prioriza menciones exactas en la pregunta, después ranking de screening,
+  comprobaciones de identidad aditiva y desempates deterministas por familia y
+  orden de columnas (continuas antes que códigos enteros).
 - En FAST MODE limita la exploración a una hipótesis por familia compatible
   (numérica, categórica o ANOVA), además de respetar `max_hypotheses` y
   `max_tool_calls`.
@@ -36,7 +40,8 @@ no se consideran una conclusión final de negocio.
 
 Reglas implementadas: dos numéricas proponen `pearson` y `spearman`; dos
 categóricas proponen `chi_square` y `cramers_v`; una categórica seguida de una
-numérica propone `anova_one_way`. `partial_correlation` se añade sólo si la
+numérica propone `anova_one_way`, o `kruskal_wallis` si es el método primario del
+screening; no se sustituyen silenciosamente. `partial_correlation` se añade sólo si la
 pregunta nombra exactamente una única variable numérica de control después de un
 indicador de control/ajuste. No se aceptan subcadenas dentro de otras palabras ni
 referencias ambiguas. El plan nunca ejecuta una tool ni accede a filas.
@@ -74,9 +79,10 @@ trata como fallo real de planificación.
   registros duplicados, tools desconocidas y solicitudes no compatibles.
 - `AnalyticsTool` define `name`, `supports(request)` y `execute(request)`.
 - `build_statistical_tool_registry(datasets)`, en `app/modules/analysis/adapters/analytics/factory.py`, crea
-  un registry nuevo e inyecta el mismo `DatasetRegistry` en las seis tools:
-  `pearson`, `spearman`, `partial_correlation`, `chi_square`, `cramers_v` y
-  `anova_one_way`. No hay registry global ni datasets compartidos entre ejecuciones.
+  un registry nuevo con nueve herramientas. Bootstrap incorpora el adaptador de la
+  medida Kruskal-Wallis existente en exploración e instrumenta las diez herramientas.
+  El catálogo incluye Pearson, Spearman, parcial, sin outliers, subgrupos, identidad
+  aditiva, chi-cuadrado, V de Cramér, ANOVA y Kruskal-Wallis. No hay registry global.
 
 ### Propuesto para una implementación posterior
 
@@ -105,7 +111,7 @@ metadatos. Los estados se definen en `app/shared/domain/enums/statuses.py`.
 El flujo actual es:
 
 ```text
-DataUnderstanding → Planner → Analysis → Critic → Insight
+DataUnderstanding → Association → Planner → Analysis → Critic → Insight
 ```
 
 `AgentState` contiene el estado serializable del workflow. Para cada nodo,
@@ -124,7 +130,7 @@ que cada ejecución puede usar una instancia aislada y liberar sus datos al fina
 
 `build_use_case(settings)` configura una fábrica de recursos por llamada a
 `LangGraphWorkflow.run()`. Cada corrida crea un `DatasetRegistry`, un `ToolRegistry`
-con las seis tools y una lista nueva de agentes. `DataUnderstandingAgent` registra
+con diez tools instrumentadas y una lista nueva de agentes. `DataUnderstandingAgent` registra
 exactamente el `LoadedDataset` que `DataUnderstandingService` ya cargó y validó; no
 vuelve a abrir ni perfilar el archivo. Sólo dataset_id, perfil y diccionario cruzan
 `AgentState`. El workflow libera referencias con `DatasetRegistry.clear()` en un
@@ -194,7 +200,7 @@ exige que `supports(request)` sea verdadero antes de delegar la ejecución. El
 workflow crea y registra las tools por ejecución; no hay registry global.
 
 El motor EDA conserva sus herramientas de profiling, asociación y gráficos,
-independientes de las seis herramientas del flujo Planner/Analysis.
+independientes del registro de diez herramientas del flujo Planner/Analysis.
 
 ## 7. Límites de ejecución y FAST MODE
 

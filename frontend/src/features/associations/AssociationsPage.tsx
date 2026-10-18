@@ -5,6 +5,7 @@ import { CorrelationHeatmap } from "../../components/charts/CorrelationHeatmap";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { PRIORITY } from "../../lib/api-client";
 import { formatNumber } from "../../lib/utils";
 import type { HeatmapChart, RankedRelationship, RelationshipRanking } from "../../types/exploration";
 import { useIntake } from "../data-intake/IntakeProvider";
@@ -19,8 +20,8 @@ export function AssociationsPage() {
   const datasetId = result?.profile.dataset_id;
   const numeric = result?.summary.numeric_columns ?? [];
   const categorical = result?.summary.categorical_columns ?? [];
-  const ranking = useTool(datasetId, "relationship_ranking", []);
-  const heatmap = useTool(datasetId, "chart_correlation_heatmap", numeric.length >= 2 ? [] : null);
+  const ranking = useTool(datasetId, "relationship_ranking", [], {}, { priority: PRIORITY.primary });
+  const heatmap = useTool(datasetId, "chart_correlation_heatmap", numeric.length >= 2 ? [] : null, {}, { priority: PRIORITY.primary });
   const [picked, setPicked] = useState<{ x: string; y: string } | null>(null);
 
   if (!result || !datasetId) return <Card className="empty-state"><span className="upload-icon"><ScanSearch size={28} /></span>
@@ -56,7 +57,7 @@ export function AssociationsPage() {
 
     {ranking.loading && !ranking.data && <div className="processing-panel" role="status"><LoaderCircle size={16} className="spin" />
       <div><strong>Evaluando pares de columnas…</strong><p>Ejecutando pruebas de correlación, de grupos y de contingencia en cada par elegible.</p></div></div>}
-    {ranking.error && <ErrorPanel error={ranking.error} />}
+    {ranking.error && <ErrorPanel error={ranking.error} onRetry={ranking.retry} />}
     {ranking.data && ranking.data.status !== "SUCCESS" && <div className="info-note"><Info size={16} /><div>
       <strong>No se pudieron evaluar asociaciones.</strong><p>{ranking.data.warnings?.[0]}</p></div></div>}
 
@@ -104,9 +105,10 @@ function Metric({ label, value, note }: { label: string; value: string; note: st
   return <Card className="metric-card"><p>{label}</p><strong>{value}</strong><small>{note}</small></Card>;
 }
 
-function ErrorPanel({ error }: { error: ToolError }) {
+function ErrorPanel({ error, onRetry }: { error: ToolError; onRetry?: () => void }) {
   return <div className="error-panel" role="alert"><TriangleAlert size={16} /><div><strong>{error.message}</strong>
-    {error.requestId && <small>ID de solicitud: {error.requestId}</small>}</div></div>;
+    {error.requestId && <small>ID de solicitud: {error.requestId}</small>}
+    {onRetry && !error.expired && <Button variant="outline" size="small" onClick={onRetry}>Reintentar</Button>}</div></div>;
 }
 
 /** Square, size-consistent matrix; anything else would render a broken chart. */

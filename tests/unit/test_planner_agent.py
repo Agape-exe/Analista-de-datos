@@ -16,6 +16,40 @@ class MustNotCallLLM:
         raise AssertionError("Planner must not call the LLM")
 
 
+async def test_screening_rank_wins_over_alphabetical_pair_order():
+    value = context([(name, SemanticType.NUMERIC) for name in ("a", "b", "y", "z")])
+    value.associations = [
+        AssociationResult(method="pearson", variables=pair) for pair in (["y", "z"], ["a", "b"])
+    ]
+    result = await PlannerAgent(MustNotCallLLM()).run(value)
+    assert result.update.analysis_plan.steps[0].request.variables == ["y", "z"]
+    assert result.update.analysis_plan.decisions[0]["screening_rank"] == 0
+
+
+async def test_question_wins_over_screening_and_identity_survives_pair_filter():
+    value = context(
+        [(name, SemanticType.NUMERIC) for name in ("a", "b", "total", "z")],
+        question="Comprobar a y b",
+        configuration={"analysis": {"mode": "standard"}},
+    )
+    value.associations = [AssociationResult(method="pearson", variables=["total", "z"])]
+    result = await PlannerAgent(MustNotCallLLM()).run(value)
+    assert result.update.analysis_plan.hypotheses[0].variables[:2] == ["a", "b"]
+    assert any(
+        step.request.method == "additive_identity" for step in result.update.analysis_plan.steps
+    )
+
+
+async def test_kruskal_screening_is_not_silently_replaced_by_anova():
+    value = context([("category", SemanticType.CATEGORICAL), ("value", SemanticType.NUMERIC)])
+    value.associations = [
+        AssociationResult(method="kruskal_wallis", variables=["value", "category"])
+    ]
+    result = await PlannerAgent(MustNotCallLLM()).run(value)
+    assert [step.request.method for step in result.update.analysis_plan.steps] == ["kruskal_wallis"]
+    assert result.update.analysis_plan.steps[0].request.variables == ["category", "value"]
+
+
 def context(
     columns: list[tuple[str, SemanticType]],
     *,

@@ -1,4 +1,5 @@
 from app.modules.exploration.adapters.analytics.association.ranking import RelationshipRankingTool
+from app.shared.adapters.observability.telemetry import InstrumentedAnalyticsTool
 from app.shared.application.dataset_registry import DatasetRegistry
 from app.shared.application.errors import DatasetNotFoundError
 from app.shared.config.settings import EdaSettings
@@ -34,6 +35,6 @@ class RelationshipScreeningAdapter:
             self.options,
             minimum_sample_size,
         )
-        return await tool.execute(
+        return await InstrumentedAnalyticsTool(tool, scope="screening").execute(
             ToolRequest(dataset_id=dataset_id, method=RelationshipRankingTool.name)
         )

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
 import { AssociationsPage } from "../features/associations/AssociationsPage";
+import { AnomaliesPage } from "../features/anomalies/AnomaliesPage";
 import { IntakeProvider } from "../features/data-intake/IntakeProvider";
 import { NewAnalysisPage } from "../features/data-intake/NewAnalysisPage";
 import { DatasetOverviewPage } from "../features/dataset/DatasetOverviewPage";
@@ -25,6 +26,7 @@ export function App() {
     <Route path="dictionary" element={<DataDictionaryPage />} />
     <Route path="quality" element={<DataQualityPage />} />
     <Route path="associations" element={<AssociationsPage />} />
+    <Route path="anomalies" element={<AnomaliesPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Route></Routes></ReportProvider></IntakeProvider>;
 }

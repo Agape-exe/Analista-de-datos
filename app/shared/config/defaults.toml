@@ -2,12 +2,12 @@
 mode = "fast"
 max_hypotheses = 3
 max_tool_calls = 8
-max_critic_cycles = 1
+max_critic_cycles = 0
 minimum_sample_size = 20
 
 [performance]
 timeout_seconds = 120
-parallel_tools = true
+parallel_tools = false
 
 [llm]
 provider = "disabled"

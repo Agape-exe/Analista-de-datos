@@ -278,6 +278,21 @@ tbody tr:hover { background: #fcfcff; }
 .range-mark:hover .range-box { fill: #2a78d633; }
 .range-mark.small-sample .range-box { stroke-dasharray: 4 3; }
 .range-note { fill: var(--muted); }
+.anomalies-card { padding: 22px; margin-top: 24px; }
+.method-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0 0 20px; }
+.method-cards section { background: #f8f9fb; border-radius: 6px; padding: 14px 16px; }
+.method-cards h3 { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.method-cards dl > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 11px; }
+.method-cards dt { color: var(--muted); }
+.method-cards dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.anomalies-chart { max-width: 760px; overflow-x: auto; }
+.anomalies-chart .chart-svg { min-width: 560px; }
+.record-row td { background: #fafbfe; }
+.record-detail { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px; margin: 0; font-size: 11px; }
+.record-detail dt { color: var(--muted); overflow-wrap: anywhere; }
+.record-detail dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.record-detail .analysed dd { font-weight: 600; }
+@media (max-width: 720px) { .method-cards { grid-template-columns: 1fr; } .anomalies-card { padding: 16px; } }
 .patterns-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .patterns-limitations { margin: 0 0 20px; }
 .patterns-limitations h3 { display: flex; gap: 8px; align-items: center; color: #986e30; font-size: 12px; margin-bottom: 8px; }

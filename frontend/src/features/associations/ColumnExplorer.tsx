@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PRIORITY } from "../../lib/api-client";
 import { BoxPlot } from "../../components/charts/BoxPlot";
 import { formatValue } from "../../components/charts/chart-utils";
 import { Histogram } from "../../components/charts/Histogram";
@@ -6,7 +7,7 @@ import { Card } from "../../components/ui/card";
 import type { BoxPlotChart, HistogramChart, NumericSummary } from "../../types/exploration";
 import { OutlierExamples } from "./OutlierExamples";
 import { readOutliers, toolProblem, type OutlierReading } from "./tool-state";
-import { ToolNotice } from "./ToolNotice";
+import { ColumnOutcomes, ToolNotice } from "./ToolNotice";
 import { useTool } from "./useTool";
 
 export function ColumnExplorer({ datasetId, numeric, categorical, totalRows }: {
@@ -23,7 +24,7 @@ export function ColumnExplorer({ datasetId, numeric, categorical, totalRows }: {
   // Outliers run after the column-dependent requests so they never compete with them.
   // Grouping only the boxplot does not change the outlier query or trigger another evaluation.
   const waiting = histogram.loading || summary.loading;
-  const outliers = useTool(datasetId, "outliers", column && !waiting ? [column] : null);
+  const outliers = useTool(datasetId, "outliers", column && !waiting ? [column] : null, {}, { priority: PRIORITY.secondary });
   const outlierTool = { ...outliers, loading: waiting || outliers.loading };
   const stats = summary.data?.status === "SUCCESS"
     ? (summary.data.result as Record<string, NumericSummary> | undefined)?.[column] : undefined;
@@ -54,6 +55,8 @@ export function ColumnExplorer({ datasetId, numeric, categorical, totalRows }: {
       <div><dt>Atípicos robustos (MAD)</dt><dd>{madText}</dd></div>
     </dl>
     {summaryProblem && <ToolNotice tool={summary} />}
+    <ColumnOutcomes data={summary.data} />
+    <ColumnOutcomes data={outliers.data} />
     {note && <p className="chart-note outlier-state-note" role="note">{note}</p>}
     <div className="explorer-charts">
       <div><h3 className="chart-title">Distribución</h3>
