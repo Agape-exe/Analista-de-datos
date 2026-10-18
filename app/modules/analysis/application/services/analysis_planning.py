@@ -331,13 +331,6 @@ class DeterministicAnalysisPlanner:
             replace(candidate, screening_rank=screening.get(frozenset(candidate.variables)))
             for candidate in candidates
         ]
-        if screening:
-            # Screening found significant pairs: plan those plus anything the question names.
-            candidates = [
-                candidate
-                for candidate in candidates
-                if candidate.screening_rank is not None or candidate.priority > 0
-            ] or candidates
         return sorted(
             candidates,
             key=lambda candidate: (
