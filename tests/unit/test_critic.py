@@ -201,6 +201,9 @@ async def test_critic_rejects_control_variable_equal_to_analyzed_variable():
     assert resultado.update.relationship_assessments is None
     assert resultado.warnings
 
+    # AUD-033: Verificar el motivo del control inválido
+    assert any("coincide con una variable analizada" in warning for warning in resultado.warnings)
+
 
 # PRUEBA 5: Detectar un cambio de signo en la correlación
 async def test_critic_detects_sign_change():
@@ -997,3 +1000,83 @@ async def test_critic_skips_significant_result_without_coefficient():
     assert resultado.update.evidence is None
     assert resultado.update.relationship_assessments is None
     assert resultado.warnings
+
+
+# AUD-033: Conservar el motivo de un análisis omitido
+async def test_critic_preserves_skipped_analysis_reason():
+    omitted = AnalysisResult(
+        analysis_id="partial-omitted-001",
+        method="partial_correlation",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SKIPPED,
+        warnings=["No hay suficientes observaciones para el cálculo."],
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([omitted]))
+
+    assert resultado.status == AnalysisStatus.SKIPPED
+    assert resultado.update.evidence is None
+    assert resultado.update.relationship_assessments is None
+    assert any(
+        "partial-omitted-001" in warning and "No hay suficientes observaciones" in warning
+        for warning in resultado.warnings
+    )
+
+
+# AUD-033: Conservar advertencias incluso cuando hay resultados válidos
+async def test_critic_preserves_warnings_with_successful_results():
+    pearson = AnalysisResult(
+        analysis_id="pearson-valid-001",
+        method="pearson",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=0.75,
+        sample_size=100,
+    )
+
+    omitted = AnalysisResult(
+        analysis_id="partial-omitted-002",
+        method="partial_correlation",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.SKIPPED,
+        warnings=["La variable de control no es evaluable."],
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([pearson, omitted]))
+
+    assert resultado.status == AnalysisStatus.SUCCESS
+
+    assert {evidencia.analysis_id for evidencia in resultado.update.evidence} == {
+        "pearson-valid-001"
+    }
+
+    assert any(
+        "partial-omitted-002" in warning and "variable de control" in warning
+        for warning in resultado.warnings
+    )
+
+
+# AUD-033: Conservar el motivo de un análisis fallido
+async def test_critic_preserves_failed_analysis_reason():
+    failed = AnalysisResult(
+        analysis_id="partial-failed-001",
+        method="partial_correlation",
+        variables=["ingreso", "gasto"],
+        status=AnalysisStatus.FAILED,
+        warnings=["Error durante el cálculo de correlación parcial."],
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([failed]))
+
+    # Sin cálculos válidos, Critic debe omitir la evaluación.
+    assert resultado.status == AnalysisStatus.SKIPPED
+
+    # No debe fabricar evidencias ni evaluaciones.
+    assert resultado.update.evidence is None
+    assert resultado.update.relationship_assessments is None
+
+    # Debe conservar la identificación y el motivo del fallo.
+    assert any(
+        "partial-failed-001" in warning and "Error durante el cálculo" in warning
+        for warning in resultado.warnings
+    )

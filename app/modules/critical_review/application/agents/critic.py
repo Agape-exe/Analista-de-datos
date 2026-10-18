@@ -29,9 +29,27 @@ class CriticAgent(SkeletonAgent):
     MIN_SIGN_CHANGE_MAGNITUDE = 0.30
 
     async def run(self, context: AgentContext) -> AgentResult:
+
         new_evidence = []
         new_assessments = []
         associations = list(context.associations)
+
+        # AUD-033: Conservar las razones de análisis omitidos o fallidos
+        omission_warnings = []
+
+        for analysis in context.analysis_results:
+            if analysis.status == AnalysisStatus.SUCCESS:
+                continue
+
+            reason = "; ".join(analysis.warnings)
+
+            if not reason:
+                reason = "No se proporcionó un motivo específico."
+
+            omission_warnings.append(
+                f"Critic: análisis {analysis.analysis_id} "
+                f"({analysis.method}) con estado {analysis.status.value}: {reason}"
+            )
 
         for analysis in context.analysis_results:
             if analysis.status != AnalysisStatus.SUCCESS:
@@ -126,15 +144,28 @@ class CriticAgent(SkeletonAgent):
                     if isinstance(control_variable, str):
                         control_variables = [control_variable]
 
+                # AUD-033: Registrar motivos de controles no evaluables
                 if not isinstance(control_variables, list) or not control_variables:
+                    omission_warnings.append(
+                        f"Critic: análisis {analysis.analysis_id} omitido: "
+                        "no se especificaron variables de control válidas."
+                    )
                     continue
 
                 if not all(
                     isinstance(variable, str) and variable.strip() for variable in control_variables
                 ):
+                    omission_warnings.append(
+                        f"Critic: análisis {analysis.analysis_id} omitido: "
+                        "las variables de control contienen valores inválidos."
+                    )
                     continue
 
                 if set(control_variables) & set(association.variables):
+                    omission_warnings.append(
+                        f"Critic: análisis {analysis.analysis_id} omitido: "
+                        "una variable de control coincide con una variable analizada."
+                    )
                     continue
 
                 adjusted = analysis.effect_size
@@ -516,14 +547,17 @@ class CriticAgent(SkeletonAgent):
                 agent_name=self.name,
                 status=AnalysisStatus.SKIPPED,
                 warnings=[
-                    "Critic: no hay resultados calculados compatibles con una evaluación trazable."
+                    *omission_warnings,
+                    "Critic: no hay resultados calculados compatibles con una evaluación trazable.",
                 ],
             )
 
         # 17. Devolver evidencias y evaluaciones
+
         return AgentResult(
             agent_name=self.name,
             status=AnalysisStatus.SUCCESS,
+            warnings=omission_warnings,
             update=AgentUpdate(
                 evidence=[*context.evidence, *new_evidence],
                 relationship_assessments=[
