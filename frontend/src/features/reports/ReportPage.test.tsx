@@ -102,3 +102,41 @@ test("a failed run shows its cause and an expired dataset asks for a new upload"
   await user.click(screen.getByRole("button", { name: "Volver a generar" }));
   expect(await screen.findByText(/ya no está en memoria/)).toBeInTheDocument();
 });
+
+
+test("a recovered report from another dataset is visibly separated from the active dataset", async () => {
+  const historical = { ...successReport, run_id: "historical", dataset_profile: {
+    ...intakeFixture.profile, dataset_id: "other-dataset",
+  } };
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture) : json(historical)));
+  const user = await openInsightsAfterIntake();
+  await user.type(screen.getByLabelText("ID de ejecución"), "historical");
+  await user.click(screen.getByRole("button", { name: "Consultar" }));
+  expect(await screen.findByRole("heading", { name: "Reporte recuperado" })).toBeInTheDocument();
+  expect(screen.getByText("Este reporte pertenece a otro dataset. No describe el dataset activo.")).toBeInTheDocument();
+  expect(screen.getByText("Dataset del reporte: other-dataset")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Generar reporte" })).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Volver a generar" })).not.toBeInTheDocument();
+});
+
+test("a failed regeneration labels the retained report as previous", async () => {
+  let count = 0;
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture)
+    : ++count === 1 ? json(successReport) : json({ detail: "Service unavailable" }, 503)));
+  const user = await openInsightsAfterIntake();
+  await user.click(screen.getByRole("button", { name: "Generar reporte" }));
+  await screen.findByText("Estado: Completado");
+  await user.click(screen.getByRole("button", { name: "Volver a generar" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Service unavailable");
+  expect(screen.getByRole("status")).toHaveTextContent("La regeneración falló. Se muestra el reporte anterior, no un resultado nuevo.");
+  expect(screen.getByText("Ejecución: run-1")).toBeInTheDocument();
+});
+
+test("a recovered legacy report explains that dataset identity is unavailable", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => json(successReport)));
+  renderReport();
+  await userEvent.type(screen.getByLabelText("ID de ejecución"), "run-1");
+  await userEvent.click(screen.getByRole("button", { name: "Consultar" }));
+  expect(await screen.findByText("Consulta histórica: no hay un dataset activo asociado.")).toBeInTheDocument();
+  expect(screen.getByText("Dataset del reporte: Identidad no disponible en este reporte histórico")).toBeInTheDocument();
+});

@@ -11,7 +11,7 @@ const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 
 export function ReportPage() {
   const { result } = useIntake();
-  const { report, loading, error, generate, recover } = useReport();
+  const { report, reportIdentity, loading, error, generate, recover } = useReport();
   const [runId, setRunId] = useState(report?.run_id ?? "");
   const [question, setQuestion] = useState("");
   const [shownRun, setShownRun] = useState(report?.run_id);
@@ -31,7 +31,7 @@ export function ReportPage() {
         <label>Pregunta opcional <input aria-label="Pregunta del análisis" value={question} disabled={loading}
           onChange={(event) => setQuestion(event.target.value)} /></label>
         <Button disabled={loading} onClick={() => void generate(question)}>
-          {loading ? "Procesando…" : report ? "Volver a generar" : "Generar reporte"}</Button>
+          {loading ? "Procesando…" : reportIdentity?.matchesActiveDataset ? "Volver a generar" : "Generar reporte"}</Button>
       </> : <>
         <p>Primero sube y comprende un dataset en Nuevo análisis; el reporte se genera sobre ese dataset.</p>
         <Button asChild variant="outline"><Link to="/">Ir a Nuevo análisis</Link></Button>
@@ -46,6 +46,24 @@ export function ReportPage() {
       ? "El dataset ya no está en memoria del servidor. Vuelve a subirlo en Nuevo análisis."
       : error.message}</p>}
     {report && <>
+      <Card className="quality-card" aria-label="Contexto del reporte">
+        <h2>{reportIdentity?.origin === "recovered" ? "Reporte recuperado" : "Reporte generado"}</h2>
+        <p>Dataset del reporte: {reportIdentity?.datasetId ?? "Identidad no disponible en este reporte histórico"}</p>
+        <p>{reportIdentity?.matchesActiveDataset === true
+          ? "Este reporte corresponde al dataset activo."
+          : reportIdentity?.matchesActiveDataset === false
+            ? "Este reporte pertenece a otro dataset. No describe el dataset activo."
+            : result
+              ? "No se puede verificar que este reporte corresponda al dataset activo."
+              : "Consulta histórica: no hay un dataset activo asociado."}</p>
+        {reportIdentity?.previous && <p role="status">{
+          reportIdentity.previousReason === "generation-failed"
+            ? "La regeneración falló. Se muestra el reporte anterior, no un resultado nuevo."
+            : reportIdentity.previousReason === "recovery-failed"
+              ? "La consulta falló. Se muestra el reporte anterior, no el solicitado."
+              : "Se muestra el reporte anterior mientras se procesa la nueva solicitud."
+        }</p>}
+      </Card>
       <Card className="quality-card"><h2>Estado: {statusLabel(report.status)}</h2><p>Ejecución: {report.run_id}</p>
         {report.status === "FAILED" && <ul role="alert">{(report.errors?.length ? report.errors : ["Error no especificado."])
           .map((value, i) => <li key={i}>{value}</li>)}</ul>}

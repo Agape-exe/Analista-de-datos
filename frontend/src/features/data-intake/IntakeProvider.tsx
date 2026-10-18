@@ -5,6 +5,7 @@ import type { IntakeDraft, IntakeError, IntakeResponse } from "../../types/intak
 const emptyDraft = (): IntakeDraft => ({ file: null, dictionary: null, delimiter: ",", encoding: "utf-8" });
 
 interface IntakeContextValue {
+  contextRevision: number;
   draft: IntakeDraft;
   result: IntakeResponse | null;
   loading: boolean;
@@ -17,6 +18,7 @@ interface IntakeContextValue {
 const IntakeContext = createContext<IntakeContextValue | null>(null);
 
 export function IntakeProvider({ children }: { children: ReactNode }) {
+  const [contextRevision, setContextRevision] = useState(0);
   const [draft, setDraft] = useState<IntakeDraft>(emptyDraft);
   const [result, setResult] = useState<IntakeResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,6 +32,7 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
   }
 
   function reset() {
+    setContextRevision((value) => value + 1);
     controller.current?.abort();
     controller.current = null;
     setDraft(emptyDraft());
@@ -65,7 +68,7 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <IntakeContext.Provider value={{ draft, result, loading, error, updateDraft, reset, analyze }}>
+  return <IntakeContext.Provider value={{ contextRevision, draft, result, loading, error, updateDraft, reset, analyze }}>
     {children}
   </IntakeContext.Provider>;
 }
