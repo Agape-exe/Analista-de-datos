@@ -108,18 +108,36 @@ export async function runTool(
   { priority = PRIORITY.normal }: { priority?: number } = {},
 ): Promise<AnalysisResult> {
   const path = `/datasets/${encodeURIComponent(datasetId)}/tools/${encodeURIComponent(tool)}`;
-  return request<AnalysisResult>(path, {
+  const data = await request<AnalysisResult>(path, {
     method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" }, signal,
   }, { priority, detachOnAbort: true });
+  if (!data || !["SUCCESS", "SKIPPED", "FAILED"].includes(data.status)
+    || (data.status !== "SUCCESS" && [data.result, data.p_value, data.effect_size].some((value) => value != null))) {
+    throw new ApiError("La herramienta devolvió un estado o resultado incompatible.", undefined, "INVALID_RESPONSE");
+  }
+  const columns = Object.values(data.column_results ?? {});
+  if (columns.some((column) => !column || !["SUCCESS", "SKIPPED", "FAILED"].includes(column.status)
+    || (column.status !== "SUCCESS" && column.result != null))
+    || (data.status !== "SUCCESS" && columns.some((column) => column.status === "SUCCESS"))
+    || (data.status === "SUCCESS" && columns.length > 0 && !columns.some((column) => column.status === "SUCCESS"))
+    || (data.status === "SUCCESS" && columns.some((column) => column.status === "SUCCESS")
+      && columns.some((column) => column.status !== "SUCCESS") && data.completeness !== "partial")
+    || (data.completeness === "partial" && (data.status !== "SUCCESS"
+      || !columns.some((column) => column.status === "SUCCESS") || !columns.some((column) => column.status !== "SUCCESS")))) {
+    throw new ApiError("El resultado parcial por columna es inconsistente.", undefined, "INVALID_RESPONSE");
+  }
+  return data;
 }
 
 export type AnalysisReport = components["schemas"]["AnalysisReport"];
+export type StoredConfiguration = components["schemas"]["StoredConfiguration"];
 
 export async function runStoredAnalysis(
-  datasetId: string, userQuestion: string, signal?: AbortSignal,
+  datasetId: string, userQuestion: string, signal?: AbortSignal, configuration?: StoredConfiguration,
 ): Promise<AnalysisReport> {
   return request<AnalysisReport>(`/analysis/datasets/${encodeURIComponent(datasetId)}`, {
-    method: "POST", body: JSON.stringify({ user_question: userQuestion.trim() || null }),
+    method: "POST", body: JSON.stringify({ user_question: userQuestion.trim() || null,
+      ...(configuration ? { configuration } : {}) }),
     headers: { "Content-Type": "application/json" }, signal,
   });
 }

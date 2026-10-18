@@ -37,11 +37,18 @@ class PlannerAgent(SkeletonAgent):
             return AgentResult(
                 agent_name=self.name,
                 status=AnalysisStatus.SKIPPED,
+                update=AgentUpdate(
+                    planning_decisions=[
+                        {"selected": False, "reason": warning} for warning in outcome.warnings
+                    ]
+                ),
                 warnings=outcome.warnings,
             )
         return AgentResult(
             agent_name=self.name,
             status=AnalysisStatus.SUCCESS,
-            update=AgentUpdate(analysis_plan=outcome.plan),
+            update=AgentUpdate(
+                analysis_plan=outcome.plan, planning_decisions=outcome.plan.decisions
+            ),
             warnings=outcome.warnings,
         )

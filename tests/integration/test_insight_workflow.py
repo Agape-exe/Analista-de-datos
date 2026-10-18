@@ -56,4 +56,4 @@ async def test_workflow_report_preserves_evidence_and_actual_metrics():
     assert 0 <= report.metrics.time_to_first_insight <= report.metrics.total_response_time
     assert report.evidence[0].analysis_id == "r1"
     assert report.relationship_assessments[0].potentially_spurious is None
-    assert report.execution_trace[0]["kind"] == "llm"
+    assert any(event["kind"] == "llm" for event in report.execution_trace)

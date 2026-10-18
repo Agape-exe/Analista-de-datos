@@ -1,5 +1,7 @@
 from typing import TypedDict
 
+from pydantic import JsonValue
+
 from app.shared.contracts.analysis_input import AnalysisInput, EffectiveConfiguration
 from app.shared.domain.enums.statuses import AnalysisStatus
 from app.shared.domain.models.analysis import AnalysisPlan, AnalysisResult, AssociationResult
@@ -21,7 +23,9 @@ class AgentState(TypedDict):
     dataset_profile: DatasetProfile | None
     data_dictionary: DataDictionary | None
     associations: list[AssociationResult]
+    screening_summary: dict[str, JsonValue]
     analysis_plan: AnalysisPlan | None
+    planning_decisions: list[dict[str, JsonValue]]
     analysis_results: list[AnalysisResult]
     evidence: list[Evidence]
     relationship_assessments: list[RelationshipAssessment]

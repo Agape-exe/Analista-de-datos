@@ -1,6 +1,7 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from pydantic import Field, model_validator
 
 from app.shared.adapters.http.protection import enforce_request_limit, reserve_operation_capacity
 from app.shared.application.errors import (
@@ -9,7 +10,11 @@ from app.shared.application.errors import (
     UploadTooLargeError,
     UploadValidationError,
 )
-from app.shared.contracts.analysis_input import AnalysisInput, StoredSourceSpec
+from app.shared.contracts.analysis_input import (
+    AnalysisConfiguration,
+    AnalysisInput,
+    StoredSourceSpec,
+)
 from app.shared.contracts.intake import IntakeOptions
 from app.shared.domain.models.base import DomainModel
 from app.shared.domain.models.report import AnalysisReport
@@ -18,8 +23,34 @@ router = APIRouter()
 local_router = APIRouter()
 
 
+class StoredAnalysisOptions(DomainModel):
+    mode: Literal["fast", "standard"] | None = None
+    max_hypotheses: int | None = Field(default=None, ge=1, le=20, strict=True)
+    max_tool_calls: int | None = Field(default=None, ge=0, le=100, strict=True)
+    minimum_sample_size: int | None = Field(default=None, ge=2, le=250000, strict=True)
+
+
+class StoredPerformanceOptions(DomainModel):
+    timeout_seconds: float | None = Field(
+        default=None, gt=0, le=120, allow_inf_nan=False, strict=True
+    )
+
+
+class StoredConfiguration(DomainModel):
+    analysis: StoredAnalysisOptions = Field(default_factory=StoredAnalysisOptions)
+    performance: StoredPerformanceOptions = Field(default_factory=StoredPerformanceOptions)
+
+    @model_validator(mode="after")
+    def concrete_overrides(self) -> "StoredConfiguration":
+        for section in (self.analysis, self.performance):
+            if any(getattr(section, name) is None for name in section.model_fields_set):
+                raise ValueError("Configuration overrides cannot be null")
+        return self
+
+
 class StoredAnalysisRequest(DomainModel):
     user_question: str | None = None
+    configuration: StoredConfiguration = Field(default_factory=StoredConfiguration)
 
 
 @local_router.post("/analysis", response_model=AnalysisReport)
@@ -84,6 +115,10 @@ async def analysis_stored(
     async with reserve_operation_capacity(request):
         return await request.app.state.analysis_use_case.execute(
             AnalysisInput(
-                source=StoredSourceSpec(dataset_id=dataset_id), user_question=question or None
+                source=StoredSourceSpec(dataset_id=dataset_id),
+                user_question=question or None,
+                configuration=AnalysisConfiguration.model_validate(
+                    body.configuration.model_dump(exclude_unset=True) if body else {}
+                ),
             )
         )

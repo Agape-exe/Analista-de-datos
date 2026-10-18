@@ -20,6 +20,15 @@ CONTROL_PATTERN = re.compile(
     r"(?<!\w)(?:control(?:ar|ando|ado|ada|es)?|ajust(?:ar|ando|ado|ada|e)?)(?!\w)"
 )
 CONTROL_WINDOW_CHARACTERS = 80
+SCREENING_METHODS = {
+    "pearson": "pearson",
+    "spearman": "spearman",
+    "chi_square": "chi_square",
+    "cramers_v": "cramers_v",
+    "anova": "anova_one_way",
+    "anova_one_way": "anova_one_way",
+    "kruskal_wallis": "kruskal_wallis",
+}
 
 
 @dataclass(frozen=True)
@@ -74,10 +83,35 @@ class DeterministicAnalysisPlanner:
             configuration.max_hypotheses,
             _screening_ranks(context.associations),
         )
+        # Preserve the primary screening method for mixed pairs; never substitute ANOVA.
+        primary = {}
+        for association in context.associations:
+            primary.setdefault(frozenset(association.variables), association.method)
+        aligned = []
+        for candidate in candidates:
+            method = primary.get(frozenset(candidate.variables))
+            executable = SCREENING_METHODS.get(method)
+            if method is not None and executable is None:
+                warnings.append(
+                    f"Screening method '{method}' is advisory only; "
+                    "no Analysis tool was substituted."
+                )
+                continue
+            if executable == "kruskal_wallis" and candidate.family == "anova":
+                candidate = replace(candidate, methods=(executable,))
+            elif executable in candidate.methods:
+                candidate = replace(
+                    candidate,
+                    methods=(executable,)
+                    + tuple(item for item in candidate.methods if item != executable),
+                )
+            aligned.append(candidate)
+        candidates = aligned
         supported: list[_Candidate] = []
+        omitted = []
         profiles = {column.column_name: column for column in profile.columns}
         for candidate in candidates:
-            if candidate.family == "anova":
+            if candidate.family == "anova" and candidate.methods == ("anova_one_way",):
                 category, numeric = candidate.variables
                 summary = (anova_groups or {}).get((category, numeric))
                 reason = _anova_sample_problem(
@@ -85,8 +119,35 @@ class DeterministicAnalysisPlanner:
                 )
                 if reason is not None:
                     warnings.append(f"ANOVA omitted for '{category}' and '{numeric}': {reason}")
+                    omitted.append(
+                        {
+                            "variables": list(candidate.variables),
+                            "selected": False,
+                            "reason": reason,
+                            "methods": list(candidate.methods),
+                        }
+                    )
                     continue
             supported.append(candidate)
+        if context.associations:
+            selected = []
+            for candidate in supported:
+                if (
+                    candidate.screening_rank is not None
+                    or candidate.priority > 0
+                    or candidate.family == "identity"
+                ):
+                    selected.append(candidate)
+                else:
+                    omitted.append(
+                        {
+                            "variables": list(candidate.variables),
+                            "selected": False,
+                            "reason": "not selected by screening or question",
+                            "methods": list(candidate.methods),
+                        }
+                    )
+            supported = selected
         candidates = supported
         if not candidates:
             return PlanningOutcome(
@@ -101,6 +162,12 @@ class DeterministicAnalysisPlanner:
         )
         if not plan.steps:
             return PlanningOutcome(None, warnings + ["Planning limits prevented executable steps."])
+        plan.decisions.extend(omitted)
+        known_methods = set(SCREENING_METHODS)
+        warnings.extend(
+            f"Screening method '{method}' is advisory only; no Analysis tool was substituted."
+            for method in sorted({item.method for item in context.associations} - known_methods)
+        )
         return PlanningOutcome(plan, warnings)
 
     def anova_pairs(self, context: AgentContext) -> list[tuple[str, str]]:
@@ -220,17 +287,18 @@ class DeterministicAnalysisPlanner:
         for total in numeric:
             if not re.search(r"(?<!\w)(?:total|sum)(?!\w)", total.casefold().replace("_", " ")):
                 continue
-            components = [name for name in numeric if name != total][:2]
-            if len(components) == 2:
-                variables = (*components, total)
+            components = sorted(
+                (name for name in numeric if name != total),
+                key=columns[SemanticType.NUMERIC].index,
+            )
+            for pair in combinations(components, 2):
+                variables = (*pair, total)
                 candidates.append(
                     _Candidate(
                         family="identity",
                         variables=variables,
                         methods=("additive_identity",),
-                        statement=(
-                            f"Check whether {total} equals {components[0]} plus {components[1]}."
-                        ),
+                        statement=(f"Check whether {total} equals {pair[0]} plus {pair[1]}."),
                         priority=_question_priority(question, variables),
                     )
                 )
@@ -263,17 +331,16 @@ class DeterministicAnalysisPlanner:
             replace(candidate, screening_rank=screening.get(frozenset(candidate.variables)))
             for candidate in candidates
         ]
-        if screening:
-            # Screening found significant pairs: plan those plus anything the question names.
-            candidates = [
-                candidate
-                for candidate in candidates
-                if candidate.screening_rank is not None or candidate.priority > 0
-            ] or candidates
-        unranked = len(screening)
         return sorted(
             candidates,
-            key=lambda candidate: (-candidate.priority, candidate.family),
+            key=lambda candidate: (
+                -candidate.priority,
+                candidate.screening_rank
+                if candidate.screening_rank is not None
+                else len(screening),
+                0 if candidate.family == "identity" else 1,
+                candidate.family,
+            ),
         )
 
     def _bounded_plan(
@@ -287,13 +354,34 @@ class DeterministicAnalysisPlanner:
         hypotheses: list[Hypothesis] = []
         steps: list[AnalysisStep] = []
         used_families: set[str] = set()
+        decisions = []
         for candidate in candidates:
-            if len(hypotheses) >= max_hypotheses or len(steps) >= max_tool_calls:
-                break
-            if mode == "fast" and candidate.family in used_families:
+            reason = (
+                "hypothesis budget"
+                if len(hypotheses) >= max_hypotheses
+                else "tool budget"
+                if len(steps) >= max_tool_calls
+                else "fast mode family already selected"
+                if mode == "fast" and candidate.family in used_families
+                else None
+            )
+            decisions.append(
+                {
+                    "variables": list(candidate.variables),
+                    "methods": list(candidate.methods),
+                    "selected": reason is None,
+                    "reason": reason
+                    or "question priority, identity check, screening rank, deterministic tie-break",
+                    "question_priority": candidate.priority,
+                    "screening_rank": candidate.screening_rank,
+                }
+            )
+            if reason:
                 continue
             remaining_calls = max_tool_calls - len(steps)
             methods = candidate.methods[:remaining_calls]
+            decisions[-1]["planned_methods"] = list(methods)
+            decisions[-1]["omitted_methods"] = list(candidate.methods[remaining_calls:])
             if not methods:
                 break
             hypothesis_id = f"hypothesis-{len(hypotheses) + 1}"
@@ -340,7 +428,7 @@ class DeterministicAnalysisPlanner:
                 if method == "pearson":
                     baseline_step_id = steps[-1].step_id
             used_families.add(candidate.family)
-        return AnalysisPlan(hypotheses=hypotheses, steps=steps)
+        return AnalysisPlan(hypotheses=hypotheses, steps=steps, decisions=decisions)
 
 
 def _anova_sample_problem(

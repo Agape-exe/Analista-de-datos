@@ -10,7 +10,8 @@ from app.modules.exploration.adapters.analytics.profiling import measures
 from app.shared.application.errors import AnalysisNotApplicableError, ToolInputError
 from app.shared.contracts.datasource import RegisteredDataset
 from app.shared.domain.enums.semantic_type import SemanticType
-from app.shared.domain.models.analysis import ToolRequest
+from app.shared.domain.enums.statuses import AnalysisStatus
+from app.shared.domain.models.analysis import ColumnResult, ToolRequest
 
 NUMERIC = SemanticType.NUMERIC
 CATEGORICAL = SemanticType.CATEGORICAL
@@ -25,20 +26,38 @@ class ColumnsTool(DatasetTool):
         requested = list(request.variables)
         candidates = requested or [column.column_name for column in data.profile.columns]
         columns, notes = [], []
+        outcomes = {}
         for name in candidates:
             role = data.semantic_type(name)
             if not self.roles or role in self.roles:
                 columns.append(name)
             elif requested:
                 notes.append(f"{name}: {self.name} does not apply to {role} columns.")
-        if not columns:
-            raise AnalysisNotApplicableError(f"No columns suitable for {self.name}.")
-        result = {name: self.profile(data, name, data.semantic_type(name)) for name in columns}
+                outcomes[name] = ColumnResult(status="SKIPPED", warnings=[notes[-1]])
+        result = {}
+        for name in columns:
+            try:
+                value = self.profile(data, name, data.semantic_type(name))
+                if "skipped" in value:
+                    outcomes[name] = ColumnResult(status="SKIPPED", warnings=[value["skipped"]])
+                else:
+                    result[name] = value
+                    outcomes[name] = ColumnResult(status="SUCCESS", result=value)
+            except AnalysisNotApplicableError as error:
+                outcomes[name] = ColumnResult(status="SKIPPED", warnings=[str(error)])
+            except (ValueError, ArithmeticError, TypeError) as error:
+                outcomes[name] = ColumnResult(status="FAILED", warnings=[str(error)])
         return ToolOutput(
-            result=result,
+            result=result or None,
             variables=columns,
             sample_size=data.dataset.row_count,
             warnings=notes,
+            column_results=outcomes,
+            status=AnalysisStatus.SUCCESS
+            if result
+            else AnalysisStatus.FAILED
+            if any(item.status == "FAILED" for item in outcomes.values())
+            else AnalysisStatus.SKIPPED,
         )
 
     def profile(self, data: RegisteredDataset, name: str, role: SemanticType) -> dict:

@@ -7,6 +7,10 @@ determinísticas, criticar evidencias y producir insights y reportes trazables.
 **Estado: intake CSV/TSV, EDA/Associations, Planner/Analysis deterministas, Critic,
 insights, persistencia, evaluación y reportes integrados.**
 
+Incluye configuración de análisis almacenados y pantalla **Traza** con plan,
+decisiones y eventos reales. Contratos y ejemplos:
+[Planner, resultados EDA y auditoría](docs/planner-trace-audit.md).
+
 Validación de la combinación main/develop y limitaciones conocidas:
 [docs/integracion-main-final.md](docs/integracion-main-final.md).
 
@@ -19,6 +23,10 @@ La interfaz React vive en `frontend/`, junto al backend. Incluye **New Analysis*
 **Dataset Overview**, junto con **Associations** (`/associations`) e
 **Insights y evidencia** (`/report`): carga CSV/TSV, diccionario JSON opcional,
 separador/encoding, exploración, gráficos, métricas y descargas JSON/Markdown.
+
+También están habilitados Diccionario (`/dictionary`), Calidad (`/quality`),
+Patrones por grupo (`/patterns`) y Traza (`/trace`). Hallazgos permite configurar
+el análisis del dataset almacenado y consultar la configuración efectiva.
 
 Desde la raíz, en una terminal:
 
@@ -132,6 +140,8 @@ uv run uvicorn app.api.main:app --reload
 - `GET /tools` y `POST /datasets/{dataset_id}/tools/{tool_name}`: exploración EDA.
 - `POST /analysis`: ejecuta el flujo actual y guarda el reporte. Etapas pendientes: SKIPPED.
 - `POST /analysis/upload`: ejecuta desde un CSV/TSV subido.
+- `POST /analysis/datasets/{dataset_id}`: reutiliza el dataset cargado; acepta pregunta
+  y opciones operativas de planificación, presupuesto y timeout.
 - `GET /reports/{run_id}`: recupera reportes; sufijos `/metrics` y `/markdown` disponibles.
 - Entrada JSON inválida: **422**.
 - Cada respuesta incluye `X-Request-ID` para correlación HTTP.
@@ -168,8 +178,8 @@ Para TOML externo, usar `load_settings(Path(...))` y pasar el resultado a
 `create_app(settings)` o `build_use_case(settings)`.
 
 Los overrides por análisis solo permiten opciones de `analysis` y `performance`.
-Los defaults fast son: 3 hipótesis, 8 tools, 1 ciclo crítico, muestra mínima 20,
-timeout 15 segundos y `parallel_tools=true`.
+Los defaults fast son: 3 hipótesis, 8 tools, 0 ciclos críticos, muestra mínima 20,
+timeout 120 segundos y `parallel_tools=false`.
 
 Planner aplica tamaño mínimo, presupuesto de hipótesis y de herramientas; Analysis
 valida el plan y limita las invocaciones reales. El timeout global protege etapas
@@ -216,7 +226,7 @@ incluido `profiling_time`; las métricas sin medición permanecen null.
 ## Estado actual
 
 Implementado: lectura estricta CSV/TSV y clasificación de columnas, EDA y gráficos,
-planificación determinista, nueve herramientas estadísticas autorizadas, registros
+planificación determinista, diez herramientas estadísticas autorizadas en la aplicación, registros
 por ejecución con liberación de recursos, Critic basado en evidencia, InsightAgent,
 reportes Markdown/JSON, persistencia SQLite, telemetría, evaluación y API.
 

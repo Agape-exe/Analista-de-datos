@@ -35,11 +35,20 @@ class AssociationAgent:
             else []
         )
         if not ranked:
-            return self._skipped("Association screening found no significant relationships.")
+            return AgentResult(
+                agent_name=self.name,
+                status=AnalysisStatus.SKIPPED,
+                update=AgentUpdate(screening_summary=result.result),
+                warnings=result.warnings
+                + ["Association screening found no significant relationships."],
+            )
         return AgentResult(
             agent_name=self.name,
             status=AnalysisStatus.SUCCESS,
-            update=AgentUpdate(associations=to_associations(ranked)),
+            update=AgentUpdate(
+                associations=to_associations(ranked), screening_summary=result.result
+            ),
+            warnings=result.warnings,
         )
 
     def _skipped(self, *warnings: str) -> AgentResult:

@@ -27,8 +27,15 @@ skip-link, mensajes de estado y respeto por reduced-motion.
 ## Pantallas habilitadas
 
 **New Analysis** permite cargar CSV/TSV por selección o arrastre, elegir separador
-y encoding y adjuntar un DataDictionary JSON. La pregunta de investigación,
-FAST/DEEP, TXT y SQL están señalados como Coming Soon.
+y encoding y adjuntar un DataDictionary JSON. La pregunta y las opciones de
+planificación rápido/estándar están disponibles en **Hallazgos** (`/report`).
+La carga enlaza a esa capacidad. TXT y SQL continúan pendientes; no hay modo profundo.
+
+**Traza** (`/trace`) presenta el contexto del reporte, agentes, plan, decisiones,
+herramientas y omisiones, con enlaces a resultados. Consume eventos instrumentados
+del backend y señala reportes históricos sin instrumentación verificable. La
+cabecera usa la identidad del reporte cuando se consulta un reporte recuperado.
+Contratos vigentes: [auditoría de Planner y Analysis](planner-trace-audit.md).
 
 **Dataset Overview** muestra metadatos reales: filas, columnas, roles, completitud,
 tipos, nulos por columna, valores únicos, descripciones, procedencia y confianza

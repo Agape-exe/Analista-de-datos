@@ -3,6 +3,21 @@ import type { components } from "./api";
 export type AnalysisResult = components["schemas"]["AnalysisResult"];
 export type ToolRunRequest = components["schemas"]["ToolRunRequest"];
 
+export type ColumnResult = components["schemas"]["ColumnResult"];
+/** Explicit envelope variants. Partial SUCCESS still carries per-column omissions/failures. */
+export type EdaOutcome =
+  | { kind: "success"; data: AnalysisResult }
+  | { kind: "partial"; data: AnalysisResult; columns: Record<string, ColumnResult> }
+  | { kind: "skipped"; data: AnalysisResult }
+  | { kind: "failed"; data: AnalysisResult };
+
+export function edaOutcome(data: AnalysisResult): EdaOutcome {
+  if (data.status === "FAILED") return { kind: "failed", data };
+  if (data.status === "SKIPPED") return { kind: "skipped", data };
+  if (data.completeness === "partial") return { kind: "partial", data, columns: data.column_results ?? {} };
+  return { kind: "success", data };
+}
+
 // AnalysisResult.result is free JSON in OpenAPI. These shapes mirror the Python models
 // RankedRelationship (app/shared/domain/models/analysis.py) and the chart specs in
 // app/modules/exploration/adapters/visualization/charts.py; update both sides together.

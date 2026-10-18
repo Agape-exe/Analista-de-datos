@@ -7,7 +7,7 @@ import { Card } from "../../components/ui/card";
 import type { BoxPlotChart, HistogramChart, NumericSummary } from "../../types/exploration";
 import { OutlierExamples } from "./OutlierExamples";
 import { readOutliers, toolProblem, type OutlierReading } from "./tool-state";
-import { ToolNotice } from "./ToolNotice";
+import { ColumnOutcomes, ToolNotice } from "./ToolNotice";
 import { useTool } from "./useTool";
 
 export function ColumnExplorer({ datasetId, numeric, categorical, totalRows }: {
@@ -55,6 +55,8 @@ export function ColumnExplorer({ datasetId, numeric, categorical, totalRows }: {
       <div><dt>Atípicos robustos (MAD)</dt><dd>{madText}</dd></div>
     </dl>
     {summaryProblem && <ToolNotice tool={summary} />}
+    <ColumnOutcomes data={summary.data} />
+    <ColumnOutcomes data={outliers.data} />
     {note && <p className="chart-note outlier-state-note" role="note">{note}</p>}
     <div className="explorer-charts">
       <div><h3 className="chart-title">Distribución</h3>

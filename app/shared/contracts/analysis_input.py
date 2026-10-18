@@ -109,9 +109,13 @@ def resolve_configuration(
     """Resolve only allowlisted run-level overrides."""
     return EffectiveConfiguration(
         analysis=AnalysisSettings.model_validate(
-            settings.analysis.model_dump() | overrides.analysis.model_dump(exclude_unset=True)
+            settings.analysis.model_dump()
+            | overrides.analysis.model_dump(exclude_unset=True)
+            | {"max_critic_cycles": 0}
         ),
         performance=PerformanceSettings.model_validate(
-            settings.performance.model_dump() | overrides.performance.model_dump(exclude_unset=True)
+            settings.performance.model_dump()
+            | overrides.performance.model_dump(exclude_unset=True)
+            | {"parallel_tools": False}
         ),
     )

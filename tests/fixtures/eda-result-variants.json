@@ -1,0 +1,6 @@
+[
+  {"method":"descriptive_statistics","status":"SUCCESS","completeness":"complete","variables":["amount"],"result":{"amount":{"count":40,"mean":12.5}},"column_results":{"amount":{"status":"SUCCESS","result":{"count":40,"mean":12.5},"warnings":[]}}},
+  {"method":"outliers","status":"SUCCESS","completeness":"partial","variables":["amount","sparse","broken"],"result":{"amount":{"iqr":{"count":0}}},"column_results":{"amount":{"status":"SUCCESS","result":{"iqr":{"count":0}},"warnings":[]},"sparse":{"status":"SKIPPED","result":null,"warnings":["insufficient observations"]},"broken":{"status":"FAILED","result":null,"warnings":["column calculation failed"]}}},
+  {"method":"outliers","status":"SKIPPED","completeness":"complete","variables":["sparse"],"result":null,"warnings":["No columns produced calculated results."],"column_results":{"sparse":{"status":"SKIPPED","result":null,"warnings":["insufficient observations"]}}},
+  {"method":"relationship_ranking","status":"FAILED","completeness":"complete","variables":[],"result":null,"warnings":["top_k must be an integer between 1 and 1000."],"column_results":{}}
+]

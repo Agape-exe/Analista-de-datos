@@ -25,6 +25,40 @@ class MarkdownReportRenderer:
                     f"Columnas: {report.dataset_profile.column_count}",
                 ]
             )
+        lines.extend(
+            [
+                "## Contexto y plan",
+                plain(report.user_question or "Sin pregunta registrada"),
+                "Dataset: " + plain(report.dataset_id or "Sin identificador registrado"),
+                "Política: "
+                + plain(
+                    report.analysis_plan.policy_version
+                    if report.analysis_plan
+                    else "Sin plan registrado"
+                ),
+            ]
+        )
+        if report.audit_version is None:
+            lines.append(
+                "Reporte histórico sin snapshot de auditoría ni instrumentación garantizada."
+            )
+        for step in report.analysis_plan.steps if report.analysis_plan else []:
+            lines.append(
+                plain(
+                    f"{step.step_id}: {step.request.method} ({', '.join(step.request.variables)})"
+                )
+            )
+        lines.extend(
+            [
+                "## Configuración efectiva",
+                "```json",
+                json.dumps(report.configuration, ensure_ascii=False, indent=2),
+                "```",
+            ]
+        )
+        lines.append("## Traza")
+        for event in report.execution_trace:
+            lines.append(plain(json.dumps(event, ensure_ascii=False)))
         lines.append("## Insights")
         if not report.insights:
             lines.append("No se generaron insights respaldados por evidencia.")

@@ -86,11 +86,10 @@ async def test_tool_preserves_insufficient_sample_behavior(values):
     result = await registry.get("outliers").execute(
         ToolRequest(dataset_id="ds", method="outliers", variables=["v"])
     )
-    assert result.status == "SUCCESS"
-    assert result.result["v"] == {
-        "semantic_type": "numeric",
-        "skipped": "insufficient observations",
-    }
+    assert result.status == "SKIPPED"
+    assert result.result is None
+    assert result.column_results["v"].status == "SKIPPED"
+    assert result.column_results["v"].warnings == ["insufficient observations"]
 
 
 async def test_multiple_columns_use_positions_not_dataframe_index_and_never_mutate():

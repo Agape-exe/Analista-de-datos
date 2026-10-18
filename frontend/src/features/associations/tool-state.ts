@@ -53,6 +53,9 @@ const count = (value: unknown): value is number => typeof value === "number" && 
 
 /** Single, validated way to read the `outliers` tool for one column. */
 export function readOutliers(tool: Tool, column: string | undefined): OutlierReading {
+  const outcome = column ? tool.data?.column_results?.[column] : undefined;
+  if (!tool.loading && !tool.stale && outcome?.status === "SKIPPED"
+    && outcome.warnings?.includes("insufficient observations")) return { kind: "small-sample" };
   const problem = toolProblem(tool);
   if (problem) return { kind: "problem", problem };
   if (!column || tool.loading || tool.stale || !tool.data) return { kind: "pending" };
