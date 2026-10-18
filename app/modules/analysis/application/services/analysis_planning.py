@@ -270,7 +270,6 @@ class DeterministicAnalysisPlanner:
                 for candidate in candidates
                 if candidate.screening_rank is not None or candidate.priority > 0
             ] or candidates
-        unranked = len(screening)
         return sorted(
             candidates,
             key=lambda candidate: (-candidate.priority, candidate.family),
