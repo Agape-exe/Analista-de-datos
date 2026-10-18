@@ -1,0 +1,161 @@
+{
+  "path": {
+    "get": {
+      "summary": "Preview Dataset",
+      "description": "Read a bounded page in original order; positions are not persistent row IDs.",
+      "operationId": "preview_dataset_datasets__dataset_id__preview_get",
+      "parameters": [
+        {
+          "name": "dataset_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "title": "Dataset Id"
+          }
+        },
+        {
+          "name": "offset",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "default": 0,
+            "title": "Offset"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 100,
+            "minimum": 1,
+            "default": 20,
+            "title": "Limit"
+          }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Successful Response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetPreview"
+              }
+            }
+          }
+        },
+        "404": {
+          "description": "Dataset no longer registered in memory"
+        },
+        "413": {
+          "description": "Preview exceeds row, cell or UTF-8 JSON budgets"
+        },
+        "422": {
+          "description": "Invalid pagination or unsupported preview value/table"
+        },
+        "429": {
+          "description": "Shared exploration rate or operation capacity exceeded"
+        }
+      }
+    }
+  },
+  "schema": {
+    "properties": {
+      "dataset_id": {
+        "type": "string",
+        "title": "Dataset Id"
+      },
+      "columns": {
+        "items": {
+          "$ref": "#/components/schemas/ColumnSchema"
+        },
+        "type": "array",
+        "title": "Columns"
+      },
+      "rows": {
+        "items": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "type": "array",
+        "title": "Rows"
+      },
+      "total_rows": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Total Rows"
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0.0,
+        "title": "Offset"
+      },
+      "limit": {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 1.0,
+        "title": "Limit"
+      },
+      "returned_rows": {
+        "type": "integer",
+        "maximum": 100.0,
+        "minimum": 0.0,
+        "title": "Returned Rows"
+      },
+      "has_more": {
+        "type": "boolean",
+        "title": "Has More"
+      },
+      "next_offset": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Next Offset"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+      "dataset_id",
+      "columns",
+      "rows",
+      "total_rows",
+      "offset",
+      "limit",
+      "returned_rows",
+      "has_more",
+      "next_offset"
+    ],
+    "title": "DatasetPreview",
+    "description": "Bounded rows in source order. rows[i][j] belongs to columns[j].\n\nTemporal scalars use ISO 8601 strings, Decimal uses lossless decimal strings,\nmissing values use null. Non-finite infinities and unsupported objects are rejected."
+  }
+}

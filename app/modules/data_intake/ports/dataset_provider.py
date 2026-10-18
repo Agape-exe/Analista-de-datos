@@ -4,7 +4,7 @@ from app.shared.contracts.datasource import RegisteredDataset
 
 
 class DatasetProvider(Protocol):
-    """Resolve a dataset_id to local data; raw rows never leave the process."""
+    """Resolve local data by dataset_id; HTTP consumers expose only explicit bounded DTOs."""
 
     async def get(self, dataset_id: str) -> RegisteredDataset: ...
 
