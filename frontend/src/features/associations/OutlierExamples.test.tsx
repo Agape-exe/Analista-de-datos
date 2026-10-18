@@ -122,13 +122,14 @@ it("ColumnExplorer descarta respuesta tardía tras cambiar columna y no pierde l
     return column === "amount" ? new Promise<Response>((done) => { resolve = done; }) : response(result("other", [{ row_index: 15, value: 900 }]));
   });
   const user = userEvent.setup(); render(explorer());
-  await screen.findByText("Consultando ejemplos IQR…");
-  await act(async () => {});
+  await waitFor(() => expect(requests).toHaveLength(1));
   await user.selectOptions(screen.getByLabelText("Columna"), "other");
-  expect(await screen.findByRole("rowheader", { name: "Registro 16" })).toBeInTheDocument();
-  expect(requests[0].signal?.aborted).toBe(true);
+  // The server keeps computing a request already sent, so it keeps its slot until it answers.
+  await screen.findByText("Consultando ejemplos IQR…");
+  expect(requests).toHaveLength(1);
   await act(async () => resolve(response(result())));
-  expect(screen.getByRole("rowheader", { name: "Registro 16" })).toBeInTheDocument();
+  expect(await screen.findByRole("rowheader", { name: "Registro 16" })).toBeInTheDocument();
+  expect(requests).toHaveLength(2);
   expect(screen.queryByRole("rowheader", { name: "Registro 4" })).not.toBeInTheDocument();
 });
 
@@ -159,7 +160,7 @@ it("la herramienta se consulta después de finalizar las solicitudes dependiente
   const fetchMock = vi.fn(async (url: string) => url.endsWith("/outliers") ? response(result())
     : new Promise<Response>((done) => pending.push(() => done(response(toolFixtures[url.split("/tools/")[1]])))));
   vi.stubGlobal("fetch", fetchMock); render(explorer());
-  expect(fetchMock).toHaveBeenCalledTimes(2);
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
   while (pending.length > 0) await act(async () => pending.shift()?.(response({})));
   await screen.findByRole("rowheader", { name: "Registro 4" });
   expect(fetchMock).toHaveBeenCalledTimes(4);

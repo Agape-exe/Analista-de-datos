@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PRIORITY } from "../../lib/api-client";
 import { BoxPlot } from "../../components/charts/BoxPlot";
 import { formatValue } from "../../components/charts/chart-utils";
 import { Histogram } from "../../components/charts/Histogram";
@@ -23,7 +24,7 @@ export function ColumnExplorer({ datasetId, numeric, categorical, totalRows }: {
   // Outliers run after the column-dependent requests so they never compete with them.
   // Grouping only the boxplot does not change the outlier query or trigger another evaluation.
   const waiting = histogram.loading || summary.loading;
-  const outliers = useTool(datasetId, "outliers", column && !waiting ? [column] : null);
+  const outliers = useTool(datasetId, "outliers", column && !waiting ? [column] : null, {}, { priority: PRIORITY.secondary });
   const outlierTool = { ...outliers, loading: waiting || outliers.loading };
   const stats = summary.data?.status === "SUCCESS"
     ? (summary.data.result as Record<string, NumericSummary> | undefined)?.[column] : undefined;

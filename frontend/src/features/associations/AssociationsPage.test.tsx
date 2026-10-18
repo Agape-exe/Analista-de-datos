@@ -64,6 +64,37 @@ describe("associations page", () => {
       && call.variables.join() === "amount,category")).toBe(true);
   });
 
+  it("asks for the primary results first, one request at a time, and outliers last", async () => {
+    let active = 0, peak = 0;
+    const fetchMock = mockBackend();
+    const respond = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      peak = Math.max(peak, ++active);
+      try { return await respond(url, init); } finally { active -= 1; }
+    });
+    await openAssociations();
+    await waitFor(() => expect(requestedTools(fetchMock).some((call) => call.tool === "outliers")).toBe(true), { timeout: 3000 });
+    const tools = requestedTools(fetchMock).map((call) => call.tool);
+    expect(tools.slice(0, 2)).toEqual(["relationship_ranking", "chart_correlation_heatmap"]);
+    expect(tools.indexOf("outliers")).toBeGreaterThan(tools.indexOf("descriptive_statistics"));
+    expect(new Set(tools).size).toBe(tools.length);
+    expect(peak).toBe(1);
+  });
+
+  it("lets the user retry the ranking after the analysis service stayed busy", async () => {
+    let calls = 0;
+    mockBackend({
+      relationship_ranking: () => (calls++ === 0
+        ? new Response(JSON.stringify({ detail: { code: "ANALYSIS_CAPACITY_EXCEEDED", message: "busy" } }),
+          { status: 429, headers: { "Retry-After": "60" } })
+        : new Response(JSON.stringify(toolFixtures.relationship_ranking), { status: 200 })),
+    });
+    const user = await openAssociations();
+    const alert = await screen.findByText(/El servicio de análisis está ocupado/);
+    await user.click(within(alert.closest("[role=alert]") as HTMLElement).getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("Candidatas significativas")).toBeInTheDocument();
+  });
+
   it("explains when the dataset is no longer in server memory", async () => {
     mockBackend({ relationship_ranking: () => new Response(JSON.stringify({
       detail: { code: "DATASET_NOT_FOUND", message: "The dataset is no longer in memory." },
