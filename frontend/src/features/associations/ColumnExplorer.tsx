@@ -6,20 +6,26 @@ import { Histogram } from "../../components/charts/Histogram";
 import { Card } from "../../components/ui/card";
 import type { BoxPlotChart, HistogramChart, NumericSummary, OutlierSummary } from "../../types/exploration";
 import { useTool } from "./useTool";
+import { OutlierExamples } from "./OutlierExamples";
 
-export function ColumnExplorer({ datasetId, numeric, categorical }: {
+export function ColumnExplorer({ datasetId, numeric, categorical, totalRows }: {
   datasetId: string;
   numeric: string[];
   categorical: string[];
+  totalRows: number;
 }) {
   const [column, setColumn] = useState(numeric[0]);
   const [groupBy, setGroupBy] = useState("");
   const histogram = useTool(datasetId, "chart_histogram", [column]);
   const box = useTool(datasetId, "chart_boxplot", groupBy ? [column, groupBy] : [column]);
   const summary = useTool(datasetId, "descriptive_statistics", [column]);
-  const outliers = useTool(datasetId, "outliers", [column]);
+  // Wait for column-dependent requests without a global queue. Grouping only
+  // the boxplot does not change the outlier query or trigger another evaluation.
+  const waiting = histogram.loading || summary.loading;
+  const outliers = useTool(datasetId, "outliers", column && !waiting ? [column] : null);
   const stats = (summary.data?.result as Record<string, NumericSummary> | undefined)?.[column];
-  const outlierStats = (outliers.data?.result as Record<string, OutlierSummary> | undefined)?.[column];
+  const outlierStats = !waiting && !outliers.loading && !outliers.stale && outliers.data?.status === "SUCCESS"
+    ? (outliers.data.result as Record<string, OutlierSummary> | undefined)?.[column] : undefined;
 
   return <Card className="explorer-card">
     <div className="card-heading"><div><h2>Distribución de columna</h2>
@@ -39,8 +45,8 @@ export function ColumnExplorer({ datasetId, numeric, categorical }: {
         ["Media", stats?.mean], ["Mediana", stats?.median], ["Desv. estándar", stats?.std],
         ["Mínimo", stats?.min], ["Máximo", stats?.max], ["Asimetría", stats?.skewness],
       ].map(([label, value]) => <div key={label as string}><dt>{label}</dt><dd>{formatValue(value as number | null | undefined)}</dd></div>)}
-      <div><dt>Atípicos (IQR)</dt><dd>{outlierStats ? `${outlierStats.iqr.count} (${formatValue(outlierStats.iqr.percentage, 1)}%)` : "—"}</dd></div>
-      <div><dt>Atípicos robustos (MAD)</dt><dd>{outlierStats?.mad.count == null ? "—" : outlierStats.mad.count}</dd></div>
+      <div><dt>Atípicos (IQR)</dt><dd>{outlierStats?.iqr ? `${outlierStats.iqr.count} (${formatValue(outlierStats.iqr.percentage, 1)}%)` : "—"}</dd></div>
+      <div><dt>Atípicos robustos (MAD)</dt><dd>{outlierStats?.mad?.count == null ? "—" : outlierStats.mad.count}</dd></div>
     </dl>
     <div className="explorer-charts">
       <div><h3 className="chart-title">Distribución</h3>
@@ -55,6 +61,7 @@ export function ColumnExplorer({ datasetId, numeric, categorical }: {
         {box.data?.warnings?.map((note) => <p className="chart-note" key={note}>{note}</p>)}
       </div>
     </div>
+    <OutlierExamples column={column} totalRows={totalRows} tool={{ ...outliers, loading: waiting || outliers.loading }} />
   </Card>;
 }
 

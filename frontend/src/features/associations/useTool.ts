@@ -22,7 +22,8 @@ export function useTool(
   datasetId: string | undefined, tool: string, variables: string[] | null,
   parameters: Record<string, string | number> = {},
 ) {
-  const key = datasetId && variables ? JSON.stringify([datasetId, tool, variables, parameters]) : null;
+  const [attempt, setAttempt] = useState(0);
+  const key = datasetId && variables ? JSON.stringify([datasetId, tool, variables, parameters, attempt]) : null;
   const [state, setState] = useState<ToolState>({ key: null });
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export function useTool(
     const [id, name, names, params] = JSON.parse(key) as [string, string, string[], Record<string, string | number>];
     const controller = new AbortController();
     runTool(id, name, { variables: names, parameters: params }, controller.signal)
-      .then((data) => setState({ key, data }))
+      .then((data) => { if (!controller.signal.aborted) setState({ key, data }); })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setState({ key, error: {
@@ -48,5 +49,6 @@ export function useTool(
     error: current ? state.error : undefined,
     loading: key !== null && !current,
     stale: key !== null && !current && state.data !== undefined,
+    retry: () => setAttempt((value) => value + 1),
   };
 }

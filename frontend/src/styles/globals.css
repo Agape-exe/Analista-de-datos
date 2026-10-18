@@ -291,6 +291,16 @@ tbody tr:hover { background: #fcfcff; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
+/* AUD-018: bounded IQR examples with original dataset positions. */
+.outlier-examples { border-top: 1px solid var(--border); margin-top: 24px; padding-top: 20px; min-width: 0; }
+.outlier-examples h3 { display: flex; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 10px; }
+.outlier-examples > p { margin: 10px 0; color: #59647a; font-size: 11px; overflow-wrap: anywhere; }
+.outlier-examples-table { min-width: 320px; }
+.outlier-examples-table th { color: #59647a; }
+.outlier-examples [role="status"] { display: flex; gap: 8px; align-items: center; }
+.outlier-examples [role="alert"] { margin-top: 12px; color: #795016; }
+.outlier-examples [role="alert"] .button { margin-top: 10px; }
+
 /* AUD-014: server quality aggregates, no global quality score. */
 .data-quality-page { min-width: 0; --muted: #5c667a; }
 .data-quality-page .page-heading p, .quality-rules code { overflow-wrap: anywhere; }
