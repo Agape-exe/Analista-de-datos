@@ -46,7 +46,7 @@ AUD-044 Chat no se implementa: no se verificó AUD-039 fusionado en la base con
 contrato, endpoint y pruebas utilizables.
 
 Estado de publicación de esta revisión: commit de implementación
-`72c5293e6c05d261d11314797ef4dd3c3479d55d` (`fix(i5): make report evidence
+`72c52932776e45a1e500ffcc30bf53381a102e13` (`fix(i5): make report evidence
 traceable`). La última CI remota documentada para PR #41 es
 [39130025022](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022)
 (global fallida; los cuatro E2E de Métricas/Traza pasan). El PR sigue siendo el
