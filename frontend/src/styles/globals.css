@@ -217,6 +217,8 @@ tbody tr:hover { background: #fcfcff; }
 :root { --series-1: #2a78d6; --series-1-wash: #2a78d61a; --grid: #edf0f5; --axis: #c9cfda; --ink-secondary: #52514e; }
 .associations-page .page-heading { margin-bottom: 20px; }
 .candidates-note { margin: 0 0 24px; }
+.claim-levels { margin: 6px 0 0; padding-left: 16px; display: grid; gap: 4px; font-size: 10px; }
+.claim-levels a { color: inherit; text-decoration: underline; }
 .associations-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .ranking-card, .heatmap-card, .explorer-card, .patterns-card { padding: 22px; margin-top: 24px; }
 .ranking-card { margin-top: 0; }

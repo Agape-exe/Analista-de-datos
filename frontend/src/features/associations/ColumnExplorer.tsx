@@ -5,6 +5,7 @@ import { formatValue } from "../../components/charts/chart-utils";
 import { Histogram } from "../../components/charts/Histogram";
 import { Card } from "../../components/ui/card";
 import type { BoxPlotChart, HistogramChart, NumericSummary } from "../../types/exploration";
+import { explainNote } from "./notes";
 import { OutlierExamples } from "./OutlierExamples";
 import { readOutliers, toolProblem, type OutlierReading } from "./tool-state";
 import { ColumnOutcomes, ToolNotice } from "./ToolNotice";
@@ -68,7 +69,7 @@ export function ColumnExplorer({ datasetId, numeric, categorical, totalRows }: {
         {box.data?.status === "SUCCESS"
           ? <BoxPlot chart={box.data.result as unknown as BoxPlotChart} stale={box.stale} />
           : <ToolNotice tool={box} />}
-        {box.data?.warnings?.map((note) => <p className="chart-note" key={note}>{note}</p>)}
+        {box.data?.warnings?.map((note) => <p className="chart-note" key={note}>{explainNote(note)}</p>)}
       </div>
     </div>
     <OutlierExamples column={column} totalRows={totalRows} tool={outlierTool} />

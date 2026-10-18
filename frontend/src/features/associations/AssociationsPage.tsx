@@ -12,6 +12,7 @@ import { useIntake } from "../data-intake/IntakeProvider";
 import { ColumnExplorer } from "./ColumnExplorer";
 import { RelationshipDetail } from "./RelationshipDetail";
 import { relationshipKey, RelationshipTable } from "./RelationshipTable";
+import { explainNote } from "./notes";
 import { ToolNotice } from "./ToolNotice";
 import { useTool, type ToolError } from "./useTool";
 
@@ -51,15 +52,21 @@ export function AssociationsPage() {
       <p>Relaciones candidatas entre columnas de {result.filename}, ordenadas por un puntaje de fuerza comparable.</p></div>
 
     <div className="info-note candidates-note"><Info size={16} /><div><strong>Son candidatas estadísticas, no hallazgos.</strong>
-      <p>Cada par se evalúa con el método adecuado a sus tipos de columna. Los valores p se corrigen por comparaciones múltiples
-        ({data?.correction ?? "Benjamini-Hochberg"}) y solo se listan los pares por debajo de α = {data?.significance_level ?? 0.05}.
-        Correlación no implica causalidad; los controles de robustez vienen después.</p></div></div>
+      <ul className="claim-levels" aria-label="Cómo leer estos resultados">
+        <li><strong>Descripción:</strong> el puntaje y el tamaño del efecto miden cuán marcada es la covariación en estos datos.</li>
+        <li><strong>Asociación:</strong> las columnas varían juntas en este dataset; cada par se evalúa con el método adecuado a sus tipos.</li>
+        <li><strong>Significancia:</strong> los valores p se corrigen por comparaciones múltiples ({data?.correction ?? "Benjamini-Hochberg"}) y solo
+          se listan los pares con p ajustado ≤ α = {data?.significance_level ?? 0.05}. Un p bajo indica que la asociación es poco compatible
+          con el azar; no mide su magnitud, su robustez ni si es espuria.</li>
+        <li><strong>Causalidad:</strong> nunca se infiere aquí. La revisión de robustez y posibles confusores está en{" "}
+          <Link to="/relations">Relaciones</Link> y <Link to="/report">Hallazgos</Link>.</li>
+      </ul></div></div>
 
     {ranking.loading && !ranking.data && <div className="processing-panel" role="status"><LoaderCircle size={16} className="spin" />
       <div><strong>Evaluando pares de columnas…</strong><p>Ejecutando pruebas de correlación, de grupos y de contingencia en cada par elegible.</p></div></div>}
     {ranking.error && <ErrorPanel error={ranking.error} onRetry={ranking.retry} />}
     {ranking.data && ranking.data.status !== "SUCCESS" && <div className="info-note"><Info size={16} /><div>
-      <strong>No se pudieron evaluar asociaciones.</strong><p>{ranking.data.warnings?.[0]}</p></div></div>}
+      <strong>No se pudieron evaluar asociaciones.</strong><p>{explainNote(ranking.data.warnings?.[0] ?? "")}</p></div></div>}
 
     {data && <>
       <div className="metrics-grid associations-metrics">
@@ -70,19 +77,22 @@ export function AssociationsPage() {
       </div>
 
       <Card className="ranking-card"><div className="card-heading"><div><h2>Relaciones ordenadas</h2>
-        <p>El puntaje es |r|, |ρ|, V de Cramér, η o √ε², todos en escala de 0 a 1. Selecciona una fila para inspeccionarla.</p></div>
+        <p>El puntaje (0 a 1) hace comparables |r|, |ρ|, V de Cramér, η y √ε²; el tamaño del efecto es el valor del propio método.
+          Ambos describen magnitud, no causalidad. Selecciona una fila para inspeccionarla.</p></div>
         <Badge>{relationships.length} candidatas</Badge></div>
         {relationships.length > 0
           ? <RelationshipTable relationships={relationships} selected={selectedKey}
             onSelect={(item: RankedRelationship) => setPicked({ x: item.x, y: item.y })} />
-          : <p className="muted">Ningún par alcanzó significancia tras la corrección.</p>}
+          : <p className="muted">Ningún par alcanzó significancia tras la corrección. Esto no demuestra que no haya asociación:
+            puede faltar tamaño de muestra o la relación puede no ser detectable con estos métodos.</p>}
         {pair && <RelationshipDetail key={selectedKey} datasetId={datasetId} x={pair.x} y={pair.y}
           ranked={byKey.get(selectedKey!)} numeric={numeric} />}
       </Card>
     </>}
 
     {numeric.length >= 2 && <Card className="heatmap-card"><div className="card-heading"><div><h2>Matriz de correlación</h2>
-      <p>r de Pearson entre columnas numéricas, con filas completas por par. Selecciona una celda para inspeccionar el par.</p></div></div>
+      <p>r de Pearson entre columnas numéricas, con filas completas por par. Selecciona una celda para inspeccionar el par.
+        Los valores p de la matriz no están corregidos por comparaciones múltiples: no equivalen a candidatas significativas.</p></div></div>
       {heatmapChart ? <CorrelationHeatmap chart={heatmapChart} stale={heatmap.stale}
         onSelect={(x, y) => setPicked({ x, y })} />
         : <ToolNotice tool={heatmap} loadingLabel="Calculando matriz…"
@@ -94,8 +104,8 @@ export function AssociationsPage() {
     {(excluded.length > 0 || (data?.skipped_pairs.length ?? 0) > 0) && <Card className="warnings-card">
       <div className="card-heading"><h2><TriangleAlert size={17} />No evaluado</h2></div>
       <ul>
-        {excluded.map(([name, reason]) => <li key={name}><strong>{name}</strong>: {reason}</li>)}
-        {data?.skipped_pairs.map((item) => <li key={`${item.x}-${item.y}`}><strong>{item.x} ↔ {item.y}</strong>: {item.reason}</li>)}
+        {excluded.map(([name, reason]) => <li key={name}><strong>{name}</strong>: {explainNote(reason)}</li>)}
+        {data?.skipped_pairs.map((item) => <li key={`${item.x}-${item.y}`}><strong>{item.x} ↔ {item.y}</strong>: {explainNote(item.reason)}</li>)}
       </ul>
     </Card>}
   </div>;

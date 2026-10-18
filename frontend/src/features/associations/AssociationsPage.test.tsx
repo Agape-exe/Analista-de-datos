@@ -55,7 +55,7 @@ describe("associations page", () => {
 
     await user.click(screen.getByRole("button", { name: "Ver amount y category" }));
     expect(await screen.findByRole("figure", { name: "Diagrama de caja de amount por category" })).toBeInTheDocument();
-    expect(screen.getByText("2 group(s) with fewer than 2 observations were excluded.")).toBeInTheDocument();
+    expect(screen.getByText("Se excluyeron 2 grupo(s) con menos de 2 observaciones.")).toBeInTheDocument();
 
     const calls = requestedTools(fetchMock);
     expect(calls.map((call) => call.url)).toContain("/api/datasets/test-dataset/tools/relationship_ranking");
@@ -79,6 +79,33 @@ describe("associations page", () => {
     expect(tools.indexOf("outliers")).toBeGreaterThan(tools.indexOf("descriptive_statistics"));
     expect(new Set(tools).size).toBe(tools.length);
     expect(peak).toBe(1);
+  });
+
+  it("AUD-035: separates description, association, significance and causation", async () => {
+    mockBackend();
+    const user = await openAssociations();
+    const levels = await screen.findByRole("list", { name: "Cómo leer estos resultados" });
+    expect(within(levels).getAllByRole("listitem").map((item) => item.querySelector("strong")?.textContent))
+      .toEqual(["Descripción:", "Asociación:", "Significancia:", "Causalidad:"]);
+    expect(levels).toHaveTextContent("no mide su magnitud, su robustez ni si es espuria");
+    expect(within(levels).getByRole("link", { name: "Relaciones" })).toHaveAttribute("href", "/relations");
+    const table = await screen.findByRole("region", { name: "Relaciones ordenadas" });
+    expect(within(table).getByRole("columnheader", { name: "Tamaño del efecto" })).toBeInTheDocument();
+    expect(within(table).queryByRole("columnheader", { name: "Fuerza" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Los valores p de la matriz no están corregidos/)).toBeInTheDocument();
+    expect(await screen.findByText(/ajuste lineal descriptivo de estos datos; no es un modelo predictivo ni causal/)).toBeInTheDocument();
+    expect(screen.queryByText("Evidencia de apoyo")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ver amount y category" }));
+    // Same wording in the table header and in the pair detail.
+    await waitFor(() => expect(screen.getAllByText("Tamaño del efecto")).toHaveLength(2));
+  });
+
+  it("AUD-035: an empty ranking does not claim that there is no association", async () => {
+    const empty = { ...(toolFixtures.relationship_ranking as { result: Record<string, unknown> }) };
+    mockBackend({ relationship_ranking: () => new Response(JSON.stringify({
+      ...empty, result: { ...empty.result, top_relationships: [], significant_pairs: 0 } }), { status: 200 }) });
+    await openAssociations();
+    expect(await screen.findByText(/Esto no demuestra que no haya asociación/)).toBeInTheDocument();
   });
 
   it("lets the user retry the ranking after the analysis service stayed busy", async () => {
