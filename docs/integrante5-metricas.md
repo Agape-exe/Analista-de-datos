@@ -408,3 +408,9 @@ idéntico al de `origin/develop` revisado. Los cuatro fallos globales y dos
 errores Ruff se reprodujeron expresamente en un checkout de esa base.
 El inventario archivo por archivo, la conservación de Render y los resultados
 actuales están en [la revisión de entrega](integrante5-entrega.md).
+
+En Actions real sobre `d6acf37`, los dos E2E de Métricas y los dos de Traza
+pasan en Chromium Linux, con anchos de 1440/390 px. La suite completa conserva
+17 aprobadas y tres fallidas en recorridos existentes; backend/Ruff también
+siguen fallando. Se mantienen los informes y no se declara CI aprobada.
+La tabla de jobs, URL, SHA y atribución de fallos está en la revisión de entrega.

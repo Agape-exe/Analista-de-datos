@@ -7,6 +7,13 @@ su base, pruebas repetidas y evidencia remota se registran en
 [Entrega de I5](integrante5-entrega.md). AUD-007 requiere todos sus jobs reales
 aprobados en el SHA correspondiente; preparar el workflow no la aprueba.
 
+Revisión de entrega: el [PR #41](https://github.com/Alexander20L/Analista-de-datos/pull/41)
+ya tiene Actions real. Las ejecuciones `39107327083` (`87604e3`) y `39130025022`
+(`d6acf37`) terminan en **failure**: pytest y Ruff reproducen fallos de base;
+la segunda ejecución Chromium Linux da 17 aprobadas y tres fallidas, sin
+omitidas. Métricas/Traza pasan sus cuatro E2E. Los nueve jobs y sus URLs están
+en [Entrega de I5](integrante5-entrega.md); no se declara AUD-007 aprobada.
+
 ## Base y alcance
 
 Se leyeron `AGENTS.md`, `docs/architecture.md`, `docs/aud-037-summary.md` y las

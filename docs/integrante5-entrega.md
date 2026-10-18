@@ -1,8 +1,8 @@
 # Revisión de entrega I5 — AUD-007, Métricas y Traza
 
-Revisión del 18 de octubre de 2026. **Preparada para revisión; no aprobada**.
-Actions y Playwright Linux requieren evidencia remota del SHA del PR; los fallos
-obligatorios no se excluyen. Render continúa pendiente de medición del staging
+Revisión del 18 de octubre de 2026. **PR preparado para revisión; no aprobado**.
+Actions real termina en fallo; los recorridos nuevos de Métricas/Traza pasan en
+Chromium Linux. Los fallos obligatorios no se excluyen. Render continúa pendiente de medición del staging
 desplegado. No se ejecuta ningún despliegue.
 
 ## Base y atribución
@@ -220,6 +220,62 @@ Ejecuta todos aunque alguno falle, conserva un estado global fallido y guarda
 JUnit/HTML/trazas separados por archivo. No cambia el comando público
 `npm run test:e2e`, algoritmos ni guardas. La ejecución siguiente del SHA que
 incorpora este aislamiento debe consultarse antes de evaluar su resultado.
+
+### Ejecución del aislamiento
+
+Segunda ejecución real:
+[39130025022](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022),
+workflow `CI`, `pull_request`, Ubuntu 24.04, SHA de cabecera
+`d6acf370da8c4415ca39682237493665d551b1ce`. **Resultado global: failure**.
+
+| Job | Resultado | Evidencia |
+| --- | --- | --- |
+| Backend / architecture-checker | success | [117683112455](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112455) |
+| Backend / architecture-tests | success | [117683112511](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112511) |
+| Backend / pytest | failure, mismos cuatro casos | [117683112324](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112324) |
+| Backend / ruff-check | failure, mismos dos errores | [117683112387](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112387) |
+| Backend / ruff-format | success | [117683112454](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112454) |
+| Frontend / vitest | success | [117683112406](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112406) |
+| Frontend / eslint | success | [117683112430](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112430) |
+| Frontend / build | success | [117683112429](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112429) |
+| E2E / Chromium Linux | failure: 17 aprobadas, 3 fallidas, 0 omitidas | [117683112427](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022/job/117683112427) |
+
+Se descargaron y revisaron los doce JUnit del artefacto
+`playwright-chromium-linux` (12138070958): suman veinte casos, sin omitidos.
+Métricas 2/2 y Traza 2/2 pasan; también pasan sus dependencias de navegación,
+identidad y Resumen. Se revisaron las capturas/contextos y logs de los tres
+fallos. El runner continuó tras el primer fallo, ejecutó los doce archivos y
+devolvió código 1, sin ocultar ninguno.
+
+Pendientes que impiden aprobar CI:
+
+- **Fallos previos demostrados**: cuatro pytest y dos errores Ruff reproducidos
+  sobre develop y de nuevo en Actions. Resolver en Planner/Critic y sus pruebas,
+  en los alcances AUD-001/AUD-002/AUD-006; no se cambian aquí.
+- **E2E de pagos**: falta `additive_identity`; se llega a un reporte SUCCESS y
+  falla al acceder al resultado ausente. Coincide con la ausencia reproducida
+  por la prueba backend de base. No se cambia la expectativa ni el algoritmo.
+- **E2E de Asociaciones y regreso desde Hallazgos**: `ANALYSIS_CAPACITY_EXCEEDED`
+  visible en página, aun con backend nuevo por archivo. Se requiere investigar
+  el transporte concurrente de Asociaciones y la capacidad del backend (AUD-004).
+  Esos archivos funcionales son idénticos a develop. No se ejecutó la suite E2E
+  de develop en Linux: no se certifica su preexistencia como resultado E2E de
+  base ni se descarta una interacción de integración; quedan abiertos.
+- **Entorno local**: el runner nuevo también se ejecutó completo en Windows;
+  descubrió doce archivos y veinte casos, todos fallaron antes de aserciones
+  por `spawn UNKNOWN`. Preservó los doce informes y devolvió 1. El problema
+  de lanzamiento local no está resuelto ni afecta a la evidencia Linux real.
+
+Comprobaciones adicionales del runner: `node scripts/run-e2e-ci.mjs --list`
+descubre los doce archivos; `npm run lint` y actionlint pasan. No cambian locks,
+dependencias, algoritmos, límites ni las aserciones de pruebas existentes.
+
+El commit posterior a esta evidencia solo actualiza documentación. La revisión
+exacta y las comprobaciones de la cabecera vigente deben consultarse en el
+[PR #41](https://github.com/Alexander20L/Analista-de-datos/pull/41), sin extrapolar
+la ejecución de un SHA a otro. No hay bloqueo vigente de permisos de GitHub:
+se creó el PR y los nueve jobs reales se ejecutaron. El rechazo temporal de la
+revisión automática por cuota se resolvió al retomar la tarea.
 
 Render permanece **pendiente**: no hay medición nueva del staging desplegado
 y no se realizó despliegue.
