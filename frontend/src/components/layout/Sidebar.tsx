@@ -16,7 +16,7 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
     { label: "Anomalías", icon: TriangleAlert },
   ] },
   { label: "Análisis", links: [
-    { label: "Relaciones", icon: GitBranch }, { label: "Hallazgos", icon: Sparkles, to: "/report" },
+    { label: "Relaciones", icon: GitBranch, to: "/relations" }, { label: "Hallazgos", icon: Sparkles, to: "/report" },
   ] },
   { label: "Evaluación", links: [
     { label: "Traza", icon: ListChecks }, { label: "Métricas", icon: Activity },

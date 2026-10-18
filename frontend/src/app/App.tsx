@@ -7,6 +7,7 @@ import { DatasetOverviewPage } from "../features/dataset/DatasetOverviewPage";
 import { DataDictionaryPage } from "../features/dataset/DataDictionaryPage";
 import { ReportPage } from "../features/reports/ReportPage";
 import { ReportProvider } from "../features/reports/ReportProvider";
+import { RelationsPage } from "../features/relations/RelationsPage";
 
 export function App() {
   return <IntakeProvider><ReportProvider><Routes><Route element={<AppShell />}>
@@ -15,6 +16,7 @@ export function App() {
     <Route path="dataset" element={<DatasetOverviewPage />} />
     <Route path="dictionary" element={<DataDictionaryPage />} />
     <Route path="associations" element={<AssociationsPage />} />
+    <Route path="relations" element={<RelationsPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Route></Routes></ReportProvider></IntakeProvider>;
 }
