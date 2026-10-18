@@ -12,7 +12,7 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
     { label: "Calidad de datos", icon: ShieldCheck, to: "/quality" }, { label: "Diccionario de datos", icon: BookOpen, to: "/dictionary" },
   ] },
   { label: "Exploración", links: [
-    { label: "Asociaciones", icon: ScanSearch, to: "/associations" }, { label: "Patrones", icon: Layers },
+    { label: "Asociaciones", icon: ScanSearch, to: "/associations" }, { label: "Patrones", icon: Layers, to: "/patterns" },
     { label: "Anomalías", icon: TriangleAlert },
   ] },
   { label: "Análisis", links: [
