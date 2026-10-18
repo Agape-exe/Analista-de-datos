@@ -1,5 +1,9 @@
 from collections.abc import Callable
 
+# ==========================================================
+# 1. MÓDULO ANALYSIS
+# ==========================================================
+from app.modules.analysis.adapters.analytics.correlation import PartialCorrelationTool
 from app.modules.analysis.adapters.analytics.factory import build_statistical_tool_registry
 from app.modules.analysis.adapters.analytics.mixed import AnovaGroupProfiler
 from app.modules.analysis.adapters.orchestration.graph import LangGraphWorkflow
@@ -8,7 +12,18 @@ from app.modules.analysis.application.agents.association import AssociationAgent
 from app.modules.analysis.application.agents.planner import PlannerAgent
 from app.modules.analysis.application.use_cases.analyze_dataset import AnalyzeDataset
 from app.modules.analysis.ports.agent import Agent
+
+# ==========================================================
+# 2. MÓDULO CRITICAL REVIEW
+# ==========================================================
+from app.modules.critical_review.adapters.partial_correlation_intake import (
+    PartialCorrelationIntakeAdapter,
+)
 from app.modules.critical_review.application.agents.critic import CriticAgent
+
+# ==========================================================
+# 3. MÓDULO DATA INTAKE
+# ==========================================================
 from app.modules.data_intake.adapters.datasource.csv_source import CsvDataSource
 from app.modules.data_intake.adapters.datasource.dataset_preview import PandasDatasetPreviewReader
 from app.modules.data_intake.adapters.datasource.dataset_store import InMemoryDatasetStore
@@ -30,6 +45,10 @@ from app.modules.data_intake.application.use_cases.preview_dataset import Previe
 from app.modules.data_intake.ports.data_understanding import DataUnderstanding
 from app.modules.data_intake.ports.dataset_provider import DatasetProvider, DatasetStore
 from app.modules.data_intake.ports.datasource import DataSource
+
+# ==========================================================
+# 4. MÓDULO EXPLORATION
+# ==========================================================
 from app.modules.exploration.adapters.analytics.association.matrix import CorrelationMatrixTool
 from app.modules.exploration.adapters.analytics.association.ranking import RelationshipRankingTool
 from app.modules.exploration.adapters.analytics.association.tools import (
@@ -57,6 +76,10 @@ from app.modules.exploration.adapters.visualization.charts import (
     ScatterTool,
 )
 from app.modules.exploration.application.use_cases.explore_dataset import ExploreDataset
+
+# ==========================================================
+# 5. MÓDULO REPORTING Y COMPONENTES COMPARTIDOS
+# ==========================================================
 from app.modules.reporting.application.agents.insight import InsightAgent
 from app.shared.adapters.llm.disabled import DisabledLLMProvider
 from app.shared.application.dataset_registry import DatasetRegistry
@@ -65,6 +88,10 @@ from app.shared.application.tool_registry import ToolRegistry
 from app.shared.config.settings import EdaSettings, Settings
 from app.shared.ports.llm_provider import LLMProvider
 
+# ==========================================================
+# 6. CONSTRUCCIÓN DEL PROVEEDOR LLM
+# ==========================================================
+
 
 def build_llm(settings: Settings) -> LLMProvider:
     if settings.llm.provider != "disabled":
@@ -72,13 +99,30 @@ def build_llm(settings: Settings) -> LLMProvider:
     return DisabledLLMProvider()
 
 
+# ==========================================================
+# 7. CONSTRUCCIÓN DE FUENTES DE DATOS
+# ==========================================================
+
+
 def build_datasource() -> DataSource:
-    return DataSourceRouter({"csv": CsvDataSource(), "tsv": TsvDataSource()})
+    return DataSourceRouter(
+        {
+            "csv": CsvDataSource(),
+            "tsv": TsvDataSource(),
+        }
+    )
 
 
 def build_data_understanding(settings: Settings) -> DataUnderstanding:
-    return DataUnderstandingService(build_datasource(), settings.data_intake)
+    return DataUnderstandingService(
+        build_datasource(),
+        settings.data_intake,
+    )
 
+
+# ==========================================================
+# 8. HERRAMIENTAS EXISTENTES DE EXPLORACIÓN
+# ==========================================================
 
 EDA_TOOLS: tuple[type[DatasetTool], ...] = (
     DescriptiveStatisticsTool,
@@ -102,36 +146,100 @@ EDA_TOOLS: tuple[type[DatasetTool], ...] = (
 )
 
 
+# ==========================================================
+# 9. ALMACENAMIENTO DE DATASETS
+# ==========================================================
+
+
 def build_dataset_store(settings: Settings) -> DatasetStore:
     return InMemoryDatasetStore(settings.eda.max_cached_datasets)
 
 
-def build_preview_use_case(datasets: DatasetProvider) -> PreviewDataset:
-    return PreviewDataset(datasets, PandasDatasetPreviewReader())
+def build_preview_use_case(
+    datasets: DatasetProvider,
+) -> PreviewDataset:
+    return PreviewDataset(
+        datasets,
+        PandasDatasetPreviewReader(),
+    )
 
 
-def build_tool_registry(settings: Settings, datasets: DatasetProvider) -> ToolRegistry:
+# ==========================================================
+# 10. REGISTRO DE HERRAMIENTAS
+# AUD-038: CORRELACIÓN PARCIAL DESDE EL FRONTEND
+# ==========================================================
+
+
+def build_tool_registry(
+    settings: Settings,
+    datasets: DatasetProvider,
+) -> ToolRegistry:
+
     registry = ToolRegistry()
+
+    # Registrar las herramientas existentes de exploración.
     for tool in EDA_TOOLS:
-        registry.register(tool(datasets, settings.eda, settings.analysis.minimum_sample_size))
+        registry.register(
+            tool(
+                datasets,
+                settings.eda,
+                settings.analysis.minimum_sample_size,
+            )
+        )
+
+    # AUD-038:
+    # Registrar el adaptador de correlación parcial.
+    #
+    # El adaptador recupera el dataset activo y reutiliza
+    # PartialCorrelationTool, que contiene el cálculo
+    # estadístico implementado en el módulo Analysis.
+    #
+    # Así evitamos duplicar el algoritmo y permitimos
+    # que el frontend solicite un control explícito.
+
+    registry.register(
+        PartialCorrelationIntakeAdapter(
+            datasets,
+            PartialCorrelationTool,
+        )
+    )
+
     return registry
 
 
+# ==========================================================
+# 11. CASO DE USO DE INGESTA
+# ==========================================================
+
+
 def build_intake_use_case(
-    settings: Settings, datasets: DatasetStore | None = None
+    settings: Settings,
+    datasets: DatasetStore | None = None,
 ) -> IntakeUploadedDataset:
     """With a store, intake datasets stay resolvable for exploration tools."""
+
     understanding = build_data_understanding(settings)
+
     if datasets is not None:
-        understanding = RegisteringDataUnderstanding(understanding, datasets)
+        understanding = RegisteringDataUnderstanding(
+            understanding,
+            datasets,
+        )
+
     return IntakeUploadedDataset(
         understanding,
         TemporaryUploadStorage(
-            settings.uploads.chunk_size_bytes, settings.uploads.temporary_directory
+            settings.uploads.chunk_size_bytes,
+            settings.uploads.temporary_directory,
         ),
         settings.uploads.max_dataset_bytes,
         settings.uploads.max_dictionary_bytes,
     )
+
+
+# ==========================================================
+# 12. CONSTRUCCIÓN DE AGENTES
+# ==========================================================
 
 
 def build_agents(
@@ -142,11 +250,13 @@ def build_agents(
     eda: EdaSettings | None = None,
 ) -> list[Agent]:
     """Association screening needs local data, so it runs only with a dataset registry."""
+
     screening: list[Agent] = (
         [AssociationAgent(RelationshipScreeningAdapter(datasets, eda))]
         if datasets is not None and eda is not None
         else []
     )
+
     return [
         DataUnderstandingAgent(understanding, datasets),
         *screening,
@@ -162,19 +272,49 @@ def build_agents(
     ]
 
 
-def build_exploration_use_case(settings: Settings, datasets: DatasetProvider) -> ExploreDataset:
-    return ExploreDataset(datasets, build_tool_registry(settings, datasets))
+# ==========================================================
+# 13. CASO DE USO DE EXPLORACIÓN
+# ==========================================================
 
 
-def build_use_case(settings: Settings, stored: DatasetProvider | None = None) -> AnalyzeDataset:
+def build_exploration_use_case(
+    settings: Settings,
+    datasets: DatasetProvider,
+) -> ExploreDataset:
+
+    return ExploreDataset(
+        datasets,
+        build_tool_registry(settings, datasets),
+    )
+
+
+# ==========================================================
+# 14. CASO DE USO DEL SISTEMA MULTIAGENTE
+# ==========================================================
+
+
+def build_use_case(
+    settings: Settings,
+    stored: DatasetProvider | None = None,
+) -> AnalyzeDataset:
     """With a provider, analyses can reuse datasets already understood by intake."""
+
     build_llm(settings)
 
-    def build_run() -> tuple[list[Agent], Callable[[], None]]:
+    def build_run() -> tuple[
+        list[Agent],
+        Callable[[], None],
+    ]:
+
         datasets = DatasetRegistry()
         understanding = build_data_understanding(settings)
+
         if stored is not None:
-            understanding = StoredDataUnderstanding(understanding, stored)
+            understanding = StoredDataUnderstanding(
+                understanding,
+                stored,
+            )
+
         return (
             build_agents(
                 build_llm(settings),
@@ -186,7 +326,17 @@ def build_use_case(settings: Settings, stored: DatasetProvider | None = None) ->
             datasets.clear,
         )
 
-    return AnalyzeDataset(LangGraphWorkflow(settings, run_factory=build_run))
+    return AnalyzeDataset(
+        LangGraphWorkflow(
+            settings,
+            run_factory=build_run,
+        )
+    )
+
+
+# ==========================================================
+# 15. REPOSITORIO DE REPORTES
+# ==========================================================
 
 
 def build_repository(settings: Settings):
@@ -198,9 +348,15 @@ def build_repository(settings: Settings):
     )
 
     url = settings.persistence.database_url
+
     options = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite") else {}
-    if url in {"sqlite://", "sqlite:///:memory:"}:
+
+    if url in {
+        "sqlite://",
+        "sqlite:///:memory:",
+    }:
         options["poolclass"] = StaticPool
+
     if url.startswith("postgresql+psycopg://"):
         options.update(
             connect_args={"sslmode": settings.persistence.effective_postgres_sslmode()},
@@ -209,6 +365,9 @@ def build_repository(settings: Settings):
             max_overflow=0,
             pool_recycle=300,
         )
+
     repository = SqlAlchemyAnalysisRepository(create_engine(url, **options))
+
     repository.initialize()
+
     return repository
