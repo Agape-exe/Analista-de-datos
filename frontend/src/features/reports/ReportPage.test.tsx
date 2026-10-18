@@ -93,6 +93,23 @@ test("analyzes the intake dataset once and keeps the report across tabs", async 
   expect(fetchMock.mock.calls.filter(([url]) => url.includes("/analysis"))).toHaveLength(1);
 });
 
+test("stored analysis keeps the public operational overrides from develop", async () => {
+  const fetchMock = vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture)
+    : url.includes("/preview?") ? json(intakePreviewFixture) : json(successReport));
+  vi.stubGlobal("fetch", fetchMock);
+  const user = await openInsightsAfterIntake();
+  await user.click(screen.getByLabelText("Personalizar configuración"));
+  await user.selectOptions(screen.getByLabelText("Modo de planificación"), "standard");
+  await user.type(screen.getByLabelText("Presupuesto de herramientas"), "2");
+  await user.click(screen.getByRole("button", { name: "Generar reporte" }));
+  await screen.findByText("Estado: Completado");
+  const call = fetchMock.mock.calls.find(([url]) => url.includes("/analysis/")) as unknown as [string, RequestInit];
+  expect(JSON.parse(String(call[1].body)).configuration).toEqual({
+    analysis: { mode: "standard", max_tool_calls: 2 },
+  });
+  expect(screen.queryByLabelText(/Paralelismo/)).not.toBeInTheDocument();
+});
+
 test("a failed run shows its cause and an expired dataset asks for a new upload", async () => {
   const failed = { ...successReport, status: "FAILED", stage_statuses: {}, errors: ["Workflow timeout exceeded"] };
   const responses = [json(failed), json({ detail: { code: "DATASET_NOT_FOUND", message: "gone" } }, 404)];

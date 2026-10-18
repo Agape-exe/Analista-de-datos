@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { DatasetExpiredError, getReport, runStoredAnalysis, type AnalysisReport } from "../../lib/api-client";
+import { DatasetExpiredError, getReport, runStoredAnalysis, type AnalysisReport, type StoredConfiguration } from "../../lib/api-client";
 import { useIntake } from "../data-intake/IntakeProvider";
 
 export interface ReportError {
@@ -34,7 +34,7 @@ interface ReportContextValue {
   notice: string | null;
   loading: boolean;
   error: ReportError | null;
-  generate: (question: string) => Promise<void>;
+  generate: (question: string, configuration?: StoredConfiguration) => Promise<void>;
   recover: (runId: string) => Promise<void>;
 }
 
@@ -134,9 +134,9 @@ export function ReportProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function generate(question: string) {
+  async function generate(question: string, configuration?: StoredConfiguration) {
     if (!datasetId) return;
-    await load("generate", (signal) => runStoredAnalysis(datasetId, question, signal), datasetId);
+    await load("generate", (signal) => runStoredAnalysis(datasetId, question, signal, configuration), datasetId);
   }
 
   async function recover(runId: string) {

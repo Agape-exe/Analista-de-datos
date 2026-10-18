@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { downloadJson } from "../../lib/download";
+import type { StoredConfiguration } from "../../lib/api-client";
 import { useIntake } from "../data-intake/IntakeProvider";
 import { methodLabel, metricLabel, stageLabel, statusLabel } from "./labels";
 import { ReportContextCard } from "./ReportContextCard";
@@ -21,20 +23,44 @@ export function ReportPage() {
   const { result } = useIntake();
   const { report, reportIdentity, loading, error, generate, recover,
     question, setQuestion, runId, setRunId, cancel, notice } = useReport();
+  const [options, setOptions] = useState<StoredConfiguration>({});
+  const [customize, setCustomize] = useState(false);
 
   return <div className="dataset-page report-page">
     <div className="page-heading"><p className="eyebrow">Análisis / Reporte</p>
       <h1>Hallazgos y evidencia</h1><p>Consulta los hallazgos, sus limitaciones y el estado de cada etapa.</p></div>
     <Card className="quality-card">
       <h2>Ejecutar un análisis</h2>
-      {result ? <>
+      {result ? <form onSubmit={(event) => {
+        event.preventDefault();
+        void generate(question, customize ? options : undefined);
+      }}>
         <p>Dataset: {result.filename} · {result.summary.rows} filas · {result.summary.columns} columnas</p>
         <p>Se reutiliza el dataset ya cargado y comprendido en Nuevo análisis; no se vuelve a leer el archivo.</p>
         <label>Pregunta opcional <input aria-label="Pregunta del análisis" value={question} disabled={loading}
           onChange={(event) => setQuestion(event.target.value)} /></label>
-        <Button disabled={loading} onClick={() => void generate(question)}>
+        <label><input type="checkbox" checked={customize} disabled={loading}
+          onChange={(event) => setCustomize(event.target.checked)} />Personalizar configuración</label>
+        {customize && <fieldset disabled={loading}><legend>Opciones operativas</legend>
+          <label>Modo <select aria-label="Modo de planificación" value={options.analysis?.mode ?? ""}
+            onChange={(event) => { const analysis = { ...options.analysis }; if (!event.target.value) delete analysis.mode;
+              else analysis.mode = event.target.value as "fast" | "standard"; setOptions({ ...options, analysis }); }}>
+            <option value="">Valor del servidor</option>
+            <option value="fast">Rápido: diversidad de familias</option><option value="standard">Estándar: más candidatas</option></select></label>
+          {([ ["max_hypotheses", "Máximo de hipótesis", 1, 20], ["max_tool_calls", "Presupuesto de herramientas", 0, 100],
+            ["minimum_sample_size", "Muestra mínima", 2, 250000] ] as const).map(([key, label, min, max]) =>
+            <label key={key}>{label}<input aria-label={label} type="number" min={min} max={max}
+              placeholder="Valor del servidor" value={options.analysis?.[key] ?? ""}
+              onChange={(event) => { const analysis = { ...options.analysis }; if (event.target.value === "") delete analysis[key];
+                else analysis[key] = Number(event.target.value); setOptions({ ...options, analysis }); }} /></label>)}
+          <label>Timeout (segundos)<input aria-label="Timeout (segundos)" type="number" min="0.1" max="120" step="0.1"
+            placeholder="Valor del servidor" value={options.performance?.timeout_seconds ?? ""}
+            onChange={(event) => setOptions({ ...options, performance: event.target.value === "" ? {} : { timeout_seconds: Number(event.target.value) } })} /></label>
+          <p>Ejecución secuencial. Sin ciclos del crítico ni proveedor LLM. El timeout es cooperativo.</p>
+        </fieldset>}
+        <Button type="submit" disabled={loading}>
           {loading ? "Procesando…" : reportIdentity?.matchesActiveDataset ? "Volver a generar" : "Generar reporte"}</Button>
-      </> : <>
+      </form> : <>
         <p>Primero sube y comprende un dataset en Nuevo análisis; el reporte se genera sobre ese dataset.</p>
         <Button asChild variant="outline"><Link to="/">Ir a Nuevo análisis</Link></Button>
       </>}
@@ -60,6 +86,11 @@ export function ReportPage() {
           <a href={`${base}/reports/${encodeURIComponent(report.run_id)}/markdown`}>Descargar informe</a>
           <Link to="/relations">Ver Relaciones</Link><Link to="/metrics">Ver Métricas</Link>
           <Link to="/trace">Ver Traza</Link><Link to="/chat">Consultar en Chat</Link></div>
+      </Card>
+      <Card className="quality-card"><h2>Configuración efectiva</h2>
+        {report.audit_version ? <><pre>{JSON.stringify(report.configuration, null, 2)}</pre>
+          <p>Capacidades operativas: ejecución secuencial, sin ciclo crítico ni LLM.</p></>
+          : <p>Reporte histórico: la configuración operativa no está verificada por un snapshot de auditoría.</p>}
       </Card>
       <Card className="quality-card" id="insights"><h2>Hallazgos</h2>
         {report.insights?.length ? report.insights.map((insight) => <article key={insight.insight_id}>
