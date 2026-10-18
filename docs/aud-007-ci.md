@@ -1,5 +1,10 @@
 # AUD-007 — Integración continua
 
+La [investigación Linux de integración](integrante5-integracion-linux.md)
+documenta la comparación real PR/develop, los rechazos de capacidad y las
+dependencias pendientes. No se han relajado pruebas ni límites; AUD-007 sigue
+pendiente de una ejecución completa aprobada.
+
 Estado de la preparación inicial: **CI configurada; pendiente de validación en
 GitHub y de resolver los fallos obligatorios existentes**. Los resultados de
 esa preparación se conservan abajo como historial. La revisión de entrega,

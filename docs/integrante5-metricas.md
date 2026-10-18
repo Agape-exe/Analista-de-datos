@@ -395,6 +395,11 @@ limpió ni borró ningún archivo local previo.
 
 ## Revisión de entrega I5
 
+La continuación de integración está en la
+[comparación Linux PR/develop](integrante5-integracion-linux.md): los tres
+fallos E2E restantes se reprodujeron en ambas aplicaciones. Se conserva la
+separación entre la validación de estas pantallas y la aprobación global de CI.
+
 Se corrigió una omisión de esta pantalla: Métricas recorría solamente
 `stage_statuses` y ocultaba tiempos válidos de etapas sin estado. Ahora utiliza
 la unión de claves de estados y duraciones, igual que Traza, conservando cero

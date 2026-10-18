@@ -1,5 +1,10 @@
 # Revisión de entrega I5 — AUD-007, Métricas y Traza
 
+Actualización: la [comparación Linux PR/develop](integrante5-integracion-linux.md)
+reproduce los tres fallos E2E pendientes en ambas revisiones y precisa sus
+causas. Sustituye la incertidumbre de atribución indicada en las secciones
+históricas inferiores; CI sigue fallida y el PR continúa en borrador.
+
 Revisión del 18 de octubre de 2026. **PR preparado para revisión; no aprobado**.
 Actions real termina en fallo; los recorridos nuevos de Métricas/Traza pasan en
 Chromium Linux. Los fallos obligatorios no se excluyen. Render continúa pendiente de medición del staging
