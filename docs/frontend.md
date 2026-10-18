@@ -418,6 +418,20 @@ La comparación completa de línea base/backend consta en eda-association.md.
 No se identificaron regresiones nuevas en las comprobaciones ejecutadas; no
 se presentan las suites generales como completamente aprobadas.
 
+## AUD-021 — Contingencia categórica
+
+En Asociaciones, un par de columnas categóricas muestra la tabla de
+`chart_contingency` en lugar del antiguo placeholder: conteos con sombreado de un
+solo tono (el número siempre visible), totales por fila y columna, y modos «% de
+fila», «% de columna» y «% del total»; el margen que no es la base del
+porcentaje muestra la distribución global. Las celdas con frecuencia esperada
+menor que 5 llevan †. Las advertencias se redactan desde los contadores
+estructurados (frecuencias esperadas < 5 y < 1, combinaciones ausentes, filas
+excluidas, categorías agrupadas en «Otras») y siempre recuerdan que una
+asociación no implica causalidad. `contingency-contract.ts` es el único punto a
+adaptar cuando exista el contrato de resultados AUD-022; el mock acordado está en
+`src/test/contingency-fixture.ts`. El e2e usa `tests/fixtures/contingency.csv`.
+
 ## Transporte de herramientas y capacidad del backend
 
 El backend admite `max_concurrent_operations` operaciones a la vez (1 en el perfil

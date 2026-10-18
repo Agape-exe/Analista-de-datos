@@ -82,7 +82,30 @@ export interface BoxPlotChart {
   boxes: BoxStats[];
 }
 
-export type ChartSpec = HeatmapChart | ScatterChart | HistogramChart | BoxPlotChart;
+/** chart_contingency: rows = x, columns = y. Expected-frequency counters refer to the full table. */
+export interface ContingencyChart {
+  kind: "contingency";
+  x: string;
+  y: string;
+  row_labels: string[];
+  column_labels: string[];
+  counts: number[][];
+  row_totals: number[];
+  column_totals: number[];
+  total: number;
+  expected: (number | null)[][];
+  /** When > 0, the last row/column groups this many of the least frequent categories. */
+  folded_rows: number;
+  folded_columns: number;
+  cells: number;
+  expected_below_5: number;
+  expected_below_1: number;
+  min_expected: number | null;
+  empty_cells: number;
+  excluded_rows: number;
+}
+
+export type ChartSpec = HeatmapChart | ScatterChart | HistogramChart | BoxPlotChart | ContingencyChart;
 
 export interface NumericSummary {
   count: number;

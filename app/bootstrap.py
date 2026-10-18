@@ -57,6 +57,7 @@ from app.modules.exploration.adapters.analytics.profiling.tools import (
 from app.modules.exploration.adapters.relationship_screening import RelationshipScreeningAdapter
 from app.modules.exploration.adapters.visualization.charts import (
     BoxPlotTool,
+    ContingencyTool,
     CorrelationHeatmapTool,
     HistogramTool,
     ScatterTool,
@@ -105,6 +106,7 @@ EDA_TOOLS: tuple[type[DatasetTool], ...] = (
     ScatterTool,
     HistogramTool,
     BoxPlotTool,
+    ContingencyTool,
 )
 
 

@@ -102,6 +102,19 @@ MI como evidencia de apoyo.
 | `chart_scatter` | `scatter` | puntos (muestra aleatoria reproducible de `max_scatter_points`), recta de tendencia |
 | `chart_histogram` | `histogram` | `edges` (n+1) y `counts` (n) |
 | `chart_boxplot` | `boxplot` | por grupo opcional: bigotes, cuartiles, mediana, outliers acotados |
+| `chart_contingency` | `contingency` | 2 cat: conteos, totales, frecuencias esperadas por celda y contadores de diagnóstico (ver AUD-021) |
+
+### AUD-021 — Tabla de contingencia
+
+`chart_contingency` reutiliza `contingency_table` y las frecuencias esperadas de
+`chi2_contingency` (sin corrección de Yates, como `chi_square` y `cramers_v`) y
+el límite `eda.max_categories`. Filas = primera variable, columnas = segunda,
+ordenadas por total descendente. Si un eje supera `eda.top_categories`, sus
+categorías menos frecuentes se agrupan en la última posición (`folded_rows` /
+`folded_columns` indican cuántas); `cells`, `expected_below_5`,
+`expected_below_1`, `min_expected` y `empty_cells` se calculan siempre sobre la
+tabla completa. `excluded_rows` cuenta las filas sin valor en alguna de las dos
+columnas. No calcula p-values: la prueba sigue siendo `chi_square`/`cramers_v`.
 
 ## Configuración
 
