@@ -19,7 +19,7 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
     { label: "Relaciones", icon: GitBranch }, { label: "Hallazgos", icon: Sparkles, to: "/report" },
   ] },
   { label: "Evaluación", links: [
-    { label: "Traza", icon: ListChecks }, { label: "Métricas", icon: Activity },
+    { label: "Traza", icon: ListChecks, to: "/trace" }, { label: "Métricas", icon: Activity, to: "/metrics" },
   ] },
   { label: "Asistente", links: [{ label: "Chat", icon: MessageSquare }] },
 ];

@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.13.1"
+  UV_PYTHON: "3.12"
+  UV_LOCKED: "true"
+  NODE_VERSION: "24.18.0"
+
+jobs:
+  backend:
+    name: Backend / ${{ matrix.check }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: architecture-checker
+            command: uv run python scripts/check_architecture.py
+          - check: architecture-tests
+            command: uv run pytest tests/architecture -q --junitxml=reports/architecture.xml
+          - check: pytest
+            command: uv run pytest --junitxml=reports/backend.xml
+          - check: ruff-check
+            command: uv run ruff check .
+          - check: ruff-format
+            command: uv run ruff format --check .
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.UV_PYTHON }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --group dev
+      - run: ${{ matrix.command }}
+      - name: Save test reports
+        if: ${{ always() && (matrix.check == 'pytest' || matrix.check == 'architecture-tests') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-${{ matrix.check }}
+          path: reports/*.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+  frontend:
+    name: Frontend / ${{ matrix.check }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check: vitest
+            command: npm test -- --maxWorkers=2 --reporter=default --reporter=junit --outputFile=reports/vitest.xml
+          - check: eslint
+            command: npm run lint
+          - check: build
+            command: npm run build
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: ${{ matrix.command }}
+      - name: Save Vitest report
+        if: ${{ always() && matrix.check == 'vitest' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-vitest
+          path: frontend/reports/vitest.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e:
+    name: E2E / Chromium Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.UV_PYTHON }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --locked --group dev
+        working-directory: .
+      - run: npm ci
+      - run: npm exec --no -- playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Save Playwright diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-chromium-linux
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: warn
+          retention-days: 7

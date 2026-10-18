@@ -117,6 +117,11 @@ validación no sustituye la suite integral pendiente del equipo.
 
 ## Preparación de AUD-007
 
+La implementación y sus resultados actuales están en
+[AUD-007 — Integración continua](aud-007-ci.md). CI está configurada y continúa
+pendiente de validación real en GitHub; las indicaciones siguientes se conservan
+como contexto de preparación.
+
 Siguiente bloque: preparar integración continua en una rama propia, considerando
 también el avance remoto de develop antes de publicar. Debe ejecutar instalación
 con locks, checker y pruebas de arquitectura, suite backend completa y Ruff,
@@ -129,5 +134,6 @@ continue-on-error para declarar verde el flujo. Guardar resultados y trazas de
 fallos E2E y separar jobs para identificar backend, arquitectura y frontend.
 No activar despliegue ni publicar secretos/datasets/bases locales. Un workflow
 preparado localmente requiere ejecución real en GitHub antes de afirmar que CI
-está validada. No hay autorización para push, PR ni merge; las futuras
-publicaciones solicitadas deben dirigirse a develop.
+está validada. En aquella preparación no había autorización para publicar.
+La solicitud actual autoriza el PR hacia develop; su alcance y evidencia están
+en [Entrega de I5](integrante5-entrega.md). No se autoriza merge ni despliegue.
