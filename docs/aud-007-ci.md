@@ -274,6 +274,39 @@ No se usó reset, restauración ni limpieza destructiva; tampoco se modificaron
 
 ## Entorno y validación pendiente
 
+## Revalidación de PR #41 tras AUD-004/005/019/020 (18 de octubre de 2026)
+
+La rama `codex/i5-aud007-metricas-traza` integró `develop` en el commit
+`4bca219` (`e101e96`, merge de AUD-020, como punta remota de develop). La
+integración tuvo un único conflicto en `frontend/src/app/App.tsx`: se
+conservaron las rutas I5 de Resumen, Métricas y Traza y se añadió `/patterns`
+una sola vez. `Sidebar` ya traía el enlace Patrones desde develop. El límite
+de carga permanece en **2.097.152 bytes**.
+
+Validación local posterior a la integración:
+
+| Comando | Resultado |
+| --- | --- |
+| `uv run python scripts/check_architecture.py` | Correcto: 172 archivos |
+| `uv run pytest tests/architecture -q` | 24 aprobadas |
+| `uv run pytest tests/unit/test_grouped_summary.py -q` | 9 aprobadas |
+| Vitest de App, estados de Asociaciones y Patrones | 22 aprobadas |
+| Vitest de Asociaciones y transporte (`request-gate`) | 13 aprobadas |
+| `npm run build` y `npm run lint -- --quiet` | Correctos |
+| E2E Chromium `associations.spec.ts` + `patterns.spec.ts` | 0/2: Chromium Windows no inicia (`spawn UNKNOWN`) antes de aserciones |
+
+AUD-004 sí está presente en el transporte: cola global de 2 solicitudes,
+cancelación de solicitudes en espera, pausa global por `Retry-After` y hasta
+tres reintentos acotados. Las pruebas unitarias de transporte pasan. Sin
+embargo, la ejecución E2E no llegó a enviar peticiones, así que no existe
+evidencia local nueva para afirmar que los 429 `ANALYSIS_CAPACITY_EXCEEDED`
+quedaron resueltos en el recorrido real; se clasifican como **pendiente de
+confirmación en Chromium Linux/Actions**, no como resueltos ni como regresión.
+
+Dependencias pendientes: Planner/Analysis/Critic conservan los cuatro fallos
+backend y F841/F401 ya reproducidos en develop; I5 no modificó esos algoritmos
+ni contratos. Render, staging y benchmarks permanecen fuera del PR.
+
 Los primeros intentos restringidos encontraron DNS inaccesible para GitHub y
 acceso denegado al caché de intérpretes de uv. La instalación y las comprobaciones
 se repitieron fuera de ese aislamiento y pudieron ejecutarse. No se relajaron
