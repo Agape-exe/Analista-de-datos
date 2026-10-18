@@ -1,6 +1,9 @@
 from uuid import uuid4
 
 from app.modules.critical_review.application.services.critical_review import review_measured_results
+from app.modules.critical_review.application.services.screening_provenance import (
+    attach_screening_provenance,
+)
 from app.modules.critical_review.domain.robustness import (
     calculate_correlation_disagreement,
     calculate_outlier_impact,
@@ -540,6 +543,9 @@ class CriticAgent(SkeletonAgent):
             new_assessments.append(assessment)
 
         review_measured_results(context.analysis_results, new_evidence, new_assessments)
+
+        # AUD-036: Conservar la procedencia en las evaluaciones existentes
+        attach_screening_provenance(context.analysis_results, new_assessments)
 
         # 15. Omitir si no existe evidencia evaluable
         if not new_assessments:

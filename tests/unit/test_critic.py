@@ -1080,3 +1080,72 @@ async def test_critic_preserves_failed_analysis_reason():
         "partial-failed-001" in warning and "Error durante el cálculo" in warning
         for warning in resultado.warnings
     )
+
+
+# AUD-036: Verificar la integración de la procedencia con Critic
+async def test_critic_preserves_screening_provenance():
+    screening = AnalysisResult(
+        analysis_id="screening-001",
+        method="relationship_ranking",
+        status=AnalysisStatus.SUCCESS,
+        result={
+            "top_relationships": [
+                {
+                    "x": "publicidad",
+                    "y": "ventas",
+                    "method": "pearson",
+                    "score": 0.85,
+                    "strength": 0.80,
+                    "p_value": 0.001,
+                    "adjusted_p_value": 0.008,
+                    "sample_size": 100,
+                    "warnings": ["Posible influencia de outliers."],
+                    "supporting": [
+                        {
+                            "method": "spearman",
+                            "variables": ["publicidad", "ventas"],
+                            "strength": 0.75,
+                            "p_value": 0.002,
+                        }
+                    ],
+                }
+            ],
+            "correction": "benjamini-hochberg",
+            "significance_level": 0.05,
+        },
+    )
+
+    pearson = AnalysisResult(
+        analysis_id="pearson-001",
+        method="pearson",
+        variables=["publicidad", "ventas"],
+        status=AnalysisStatus.SUCCESS,
+        effect_size=0.80,
+        result={"correlation": 0.80},
+        sample_size=100,
+        p_value=0.001,
+    )
+
+    resultado = await CriticAgent(MustNotCallLLM()).run(_critic_context([screening, pearson]))
+
+    assert resultado.status == AnalysisStatus.SUCCESS
+
+    evaluacion = resultado.update.relationship_assessments[0]
+
+    # La clasificación continúa siendo indeterminada
+    assert evaluacion.potentially_spurious is None
+
+    # La evaluación conserva la procedencia del screening
+    limitaciones = " ".join(evaluacion.limitations)
+
+    assert "screening-001" in limitaciones
+    assert "pearson" in limitaciones
+    assert "n=100" in limitaciones
+    assert "p crudo=0.001" in limitaciones
+    assert "p ajustado=0.008" in limitaciones
+    assert "benjamini-hochberg" in limitaciones
+    assert "spearman" in limitaciones
+    assert "Posible influencia de outliers" in limitaciones
+
+    # No crear evidencia ficticia del screening
+    assert {evidencia.analysis_id for evidencia in resultado.update.evidence} == {"pearson-001"}
