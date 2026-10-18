@@ -8,7 +8,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { PRIORITY } from "../../lib/api-client";
 import type { BoxPlotChart } from "../../types/exploration";
-import { ToolNotice } from "../associations/ToolNotice";
+import { ColumnOutcomes, ToolNotice } from "../associations/ToolNotice";
 import type { OutlierReading } from "../associations/tool-state";
 import { useTool } from "../associations/useTool";
 import { useIntake } from "../data-intake/IntakeProvider";
@@ -62,6 +62,7 @@ function AnomalyExplorer({ datasetId, totalRows, categorical }: { datasetId: str
       {reading.kind === "invalid" && <div className="chart-placeholder" role="alert">La respuesta de atípicos está incompleta. No se muestran resultados.</div>}
       {reading.kind !== "ready" && reading.kind !== "invalid" && <ToolNotice tool={tool} loadingLabel="Evaluando columnas…" />}
       {reading.kind === "ready" && <OverviewTable columns={columns} selected={selected?.column} onSelect={setPicked} />}
+      <ColumnOutcomes data={tool.data} />
     </Card>
     {selected && <ColumnDetail key={selected.column} datasetId={datasetId} totalRows={totalRows} item={selected} categorical={categorical} />}
   </>;

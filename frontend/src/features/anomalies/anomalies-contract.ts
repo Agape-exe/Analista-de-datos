@@ -18,9 +18,19 @@ export type AnomaliesReading =
 /** Reads the `outliers` tool run over every numeric column (variables = []). */
 export function readAnomalies(tool: ReturnType<typeof useTool>): AnomaliesReading {
   const problem = toolProblem(tool);
-  if (problem) return { kind: "problem", problem };
+  const outcomes = tool.data?.column_results;
+  if (problem && (problem.kind === "error" || !Object.keys(outcomes ?? {}).length)) return { kind: "problem", problem };
   if (tool.loading || tool.stale || !tool.data) return { kind: "pending" };
   const { data } = tool;
+  if (data.method === "outliers" && outcomes && Object.keys(outcomes).length) {
+    if (!Array.isArray(data.variables) || !data.variables.every((column) => column in outcomes)) return { kind: "invalid" };
+    return { kind: "ready", columns: data.variables.map((column) => {
+      const outcome = outcomes[column];
+      return { column, reading: outcome.status === "SUCCESS" ? classifyOutliers(outcome.result)
+        : outcome.status === "SKIPPED" && outcome.warnings?.includes("insufficient observations")
+          ? { kind: "small-sample" } : { kind: "invalid" } };
+    }) };
+  }
   const result = data.result as Record<string, unknown> | null | undefined;
   if (data.method !== "outliers" || !Array.isArray(data.variables) || !result || typeof result !== "object"
     || Array.isArray(result) || !data.variables.every((name) => typeof name === "string" && name in result)) return { kind: "invalid" };

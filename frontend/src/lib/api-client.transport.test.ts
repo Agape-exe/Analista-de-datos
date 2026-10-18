@@ -75,7 +75,7 @@ describe("API transport", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(fetch).toHaveBeenCalledTimes(2);
     pending[1](ok());
-    await expect(next).resolves.toEqual({ tool: "outliers" });
+    await expect(next).resolves.toEqual(success);
   });
 
   it("backs off exponentially when the analysis capacity is busy, then recovers", async () => {
@@ -90,7 +90,7 @@ describe("API transport", () => {
     await vi.advanceTimersByTimeAsync(1_999);
     expect(fetch).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(1);
-    await expect(result).resolves.toEqual({ tool: "outliers" });
+    await expect(result).resolves.toEqual(success);
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
@@ -154,7 +154,7 @@ describe("API transport", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(15_000);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(ok()));
-    await expect(call()).resolves.toEqual({ tool: "outliers" });
+    await expect(call()).resolves.toEqual(success);
   });
 
   it("reads Retry-After as seconds or an HTTP date and reports unreadable values", () => {

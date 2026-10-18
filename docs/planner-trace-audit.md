@@ -226,3 +226,17 @@ disponible en el equipo. Una ejecución concurrente de ESLint/Playwright tuvo un
 carrera con la limpieza de `test-results`; los checks secuenciales pasaron. Un test
 de interfaz excedió la espera de 1 s bajo carga concurrente de pytest; la suite
 frontend completa posterior pasó sin modificar ni omitir esa prueba.
+
+### Integración sobre develop actualizado
+
+La entrega se integró sobre `e7a09b9`, conservando la cola de peticiones de
+Asociaciones y la pantalla Anomalías incorporadas posteriormente a la base original.
+El cliente mantiene prioridades y cancelación del transporte junto con la validación
+EDA. Anomalías consume tanto resultados heredados como los nuevos estados por columna,
+sin descartar columnas calculadas cuando otra se omite o falla.
+
+Validación de la integración: **642 pruebas backend aprobadas**, con los mismos dos
+fallos preexistentes de Critic; **214 pruebas frontend aprobadas** en 18 archivos;
+arquitectura (24 pruebas), Ruff, ESLint y build correctos. **3 pruebas E2E aprobadas
+con Edge**: Anomalías real, reporte básico y reporte completo con configuración,
+Traza y recuperación.

@@ -6,7 +6,7 @@ import { App } from "../../app/App";
 import { associationsIntakeFixture, toolFixtures } from "../../test/fixture";
 import type { AnalysisResult, OutlierSummary } from "../../types/exploration";
 import type { IntakeResponse } from "../../types/intake";
-import { mergeExamples } from "./anomalies-contract";
+import { mergeExamples, readAnomalies } from "./anomalies-contract";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -27,12 +27,26 @@ const amount: OutlierSummary = {
     ] },
 };
 const outliers = (columns: Record<string, OutlierSummary>): AnalysisResult => ({
-  method: "outliers", status: "SUCCESS", variables: Object.keys(columns), result: columns as never, warnings: [], execution_time: 0,
+  method: "outliers", status: "SUCCESS", completeness: "complete", variables: Object.keys(columns), result: columns as never, warnings: [], execution_time: 0,
 });
 const preview = (offset: number) => ({
   dataset_id: datasetId,
   columns: [{ name: "amount", data_type: "Float64", nullable: true }, { name: "category", data_type: "string", nullable: false }],
   rows: [[480, "norte"]], total_rows: 60, offset, limit: 1, returned_rows: 1, has_more: offset + 1 < 60, next_offset: offset + 1 < 60 ? offset + 1 : null,
+});
+
+it("reads audited partial outcomes without discarding measured anomaly columns", () => {
+  const data: AnalysisResult = { ...outliers({ amount }), completeness: "partial",
+    variables: ["amount", "price"], column_results: {
+      amount: { status: "SUCCESS", result: amount as never },
+      price: { status: "SKIPPED", warnings: ["insufficient observations"] },
+    } };
+  const reading = readAnomalies({ data, error: undefined, loading: false, stale: false, retry: vi.fn() });
+  expect(reading.kind).toBe("ready");
+  if (reading.kind === "ready") expect(reading.columns.map((item) => item.reading.kind)).toEqual(["evaluated", "small-sample"]);
+  const skipped = { ...data, status: "SKIPPED" as const, completeness: "complete" as const,
+    result: null, variables: ["price"], column_results: { price: data.column_results!.price } };
+  expect(readAnomalies({ data: skipped, error: undefined, loading: false, stale: false, retry: vi.fn() }).kind).toBe("ready");
 });
 
 function mockBackend(columns: Record<string, OutlierSummary> = { amount, price: { skipped: "insufficient observations" } }) {
