@@ -15,7 +15,8 @@ describe("intake workflow", () => {
   it("does not allow submitting without a file and explains unavailable features", () => {
     renderApp();
     expect(screen.getByRole("button", { name: "Comprender dataset" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Anomalías Pronto" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Relaciones Pronto" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Anomalías" })).toHaveAttribute("href", "/anomalies");
     expect(screen.getByRole("link", { name: "Patrones" })).toHaveAttribute("href", "/patterns");
     expect(screen.getByRole("link", { name: "Asociaciones" })).toHaveAttribute("href", "/associations");
     expect(screen.getByLabelText("¿Qué te gustaría investigar?", { exact: false })).toBeDisabled();

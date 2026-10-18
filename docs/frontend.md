@@ -375,7 +375,7 @@ outliers. Los reintentos no alteran variables ni parámetros de la herramienta.
 Los valores conservan la normalización estadística anterior de seis decimales;
 un valor no representable como número JSON se presenta explícitamente como tal.
 La tabla usa caption, encabezados y región desplazable accesible por teclado,
-con diseño adaptable. «Anomalías» continúa deshabilitada como Próximamente.
+con diseño adaptable. La pantalla Anomalías se habilitó después con AUD-017.
 No hay nueva pantalla, dependencias ni cambios en Analysis, Critic o Reporting.
 
 El detalle de la correspondencia, límites y contrato aditivo está en
@@ -417,6 +417,29 @@ ReportPage.tsx. Arquitectura: 172 archivos correctos y 24 pruebas aprobadas.
 La comparación completa de línea base/backend consta en eda-association.md.
 No se identificaron regresiones nuevas en las comprobaciones ejecutadas; no
 se presentan las suites generales como completamente aprobadas.
+
+## AUD-017 — Anomalías
+
+Ruta `/anomalies` («Anomalías» en la barra lateral). Una sola consulta
+`outliers` con `variables: []` evalúa todas las columnas numéricas:
+
+- Resumen por columna: observaciones, atípicos IQR y MAD (conteo y porcentaje) y
+  estado (muestra pequeña, constante, MAD = 0, IQR = 0) con las mismas reglas que
+  el explorador de Asociaciones (`classifyOutliers`). Una columna constante o sin
+  evaluar nunca se presenta como «0 atípicos».
+- Detalle de la columna elegida: regla y límites IQR (Q1 − k·IQR, Q3 + k·IQR);
+  regla MAD (|z robusto| > umbral), mediana, MAD y límites equivalentes en
+  unidades de la variable; diagrama de caja (`chart_boxplot`, agrupable).
+- Ejemplos IQR y MAD unidos por registro original (`row_index`), con el z robusto
+  cuando MAD lo marcó. «Ver registro» consulta bajo demanda la vista previa con
+  `offset = row_index` y `limit = 1` y muestra todos los valores de ese registro;
+  nunca se infiere un registro a partir del valor. Referencias inválidas o
+  ausentes se explican y no se muestran.
+- Aviso permanente: un atípico estadístico no es necesariamente un error; no se
+  corrige ni se elimina.
+
+Respuestas anteriores sin el detalle MAD siguen funcionando: los límites MAD se
+indican como no disponibles y solo se muestran ejemplos IQR.
 
 ## Transporte de herramientas y capacidad del backend
 

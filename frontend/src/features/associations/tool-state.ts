@@ -60,7 +60,14 @@ export function readOutliers(tool: Tool, column: string | undefined): OutlierRea
   const result = data.result;
   if (data.method !== "outliers" || !Array.isArray(data.variables) || data.variables.length !== 1
     || data.variables[0] !== column || !result || typeof result !== "object" || Array.isArray(result)) return { kind: "invalid" };
-  const summary = (result as Record<string, unknown>)[column] as OutlierSummary | undefined;
+  return classifyOutliers((result as Record<string, unknown>)[column]);
+}
+
+type ColumnReading = Exclude<OutlierReading, { kind: "pending" } | { kind: "problem" }>;
+
+/** Classifies one column of an `outliers` result: small sample, constant, MAD = 0, IQR = 0. */
+export function classifyOutliers(raw: unknown): ColumnReading {
+  const summary = raw as OutlierSummary | undefined;
   if (!summary || typeof summary !== "object") return { kind: "invalid" };
   if (summary.skipped) return { kind: "small-sample" };
   const iqr = summary.iqr;

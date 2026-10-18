@@ -18,6 +18,7 @@ LEGACY = json.loads(
     (Path(__file__).parents[1] / "fixtures/outliers_before_aud018.json").read_text(encoding="utf-8")
 )
 NORMAL = list(range(-20, 21))
+MAD_DETAIL_FIELDS = ("median", "mad", "lower_bound", "upper_bound", "examples", "example_rows")
 
 
 @pytest.mark.parametrize("case", LEGACY, ids=lambda case: case["name"])
@@ -26,6 +27,9 @@ def test_all_existing_iqr_and_mad_results_match_frozen_preimplementation_results
     before = values.copy()
     actual = outliers(values, case["multiplier"], case["threshold"], case["limit"])
     rows = actual["iqr"].pop("example_rows")
+    # AUD-017 adds MAD detail fields; every field that existed before stays identical.
+    for key in MAD_DETAIL_FIELDS:
+        actual["mad"].pop(key)
     assert actual == case["expected"]
     assert [row["value"] for row in rows] == actual["iqr"]["examples"]
     assert len(rows) <= case["limit"]
