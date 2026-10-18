@@ -3,6 +3,55 @@
 Implementación local del 18 de octubre de 2026. Acceso desde Evaluación →
 Métricas o `/metrics`. Se genera o recupera el reporte en Hallazgos (`/report`).
 Los apartados iniciales conservan las validaciones de implementación anteriores.
+
+## AUD-043 — Hallazgos y evidencia
+
+La parte implementable quedó revisada en la cabecera de I5: Hallazgos conserva
+la identidad de `run_id` y `dataset_id` provista por `ReportProvider`, y las dos
+descargas siguen apuntando al mismo reporte (`analysis-report.json` usa el
+objeto recibido; Markdown usa `/reports/{run_id}/markdown`). La navegación ahora
+es explícita y accesible: cada `Insight.evidence_ids` enlaza solo a una
+`Evidence` presente, cada evidencia enlaza solo a su `analysis_id` presente y
+las referencias ausentes se muestran sin enlace. Los métodos conocidos tienen
+etiquetas legibles, mientras que los desconocidos se conservan literalmente.
+
+Se muestran limitaciones del insight y de la evidencia, advertencias del
+resultado y advertencias/errores globales. Los resultados parciales, históricos,
+`FAILED` y `SKIPPED` conservan su estado, datos disponibles y mensajes; no se
+convierten ausencias en ceros ni se fabrica evidencia o procedencia. Si un
+`analysis_id` histórico está omitido, la interfaz usa un ancla local estable
+solo para ese resultado y no lo presenta como una identidad contractual.
+
+Prueba añadida: referencias insight → evidencia → resultado, método legible,
+limitaciones, advertencias y referencia ausente sin enlace. Resultado de la
+cabecera documentada en esta entrega: arquitectura 174 archivos OK; 24 pruebas
+de arquitectura; 20 pruebas backend afectadas; 53 pruebas frontend de
+Hallazgos/ReportProvider/Summary/Metrics/Trace; ESLint OK; build TypeScript/Vite
+OK. El primer intento Vitest fue bloqueado por `EPERM` de resolución Windows y
+la repetición con permisos del entorno pasó; no se modificaron límites,
+reintentos ni aserciones.
+
+### Parte bloqueada
+
+AUD-043 no clasifica significancia estadística, no cierra afirmaciones de
+significancia o causalidad, no modifica Critic y no inventa procedencia ni
+razones ausentes del contrato. Queda esperando los contratos y pruebas de
+AUD-002 y AUD-036 de Integrante 4, en particular cualquier clasificación o
+proveniencia adicional que deba consumir Hallazgos. La rama local contiene la
+referencia de trabajo `origin/feature/critic-relations-queries` (AUD-036), pero
+no está integrada en esta rama; AUD-002 tampoco está disponible como contrato
+utilizable aquí.
+
+AUD-044 Chat no se implementa: no se verificó AUD-039 fusionado en la base con
+contrato, endpoint y pruebas utilizables.
+
+Estado de publicación de esta revisión: commit de implementación
+`72c5293e6c05d261d11314797ef4dd3c3479d55d` (`fix(i5): make report evidence
+traceable`). La última CI remota documentada para PR #41 es
+[39130025022](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39130025022)
+(global fallida; los cuatro E2E de Métricas/Traza pasan). El PR sigue siendo el
+PR #41, base `develop`, sin merge ni despliegue Render; el estado remoto actual
+no pudo consultarse desde este entorno por resolución DNS.
 La revisión actual, correcciones y evidencia de publicación/Actions están en
 [Entrega de I5](integrante5-entrega.md). No se desplegó en Render.
 
