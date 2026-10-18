@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -11,14 +10,8 @@ const base = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 
 export function ReportPage() {
   const { result } = useIntake();
-  const { report, reportIdentity, loading, error, generate, recover } = useReport();
-  const [runId, setRunId] = useState(report?.run_id ?? "");
-  const [question, setQuestion] = useState("");
-  const [shownRun, setShownRun] = useState(report?.run_id);
-  if (report?.run_id !== shownRun) {
-    setShownRun(report?.run_id);
-    if (report) setRunId(report.run_id);
-  }
+  const { report, reportIdentity, loading, error, generate, recover,
+    question, setQuestion, runId, setRunId, cancel, notice } = useReport();
 
   return <div className="dataset-page report-page">
     <div className="page-heading"><p className="eyebrow">Análisis / Reporte</p>
@@ -42,6 +35,9 @@ export function ReportPage() {
         onChange={(event) => setRunId(event.target.value)} /></label>
       <Button variant="outline" disabled={loading || !runId.trim()} onClick={() => void recover(runId)}>Consultar</Button>
     </Card>
+    {loading && <div><Button variant="outline" onClick={cancel}>Cancelar espera del reporte</Button>
+      <p>Cancelar la espera no detiene una ejecución ya iniciada en el servidor.</p></div>}
+    {notice && !report && <p role="status">{notice}</p>}
     {error && <p role="alert">{error.expired
       ? "El dataset ya no está en memoria del servidor. Vuelve a subirlo en Nuevo análisis."
       : error.message}</p>}
@@ -61,7 +57,9 @@ export function ReportPage() {
             ? "La regeneración falló. Se muestra el reporte anterior, no un resultado nuevo."
             : reportIdentity.previousReason === "recovery-failed"
               ? "La consulta falló. Se muestra el reporte anterior, no el solicitado."
-              : "Se muestra el reporte anterior mientras se procesa la nueva solicitud."
+              : reportIdentity.previousReason === "generation-cancelled" || reportIdentity.previousReason === "recovery-cancelled"
+                ? "Se canceló la espera. Se muestra el reporte anterior; la ejecución en el servidor puede continuar."
+                : "Se muestra el reporte anterior mientras se procesa la nueva solicitud."
         }</p>}
       </Card>
       <Card className="quality-card"><h2>Estado: {statusLabel(report.status)}</h2><p>Ejecución: {report.run_id}</p>

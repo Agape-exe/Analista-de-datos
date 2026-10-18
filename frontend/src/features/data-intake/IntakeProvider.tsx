@@ -9,6 +9,8 @@ interface IntakeContextValue {
   draft: IntakeDraft;
   result: IntakeResponse | null;
   loading: boolean;
+  cancelled: boolean;
+  cancel: () => void;
   error: IntakeError | null;
   updateDraft: (update: Partial<IntakeDraft>) => void;
   reset: () => void;
@@ -22,6 +24,7 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<IntakeDraft>(emptyDraft);
   const [result, setResult] = useState<IntakeResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
   const [error, setError] = useState<IntakeError | null>(null);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
@@ -31,8 +34,17 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
     setError(null);
   }
 
+  function cancel() {
+    if (!controller.current) return;
+    controller.current.abort();
+    controller.current = null;
+    setLoading(false);
+    setCancelled(true);
+  }
+
   function reset() {
     setContextRevision((value) => value + 1);
+    setCancelled(false);
     controller.current?.abort();
     controller.current = null;
     setDraft(emptyDraft());
@@ -46,15 +58,16 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
     const request = new AbortController();
     controller.current = request;
     setLoading(true);
+    setCancelled(false);
     setError(null);
     setResult(null);
     try {
       const response = await submitIntake(draft, request.signal);
-      if (request.signal.aborted) return;
+      if (request.signal.aborted || controller.current !== request) return;
       setResult(response);
       return response;
     } catch (error) {
-      if (!request.signal.aborted) {
+      if (!request.signal.aborted && controller.current === request) {
         setError({
           message: error instanceof Error ? error.message : "Ocurrió un error inesperado.",
           requestId: error instanceof ApiError ? error.requestId : undefined,
@@ -68,7 +81,7 @@ export function IntakeProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <IntakeContext.Provider value={{ contextRevision, draft, result, loading, error, updateDraft, reset, analyze }}>
+  return <IntakeContext.Provider value={{ contextRevision, draft, result, loading, cancelled, cancel, error, updateDraft, reset, analyze }}>
     {children}
   </IntakeContext.Provider>;
 }

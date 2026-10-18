@@ -16,7 +16,7 @@ export function DatasetHeader() {
           <span className="elapsed">{result.profiling_time.toFixed(2)} s</span></>
           : <Badge tone={error ? "warning" : "neutral"}>{error ? "Requiere corrección" : "Sin iniciar"}</Badge>}
     </div>
-    <Button variant="outline" size="small" disabled={loading} onClick={() => { reset(); navigate("/"); }}>
+    <Button variant="outline" size="small" onClick={() => { reset(); navigate("/"); }}>
       <Plus size={13} /><span>Nuevo análisis</span>
     </Button>
   </header>;

@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Activity, BookOpen, ChartNoAxesCombined, CircleHelp, Database, GitBranch, Layers,
   LayoutDashboard, ListChecks, MessageSquare, Plus, ScanSearch, ShieldCheck, Sparkles, TriangleAlert,
   type LucideIcon } from "lucide-react";
@@ -25,14 +25,14 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
 ];
 
 export function Sidebar() {
-  const { reset, loading } = useIntake();
+  const { reset } = useIntake();
   const navigate = useNavigate();
   return <aside className="sidebar">
-    <a className="brand" href="/" aria-label="Inicio de Analista de Datos IA">
+    <Link className="brand" to="/" aria-label="Inicio de Analista de Datos IA">
       <span className="brand-icon"><ChartNoAxesCombined size={17} /></span>
       <span className="sidebar-label">Analista de Datos IA</span>
-    </a>
-    <Button className="new-analysis" aria-label="Nuevo análisis" disabled={loading} onClick={() => { reset(); navigate("/"); }}>
+    </Link>
+    <Button className="new-analysis" aria-label="Nuevo análisis" onClick={() => { reset(); navigate("/"); }}>
       <Plus size={15} /><span className="sidebar-label">Nuevo análisis</span>
     </Button>
     <nav aria-label="Navegación principal">

@@ -1,5 +1,5 @@
 import { ArrowRight, CheckCircle2, Database, Info, LoaderCircle, TriangleAlert } from "lucide-react";
-import type { FormEvent } from "react";
+import { useEffect, useRef, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -9,18 +9,24 @@ import { DatasetUpload } from "./DatasetUpload";
 import { DataDictionaryUpload } from "./DataDictionaryUpload";
 
 export function NewAnalysisPage() {
-  const { draft, updateDraft, loading, error, analyze } = useIntake();
+  const { draft, updateDraft, loading, cancelled, cancel, error, analyze, contextRevision } = useIntake();
   const navigate = useNavigate();
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (await analyze()) navigate("/dataset");
+    const response = await analyze();
+    if (response && mounted.current) navigate("/dataset");
   }
   return <div className="new-analysis-page">
     <div className="page-heading"><p className="eyebrow">Nuevo análisis</p>
       <h1>Analiza tus datos</h1>
       <p>Empieza con un dataset. Comprende su estructura antes de explorar relaciones y hallazgos.</p>
     </div>
-    <Card className="intake-card"><form onSubmit={submit}>
+    <Card className="intake-card"><form key={contextRevision} onSubmit={submit}>
       <DatasetUpload file={draft.file} disabled={loading} onChange={(file) => updateDraft({ file })} />
       <div className="upload-caption"><span><Database size={13} />Conectar a SQL <Badge>Próximamente</Badge></span>
         <span>Tu dataset se procesa localmente con Python.</span></div>
@@ -58,6 +64,8 @@ export function NewAnalysisPage() {
         <LoaderCircle size={18} className="spin" /><div><strong>Comprendiendo tu dataset</strong>
           <p>Leyendo y validando el archivo, perfilando columnas y preparando el diccionario.</p></div>
       </div>}
+      {cancelled && <p role="status">Se canceló la espera de la carga. Los archivos y opciones se conservan para volver a intentarlo.</p>}
+      {loading && <Button type="button" variant="outline" onClick={cancel}>Cancelar espera de carga</Button>}
       <div className="form-footer"><p>{draft.file ? "Listo para revisar tus datos. No se ejecutará ningún análisis estadístico." : "Selecciona un dataset para comenzar. Aún no se ha ejecutado ningún análisis."}</p>
         <Button type="submit" disabled={!draft.file || loading}>
           {loading ? <LoaderCircle size={15} className="spin" /> : <ArrowRight size={15} />}
