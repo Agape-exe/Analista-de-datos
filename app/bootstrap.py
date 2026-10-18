@@ -10,6 +10,7 @@ from app.modules.analysis.application.use_cases.analyze_dataset import AnalyzeDa
 from app.modules.analysis.ports.agent import Agent
 from app.modules.critical_review.application.agents.critic import CriticAgent
 from app.modules.data_intake.adapters.datasource.csv_source import CsvDataSource
+from app.modules.data_intake.adapters.datasource.dataset_preview import PandasDatasetPreviewReader
 from app.modules.data_intake.adapters.datasource.dataset_store import InMemoryDatasetStore
 from app.modules.data_intake.adapters.datasource.router import DataSourceRouter
 from app.modules.data_intake.adapters.datasource.tsv_source import TsvDataSource
@@ -25,6 +26,7 @@ from app.modules.data_intake.application.services.stored_understanding import (
 from app.modules.data_intake.application.use_cases.intake_uploaded_dataset import (
     IntakeUploadedDataset,
 )
+from app.modules.data_intake.application.use_cases.preview_dataset import PreviewDataset
 from app.modules.data_intake.ports.data_understanding import DataUnderstanding
 from app.modules.data_intake.ports.dataset_provider import DatasetProvider, DatasetStore
 from app.modules.data_intake.ports.datasource import DataSource
@@ -102,6 +104,10 @@ EDA_TOOLS: tuple[type[DatasetTool], ...] = (
 
 def build_dataset_store(settings: Settings) -> DatasetStore:
     return InMemoryDatasetStore(settings.eda.max_cached_datasets)
+
+
+def build_preview_use_case(datasets: DatasetProvider) -> PreviewDataset:
+    return PreviewDataset(datasets, PandasDatasetPreviewReader())
 
 
 def build_tool_registry(settings: Settings, datasets: DatasetProvider) -> ToolRegistry:

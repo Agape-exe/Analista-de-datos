@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import { App } from "../../app/App";
 import { intakeFixture } from "../../test/fixture";
+import { intakePreviewFixture } from "../../test/preview-fixture";
 import { IntakeProvider } from "../data-intake/IntakeProvider";
 import { ReportPage } from "./ReportPage";
 import { ReportProvider } from "./ReportProvider";
@@ -88,7 +89,8 @@ test("a failed run shows its cause and an expired dataset asks for a new upload"
   const failed = { ...successReport, status: "FAILED", stage_statuses: {}, errors: ["Workflow timeout exceeded"] };
   const responses = [json(failed), json({ detail: { code: "DATASET_NOT_FOUND", message: "gone" } }, 404)];
   vi.stubGlobal("fetch", vi.fn(async (url: string) =>
-    url.endsWith("/intake") ? json(intakeFixture) : responses.shift()!));
+    url.endsWith("/intake") ? json(intakeFixture)
+      : url.includes("/preview?") ? json(intakePreviewFixture) : responses.shift()!));
   const user = await openInsightsAfterIntake();
   await user.click(screen.getByRole("button", { name: "Generar reporte" }));
   await screen.findByText("Estado: Fallido");

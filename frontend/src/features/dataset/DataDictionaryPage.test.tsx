@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../app/App";
 import { intakeFixture } from "../../test/fixture";
+import { intakePreviewFixture } from "../../test/preview-fixture";
 import type { IntakeResponse } from "../../types/intake";
 import { IntakeProvider, useIntake } from "../data-intake/IntakeProvider";
 import { DataDictionaryPage } from "./DataDictionaryPage";
@@ -51,17 +52,21 @@ describe("AUD-011 diccionario de datos", () => {
 
   it("muestra columnas del intake existente sin nuevas consultas ni edición", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn().mockResolvedValue(response(clone()));
+    const fetchMock = vi.fn(async (url: string) => url.includes("/preview?")
+      ? new Response(JSON.stringify(intakePreviewFixture)) : response(clone()));
     vi.stubGlobal("fetch", fetchMock);
     render(<MemoryRouter><App /></MemoryRouter>);
     await user.upload(screen.getByLabelText("Archivo del dataset", { exact: true }), new File(["id\n001"], "sales.csv"));
     await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
     await screen.findByRole("heading", { name: "Resumen del dataset" });
+    await screen.findByRole("region", { name: "Filas del dataset" });
+    const callsBeforeDictionary = fetchMock.mock.calls.length;
     await user.click(screen.getByRole("link", { name: "Diccionario de datos" }));
     expect(screen.getAllByRole("rowheader").map((element) => element.textContent)).toEqual(["id", "amount", "category"]);
     expect(screen.getByText("Solo lectura")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(callsBeforeDictionary).toBe(2); // Intake + preview on Dataset; dictionary adds none.
+    expect(fetchMock).toHaveBeenCalledTimes(callsBeforeDictionary);
   });
 
   it("distingue tipo observado, tipo declarado y semántica declarada del rol del perfil", async () => {

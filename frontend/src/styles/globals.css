@@ -140,6 +140,21 @@ tbody tr:hover { background: #fcfcff; }
 .description-cell > small { color: #9098ac; font-size: 9px; display: block; margin-top: 4px; }
 .table-footnote { font-size: 9px; color: #9099aa; border-top: 1px solid var(--border); padding-top: 13px; margin-top: 7px; display: flex; align-items: flex-start; gap: 7px; }
 .table-footnote svg { margin-top: 2px; }
+.preview-card { min-width: 0; margin-bottom: 24px; }
+.preview-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 11px; margin-bottom: 16px; }
+.preview-toolbar select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 5px; background: #fff; }
+.preview-toolbar > span { color: #657087; }
+.preview-range { margin-bottom: 14px; font-size: 12px; color: #566176; }
+.preview-scroll { max-height: 540px; }
+.preview-table { table-layout: fixed; }
+.preview-table th { position: sticky; top: 0; width: 200px; white-space: normal; overflow-wrap: anywhere; z-index: 1; }
+.preview-table th small { display: block; margin-top: 5px; font-weight: 400; color: #657087; }
+.preview-table td { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.preview-null { color: #657087; font-style: italic; background: #f0f2f6; padding: 2px 5px; border-radius: 3px; }
+.preview-pagination { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.preview-empty { padding: 20px 0; color: #657087; }
+.preview-card .error-panel .button { margin-top: 12px; }
+.preview-precision { margin: 0 0 14px; }
 .dictionary-page { min-width: 0; }
 .dictionary-page .page-heading p, .dictionary-page .warnings-card li { overflow-wrap: anywhere; }
 .dictionary-legend { flex-wrap: wrap; justify-content: flex-start; }

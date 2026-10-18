@@ -1,9 +1,9 @@
-import type { components } from "../types/api";
+import type { components, operations } from "../types/api";
 import type { AnalysisResult, ToolRunRequest } from "../types/exploration";
 import type { IntakeDraft, IntakeResponse } from "../types/intake";
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly requestId?: string) {
+  constructor(message: string, public readonly requestId?: string, public readonly code?: string) {
     super(message);
     this.name = "ApiError";
   }
@@ -35,6 +35,46 @@ export async function submitIntake(draft: IntakeDraft, signal?: AbortSignal): Pr
 }
 
 export class DatasetExpiredError extends ApiError {}
+export class PreviewTooLargeError extends ApiError {}
+
+export type DatasetPreview = components["schemas"]["DatasetPreview"];
+type PreviewQuery = NonNullable<operations["preview_dataset_datasets__dataset_id__preview_get"]["parameters"]["query"]>;
+
+const natural = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+
+function validPreview(payload: unknown, datasetId: string, offset: number, limit: number): payload is DatasetPreview {
+  if (!payload || typeof payload !== "object") return false;
+  const page = payload as Partial<DatasetPreview>;
+  if (page.dataset_id !== datasetId || page.offset !== offset || page.limit !== limit
+    || !natural(page.total_rows) || !natural(page.returned_rows) || typeof page.has_more !== "boolean"
+    || !Array.isArray(page.columns) || page.columns.length > 1000 || !Array.isArray(page.rows)
+    || page.rows.length !== page.returned_rows || page.returned_rows !== Math.min(limit, Math.max(0, page.total_rows - offset))
+    || page.columns.length * page.returned_rows > 10_000) return false;
+  if (!page.columns.every((column) => column && typeof column.name === "string" && column.name.length > 0
+    && typeof column.data_type === "string" && (column.nullable === undefined || typeof column.nullable === "boolean"))) return false;
+  if (new Set(page.columns.map((column) => column.name)).size !== page.columns.length) return false;
+  const width = page.columns.length;
+  if (!page.rows.every((row) => Array.isArray(row) && row.length === width && row.every((value) => value === null
+    || typeof value === "string" || typeof value === "boolean" || (typeof value === "number" && Number.isFinite(value))))) return false;
+  const end = offset + page.returned_rows;
+  return page.has_more === (end < page.total_rows)
+    && page.next_offset === (page.has_more ? end : null)
+    && (!page.has_more || page.returned_rows > 0);
+}
+
+export async function getDatasetPreview(datasetId: string, query: PreviewQuery = {}, signal?: AbortSignal): Promise<DatasetPreview> {
+  const offset = query.offset ?? 0;
+  const limit = query.limit ?? 20;
+  if (!datasetId || !natural(offset) || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new ApiError("Los parámetros de la vista previa no son válidos.", undefined, "VALIDATION_ERROR");
+  }
+  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
+  const payload = await request<unknown>(`/datasets/${encodeURIComponent(datasetId)}/preview?${params}`, { method: "GET", signal });
+  if (!validPreview(payload, datasetId, offset, limit)) {
+    throw new ApiError("La respuesta de la vista previa está incompleta o no corresponde a esta página.", undefined, "INVALID_RESPONSE");
+  }
+  return payload;
+}
 
 export async function runTool(
   datasetId: string, tool: string, body: ToolRunRequest, signal?: AbortSignal,
@@ -67,18 +107,19 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     response = await fetch(`${base}${path}`, init);
   } catch (error) {
     if (init.signal?.aborted) throw error;
-    throw new ApiError("No se puede conectar con el backend. Verifica que FastAPI esté en ejecución e inténtalo de nuevo.");
+    throw new ApiError("No se puede conectar con el backend. Verifica que FastAPI esté en ejecución e inténtalo de nuevo.", undefined, "NETWORK_ERROR");
   }
   const requestId = response.headers.get("X-Request-ID") || undefined;
   let payload: unknown;
   try {
     payload = await response.json();
   } catch {
-    throw new ApiError("El servidor devolvió una respuesta ilegible. Revisa la conexión con la API.", requestId);
+    throw new ApiError("El servidor devolvió una respuesta ilegible. Revisa la conexión con la API.", requestId, "INVALID_RESPONSE");
   }
   if (!response.ok) {
-    const Failure = errorCode(payload) === "DATASET_NOT_FOUND" ? DatasetExpiredError : ApiError;
-    throw new Failure(errorMessage(payload), requestId);
+    const code = errorCode(payload) ?? (response.status === 422 ? "VALIDATION_ERROR" : undefined);
+    const Failure = code === "DATASET_NOT_FOUND" ? DatasetExpiredError : code === "PREVIEW_TOO_LARGE" ? PreviewTooLargeError : ApiError;
+    throw new Failure(errorMessage(payload), requestId, code);
   }
   return payload as T;
 }

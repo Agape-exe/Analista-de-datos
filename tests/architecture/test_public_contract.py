@@ -11,7 +11,18 @@ def test_public_http_contract_is_unchanged_by_architecture_migration() -> None:
     baseline = json.loads(
         (ROOT / "tests/fixtures/openapi_develop.json").read_text(encoding="utf-8")
     )
-    assert create_app(Settings(_env_file=None)).openapi() == baseline
+    current = create_app(Settings(_env_file=None)).openapi()
+    # AUD-009 adds exactly one route and one response DTO. All old definitions,
+    # bodies, operation IDs and paths must still match the untouched develop snapshot.
+    preview = {
+        "path": current["paths"].pop("/datasets/{dataset_id}/preview"),
+        "schema": current["components"]["schemas"].pop("DatasetPreview"),
+    }
+    assert current == baseline
+    expected_preview = json.loads(
+        (ROOT / "tests/fixtures/openapi_preview.json").read_text(encoding="utf-8")
+    )
+    assert preview == expected_preview
 
 
 def test_migration_map_points_to_existing_files() -> None:
