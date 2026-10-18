@@ -370,3 +370,48 @@ de entorno/suite posterior hasta contar con la nueva ejecución remota.
 Anomalías, Critic, Relaciones y Chat siguen dependiendo de Integrante 4 según
 la disponibilidad de AUD-002/AUD-036/AUD-039; no se implementó Chat.
 
+## Estado verificable del PR #41 (18 de octubre de 2026)
+
+La consulta remota confirma:
+
+- `develop`: `4d85afe2f059495f191b042f773a34be6e860eb3`.
+- PR #41 (`codex/i5-aud007-metricas-traza`): `cc0e59b7c410f7c34f3423db8487267b6600748d` antes de esta actualización.
+- `develop` ya es ancestro de la rama del PR; no había integración pendiente ni conflictos actuales. La comprobación formal no produjo marcadores de conflicto.
+- Commits fusionados relevantes de Integrantes 2 y 3 en `develop`: PR #42 AUD-004, #43 AUD-005, #44 AUD-019 y #45 AUD-020; también están AUD-017 Anomalías y la consolidación EDA/Traza.
+
+No se modificaron `App.tsx`, `Sidebar.tsx`, `DatasetHeader.tsx`,
+`NewAnalysisPage.tsx`, `ReportPage.tsx`, `ReportPage.test.tsx` ni
+`ReportProvider.tsx`: sus conflictos ya estaban resueltos en la rama y el árbol
+no contiene marcadores. Se conservaron `/summary`, `/metrics`, `/trace`,
+`/patterns`, `/anomalies`, `/associations` y `/report`, la identidad dataset /
+reporte, históricos, `SUCCESS`/`SKIPPED`/`FAILED`, reset, cancelación, defensa
+contra respuestas tardías y el límite de **2.097.152 bytes**.
+
+### Validación local sobre la rama del PR
+
+| Comprobación | Resultado |
+| --- | --- |
+| `uv run python scripts/check_architecture.py` | Correcto: 174 archivos |
+| `uv run pytest tests/architecture -q` | 24 aprobadas |
+| Pruebas backend afectadas | 15 aprobadas |
+| `npm test -- --maxWorkers=2` | 266 aprobadas, 23 archivos |
+| `npm run lint` | Correcto |
+| `npm run build` | Correcto; 1652 módulos |
+| E2E Summary/Report/Metrics/Trace/Associations/Patterns/Anomalies | 11 fallidas antes de aserciones por `spawn UNKNOWN` de Chromium Windows |
+
+### CI remota
+
+La última ejecución consultada es [CI 39171081136](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39171081136), sobre `cc0e59b`, y terminó con fallo:
+
+- Aprobados: architecture-tests, architecture-checker, ruff-format, Vitest, ESLint y build.
+- Fallidos: pytest backend, Ruff check y E2E Chromium Linux.
+- Conflictos de integración: ninguno.
+- Fallos propios de I5/CI corregidos en esta revisión: ninguno; el estado de la rama no requería cambios funcionales.
+- Fallos preexistentes o dependientes de Integrante 4: pytest/Ruff en Planner, Analysis y Critic, ya reproducidos contra `develop`; no se alteraron algoritmos ni aserciones.
+- Problema de entorno/CI: el recorrido E2E no alcanza aserciones; localmente Chromium falla al iniciar y la ejecución remota sigue fallando en su job E2E. La clasificación definitiva del log Linux queda pendiente de sus artefactos.
+
+No se hizo merge ni despliegue Render. El PR permanece en borrador y no está
+aprobado mientras haya checks fallidos. Después del commit documental de esta
+sección se actualizarán aquí el SHA final y la nueva URL de CI; los pendientes
+de Integrante 4 siguen siendo Critic, Relaciones y Chat.
+
