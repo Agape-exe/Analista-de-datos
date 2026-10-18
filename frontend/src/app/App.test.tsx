@@ -47,7 +47,12 @@ describe("intake workflow", () => {
     expect(screen.getByText("Total amount")).toBeInTheDocument();
     expect(screen.getByText("80%")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Notas de revisión" })).toBeInTheDocument();
-    expect(screen.getAllByText(/^No evaluad[oa]$/)).toHaveLength(3);
+    // The two unmeasured column confidences remain; AUD-014 replaces the old
+    // unavailable quality-score placeholder with navigation to measured controls.
+    expect(screen.getAllByText(/^No evaluad[oa]$/)).toHaveLength(2);
+    expect(screen.getByText("Controles de calidad")).toBeInTheDocument();
+    expect(screen.queryByText("Puntaje de calidad")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver calidad de datos" })).toHaveAttribute("href", "/quality");
     expect(screen.getByRole("link", { name: "Explorar asociaciones" })).toHaveAttribute("href", "/associations");
     await user.click(screen.getByRole("button", { name: "Descargar diccionario" }));
     expect(createUrl).toHaveBeenCalledOnce();

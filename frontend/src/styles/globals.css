@@ -291,6 +291,40 @@ tbody tr:hover { background: #fcfcff; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
+/* AUD-014: server quality aggregates, no global quality score. */
+.data-quality-page { min-width: 0; --muted: #5c667a; }
+.data-quality-page .page-heading p, .quality-rules code { overflow-wrap: anywhere; }
+.quality-evaluation { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 20px 0; }
+.quality-summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 14px 0 24px; }
+.quality-metric { padding: 17px 14px; min-width: 0; }
+.quality-metric dt { color: #59647a; font-size: 11px; line-height: 1.5; }
+.quality-metric dd { font-size: 23px; margin: 10px 0 0; font-variant-numeric: tabular-nums; }
+.quality-table-scroll { max-width: 100%; }
+.quality-table { width: 100%; min-width: 560px; border-collapse: collapse; text-align: left; }
+.quality-table th, .quality-table td { padding: 12px 15px; border-bottom: 1px solid var(--border); }
+.quality-table thead th { background: #f8f9fb; font-weight: 600; color: #59647a; }
+.quality-table tbody th { font-weight: 500; color: #59647a; white-space: normal; overflow-wrap: anywhere; min-width: 160px; max-width: 320px; }
+.quality-duplicates-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; margin: 18px 0; }
+.quality-duplicates-stats dt { font-size: 11px; color: #59647a; }
+.quality-duplicates-stats dd { margin: 6px 0 0; font-size: 20px; font-variant-numeric: tabular-nums; }
+.quality-rules { list-style: none; padding: 0; margin: 0; }
+.quality-rules li { padding: 18px 0; border-top: 1px solid var(--border); }
+.quality-rules li:first-child { border-top: 0; padding-top: 0; }
+.quality-rule-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 7px; }
+.quality-rule-heading h3 { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.data-quality-page .badge-neutral { color: #535f72; }
+.data-quality-page .badge-success { color: #266449; }
+.data-quality-page .badge-warning { color: #795016; }
+.data-quality-page .provenance-bar { margin-bottom: 18px; color: #59647a; }
+.data-quality-page .info-note { margin-top: 24px; color: #566176; }
+@media (max-width: 1150px) { .quality-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .quality-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quality-metric dd { font-size: 20px; }
+  .quality-rule-heading { align-items: flex-start; flex-direction: column; }
+  .quality-duplicates-stats { grid-template-columns: 1fr; }
+}
+
 
 /* Member 5 report presentation */
 .report-page label { display: block; margin: 12px 0; font-size: 14px; }
