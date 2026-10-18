@@ -153,6 +153,9 @@ test("insight references navigate to evidence and its measured result without in
     insights: [{ insight_id: "ins-1", statement: "Relación observada", evidence_ids: ["ev-1", "ev-missing"], limitations: ["No demuestra causalidad."] }],
     analysis_results: [{ analysis_id: "analysis-1", method: "pearson", variables: ["sales", "margin"], status: "SUCCESS", result: { coefficient: 0.4 }, warnings: ["Resultado descriptivo."], completeness: "partial" }],
     evidence: [{ evidence_id: "ev-1", analysis_id: "analysis-1", description: "Coeficiente medido", limitations: ["Muestra observacional."] }],
+    relationship_assessments: [{ variables: ["sales", "margin"], evidence_ids: ["ev-1"],
+      potentially_spurious: null, rationale: "No hay controles suficientes.",
+      limitations: ["Screening ranking-1: método=pearson; n=20; p crudo=0.02; p ajustado=0.04; corrección=benjamini-hochberg."] }],
     warnings: ["Se omitió una etapa."], errors: [],
   };
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(report)));
@@ -162,12 +165,20 @@ test("insight references navigate to evidence and its measured result without in
 
   expect(await screen.findByRole("heading", { name: "Relación observada" })).toBeInTheDocument();
   await userEvent.click(screen.getByText("Ver referencias y limitaciones"));
-  expect(screen.getByRole("link", { name: "ev-1" })).toHaveAttribute("href", "#evidence-ev-1");
+  expect(screen.getAllByRole("link", { name: "ev-1" })).toHaveLength(2);
+  for (const link of screen.getAllByRole("link", { name: "ev-1" })) {
+    expect(link).toHaveAttribute("href", "#evidence-ev-1");
+  }
   expect(screen.getByText((content) => content.includes("ev-missing"))).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Correlación de Pearson · Completado" })).toHaveAttribute("id", "analysis-analysis-1");
   expect(screen.getByRole("link", { name: "analysis-1" })).toHaveAttribute("href", "#analysis-analysis-1");
   expect(screen.getByText("Resultado descriptivo.")).toBeInTheDocument();
   expect(screen.getByText("No demuestra causalidad.")).toBeInTheDocument();
   expect(screen.getByText("Muestra observacional.")).toBeInTheDocument();
+  expect(screen.getByText("Clasificación: Indeterminada")).toBeInTheDocument();
+  expect(screen.getByText("No hay controles suficientes.")).toBeInTheDocument();
+  expect(screen.getByText(/Screening ranking-1: método=pearson/)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ver Relaciones" })).toHaveAttribute("href", "/relations");
+  expect(screen.getByRole("link", { name: "Consultar en Chat" })).toHaveAttribute("href", "/chat");
   expect(screen.getByText("Se omitió una etapa.")).toBeInTheDocument();
 });

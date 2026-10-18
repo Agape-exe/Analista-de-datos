@@ -21,7 +21,7 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
   { label: "Evaluación", links: [
     { label: "Traza", icon: ListChecks, to: "/trace" }, { label: "Métricas", icon: Activity, to: "/metrics" },
   ] },
-  { label: "Asistente", links: [{ label: "Chat", icon: MessageSquare }] },
+  { label: "Asistente", links: [{ label: "Chat", icon: MessageSquare, to: "/chat" }] },
 ];
 
 export function Sidebar() {

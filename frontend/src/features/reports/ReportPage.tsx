@@ -57,7 +57,9 @@ export function ReportPage() {
           .map((value, i) => <li key={i}>{value}</li>)}</ul>}
         {report.status === "SKIPPED" && <p>El reporte contiene etapas pendientes. Los campos sin medición no representan cero.</p>}
         <div className="inline-actions"><Button variant="outline" onClick={() => downloadJson("analysis-report.json", report)}>Descargar JSON</Button>
-          <a href={`${base}/reports/${encodeURIComponent(report.run_id)}/markdown`}>Descargar informe</a></div>
+          <a href={`${base}/reports/${encodeURIComponent(report.run_id)}/markdown`}>Descargar informe</a>
+          <Link to="/relations">Ver Relaciones</Link><Link to="/metrics">Ver Métricas</Link>
+          <Link to="/trace">Ver Traza</Link><Link to="/chat">Consultar en Chat</Link></div>
       </Card>
       <Card className="quality-card" id="insights"><h2>Hallazgos</h2>
         {report.insights?.length ? report.insights.map((insight) => <article key={insight.insight_id}>
@@ -79,6 +81,20 @@ export function ReportPage() {
         {Object.entries(report.metrics || {}).map(([name, value]) => <tr key={name}><th>{metricLabel(name)}</th>
           <td>{value === null ? "Sin medición" : String(value)}</td></tr>)}
       </tbody></table></Card>
+      <Card className="quality-card" id="relationship-assessments"><h2>Evaluaciones de relaciones</h2>
+        {(report.relationship_assessments || []).map((assessment, index) => <article key={`${assessment.variables.join("-")}-${index}`}>
+          <h3>{assessment.variables.join(" / ") || "Variables no especificadas"}</h3>
+          <p>Clasificación: {assessment.potentially_spurious === true ? "Posiblemente espuria"
+            : assessment.potentially_spurious === false ? "No marcada como espuria" : "Indeterminada"}</p>
+          <p>{assessment.rationale}</p>
+          {assessment.evidence_ids?.length ? <p>Evidencias: {assessment.evidence_ids.map((evidenceId, evidenceIndex) => <span key={evidenceId}>
+            {evidenceIndex > 0 && ", "}{report.evidence?.some((item) => item.evidence_id === evidenceId)
+              ? <a href={`#${evidenceAnchor(evidenceId)}`}>{evidenceId}</a> : evidenceId}
+          </span>)}</p> : <p>No hay evidencias referenciadas para esta evaluación.</p>}
+          <NoticeList title="Procedencia y limitaciones" values={assessment.limitations} />
+        </article>)}
+        {!report.relationship_assessments?.length && <p>No hay evaluaciones de relaciones disponibles.</p>}
+      </Card>
       <Card className="quality-card" id="results-and-evidence"><h2>Resultados y evidencia</h2>
         {(report.analysis_results || []).map((value, index) => {
           const resultId = value.analysis_id ?? `${value.method}-${index}`;

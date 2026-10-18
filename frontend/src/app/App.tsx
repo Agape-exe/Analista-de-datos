@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
 import { AssociationsPage } from "../features/associations/AssociationsPage";
 import { AnomaliesPage } from "../features/anomalies/AnomaliesPage";
+import { ChatPage } from "../features/chat/ChatPage";
+import { ChatProvider } from "../features/chat/ChatProvider";
 import { IntakeProvider } from "../features/data-intake/IntakeProvider";
 import { NewAnalysisPage } from "../features/data-intake/NewAnalysisPage";
 import { DatasetOverviewPage } from "../features/dataset/DatasetOverviewPage";
@@ -16,7 +18,7 @@ import { ReportProvider } from "../features/reports/ReportProvider";
 import { SummaryPage } from "../features/summary/SummaryPage";
 
 export function App() {
-  return <IntakeProvider><ReportProvider><Routes><Route element={<AppShell />}>
+  return <IntakeProvider><ReportProvider><ChatProvider><Routes><Route element={<AppShell />}>
     <Route index element={<NewAnalysisPage />} />
     <Route path="summary" element={<SummaryPage />} />
     <Route path="metrics" element={<MetricsPage />} />
@@ -28,7 +30,8 @@ export function App() {
     <Route path="quality" element={<DataQualityPage />} />
     <Route path="associations" element={<AssociationsPage />} />
     <Route path="relations" element={<RelationsPage />} />
+    <Route path="chat" element={<ChatPage />} />
     <Route path="anomalies" element={<AnomaliesPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Route></Routes></ReportProvider></IntakeProvider>;
+  </Route></Routes></ChatProvider></ReportProvider></IntakeProvider>;
 }

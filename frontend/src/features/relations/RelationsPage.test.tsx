@@ -23,6 +23,17 @@ vi.mock("../reports/ReportProvider", () => ({
 function prepareReport(report: AnalysisReport | null) {
   vi.mocked(useReport).mockReturnValue({
     report,
+    reportIdentity: report ? {
+      origin: "recovered", datasetId: report.dataset_profile?.dataset_id ?? null,
+      matchesActiveDataset: null, previous: false, previousReason: null,
+    } : null,
+    compatibleReport: null,
+    question: "",
+    runId: report?.run_id ?? "",
+    setQuestion: () => {},
+    setRunId: () => {},
+    cancel: () => {},
+    notice: null,
     loading: false,
     error: null,
     generate: async () => {},

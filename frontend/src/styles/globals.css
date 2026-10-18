@@ -397,3 +397,17 @@ tbody tr:hover { background: #fcfcff; }
 .report-page pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .report-page p, .report-page li { overflow-wrap: anywhere; }
 .report-page ul { padding-left: 20px; }
+.chat-page { min-width: 0; }
+.chat-compose, .chat-history { display: grid; gap: 14px; overflow-wrap: anywhere; }
+.chat-compose label { display: block; font-size: 13px; }
+.chat-compose input { display: block; width: min(100%, 680px); margin-top: 6px;
+  padding: 10px 12px; border: 1px solid #d8e0e8; border-radius: 8px; background: #fff; }
+.chat-examples { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chat-examples h3 { width: 100%; font-size: 12px; }
+.chat-history article { padding: 16px 0; border-top: 1px solid #e8edf2; }
+.chat-history article:first-of-type { border-top: 0; }
+.chat-answer-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.chat-answer-heading h3 { font-size: 14px; }
+.chat-history h4 { margin-top: 12px; font-size: 12px; }
+.chat-history ul { margin: 8px 0 0; padding-left: 20px; }
+.chat-history code { margin-left: 6px; color: var(--muted); overflow-wrap: anywhere; }
