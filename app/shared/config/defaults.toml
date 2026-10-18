@@ -66,4 +66,6 @@ mutual_information_neighbors = 3
 mutual_information_max_rows = 10000
 max_scatter_points = 2000
 max_box_outliers = 200
+# Upper bound for grouped_summary; larger groups are shown first, the rest are reported as omitted.
+max_summary_groups = 20
 random_seed = 0

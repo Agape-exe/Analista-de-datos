@@ -50,6 +50,7 @@ from app.modules.exploration.adapters.analytics.profiling.tools import (
     CardinalityTool,
     DescriptiveStatisticsTool,
     DistributionTool,
+    GroupedSummaryTool,
     MissingValuesTool,
     OutliersTool,
 )
@@ -90,6 +91,7 @@ EDA_TOOLS: tuple[type[DatasetTool], ...] = (
     DistributionTool,
     CardinalityTool,
     OutliersTool,
+    GroupedSummaryTool,
     PearsonTool,
     SpearmanTool,
     ChiSquareTool,
