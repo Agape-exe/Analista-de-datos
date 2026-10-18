@@ -135,3 +135,15 @@ Se conservan las validaciones de las variables de control.
 ## Revisión con evidencia calculada
 
 Consulta [Critic e Insight con evidencia calculada](critic-evidence-pipeline.md) para el catálogo ampliado, planificación automática, clasificación indeterminada y condiciones de omisión.
+
+
+## 8. Criterios de revisión descriptiva (AUD-002)
+
+- SUCCESS: cuando se genera al menos una evaluación trazable a partir de resultados estadísticos válidos y calculados.
+- SKIPPED: cuando no existen resultados compatibles o evaluables.
+- La significancia estadística no es obligatoria para generar una revisión descriptiva.
+- Un valor p significativo, no significativo o ausente no determina por sí solo la robustez o espuriedad.
+- potentially_spurious=None: clasificación indeterminada; no significa que la relación sea robusta.
+- potentially_spurious=True: alerta preliminar sustentada en las reglas de sensibilidad de correlación parcial.
+- Toda evaluación debe conservar referencias a sus evidencias y advertencias sobre sus limitaciones.
+- SUCCESS no implica causalidad ni validación experimental.

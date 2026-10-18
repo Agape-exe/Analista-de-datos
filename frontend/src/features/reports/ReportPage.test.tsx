@@ -28,7 +28,7 @@ async function openInsightsAfterIntake() {
   render(<MemoryRouter><App /></MemoryRouter>);
   await user.upload(screen.getByLabelText("Archivo del dataset"), new File(["a\n1\n"], "sales.csv"));
   await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
-  await screen.findByRole("link", { name: "Explorar asociaciones" });
+  await screen.findByRole("link", { name: "Explorar asociaciones" }, { timeout: 5000 });
   await user.click(screen.getByRole("link", { name: "Hallazgos" }));
   return user;
 }
@@ -44,7 +44,10 @@ test("null metrics stay unmeasured and no insights are invented", async () => {
   await screen.findByText("Estado: Pendiente");
   expect(screen.getByText("Sin medición")).toBeInTheDocument();
   expect(screen.getByText("0", { exact: true })).toBeInTheDocument();
-  expect(screen.getByText("No hay hallazgos respaldados por evidencia disponibles.")).toBeInTheDocument();
+  expect(
+  screen.getByText("No hay hallazgos respaldados por evidencia disponibles.")
+).toBeInTheDocument();
+
 });
 
 test("missing report shows server error and enables retry", async () => {

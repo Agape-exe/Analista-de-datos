@@ -10,6 +10,7 @@ import { DataQualityPage } from "../features/quality/DataQualityPage";
 import { MetricsPage } from "../features/metrics/MetricsPage";
 import { TracePage } from "../features/trace/TracePage";
 import { PatternsPage } from "../features/patterns/PatternsPage";
+import { RelationsPage } from "../features/relations/RelationsPage";
 import { ReportPage } from "../features/reports/ReportPage";
 import { ReportProvider } from "../features/reports/ReportProvider";
 import { SummaryPage } from "../features/summary/SummaryPage";
@@ -26,6 +27,7 @@ export function App() {
     <Route path="dictionary" element={<DataDictionaryPage />} />
     <Route path="quality" element={<DataQualityPage />} />
     <Route path="associations" element={<AssociationsPage />} />
+    <Route path="relations" element={<RelationsPage />} />
     <Route path="anomalies" element={<AnomaliesPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Route></Routes></ReportProvider></IntakeProvider>;

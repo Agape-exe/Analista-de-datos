@@ -25,7 +25,8 @@ async def run(registry: ToolRegistry, tool: str, *variables: str, **parameters) 
 
 
 async def test_registry_exposes_every_eda_tool(registry: ToolRegistry) -> None:
-    assert len(registry.names()) == len(EDA_TOOLS)
+    assert len(registry.names()) == len(EDA_TOOLS) + 1
+    assert "partial_correlation" in registry.names()
     assert {"pearson", "relationship_ranking", "chart_scatter"} <= set(registry.names())
 
 

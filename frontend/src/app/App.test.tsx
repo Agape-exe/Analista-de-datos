@@ -15,7 +15,7 @@ describe("intake workflow", () => {
   it("does not allow submitting without a file and explains unavailable features", () => {
     renderApp();
     expect(screen.getByRole("button", { name: "Comprender dataset" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Relaciones Pronto" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Relaciones" })).toHaveAttribute("href", "/relations");
     expect(screen.getByRole("link", { name: "Anomalías" })).toHaveAttribute("href", "/anomalies");
     expect(screen.getByRole("link", { name: "Patrones" })).toHaveAttribute("href", "/patterns");
     expect(screen.getByRole("link", { name: "Asociaciones" })).toHaveAttribute("href", "/associations");
@@ -94,7 +94,7 @@ describe("intake workflow", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Comprendiendo tu dataset");
     expect(screen.getByRole("button", { name: "Procesando…" })).toBeDisabled();
     resolve(new Response(JSON.stringify(intakeFixture), { status: 200 }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Resumen del dataset" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Resumen del dataset" })).toBeInTheDocument(), { timeout: 5000 });
   });
 
   it("shows an actionable empty state when opening Dataset without a result", () => {

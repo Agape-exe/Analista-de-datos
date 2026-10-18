@@ -10,6 +10,8 @@ import numpy as np
 from pydantic import Field
 
 from app.modules.exploration.adapters.analytics.association.matrix import correlation_matrix
+from app.modules.exploration.adapters.analytics.association.measures import contingency_summary
+from app.modules.exploration.adapters.analytics.association.tools import check_categories
 from app.modules.exploration.adapters.analytics.base import DatasetTool, ToolOutput, finite
 from app.modules.exploration.adapters.analytics.columns import (
     column_array,
@@ -74,6 +76,34 @@ class BoxPlotChart(DomainModel):
     column: str
     group_by: str | None = None
     boxes: list[BoxStats]
+
+
+class ContingencyChart(DomainModel):
+    """Observed counts of two categorical columns (rows = x, columns = y).
+
+    When an axis has more than the display limit, its smallest categories are folded
+    into its last label; folded_rows / folded_columns say how many categories it holds.
+    Expected-frequency counters always refer to the full, unfolded table.
+    """
+
+    kind: Literal["contingency"] = "contingency"
+    x: str
+    y: str
+    row_labels: list[str]
+    column_labels: list[str]
+    counts: list[list[int]]
+    row_totals: list[int]
+    column_totals: list[int]
+    total: int = Field(ge=0)
+    expected: list[list[float | None]]
+    folded_rows: int = Field(ge=0)
+    folded_columns: int = Field(ge=0)
+    cells: int = Field(ge=0)
+    expected_below_5: int = Field(ge=0)
+    expected_below_1: int = Field(ge=0)
+    min_expected: float | None
+    empty_cells: int = Field(ge=0)
+    excluded_rows: int = Field(ge=0)
 
 
 def _chart_output(chart: DomainModel, variables: list[str], size: int, notes: list[str]):
@@ -156,6 +186,35 @@ class HistogramTool(DatasetTool):
         bins = histogram(values, self.options.max_histogram_bins)
         chart = HistogramChart(column=column, edges=bins["edges"], counts=bins["counts"])
         return _chart_output(chart, [column], observed, [])
+
+
+class ContingencyTool(DatasetTool):
+    """Contingency table of two categorical columns with expected-frequency diagnostics."""
+
+    name = "chart_contingency"
+    min_variables = 2
+    max_variables = 2
+
+    def compute(self, data: RegisteredDataset, request: ToolRequest) -> ToolOutput:
+        x, y = request.variables
+        if x == y:
+            raise AnalysisNotApplicableError("A contingency table needs two different columns.")
+        require_role(data, x, SemanticType.CATEGORICAL)
+        require_role(data, y, SemanticType.CATEGORICAL)
+        x_values, y_values = column_array(data, x), column_array(data, y)
+        check_categories(x_values, x, self.options.max_categories)
+        check_categories(y_values, y, self.options.max_categories)
+        summary = contingency_summary(x_values, y_values, self.options.top_categories)
+        chart = ContingencyChart.model_validate({"x": x, "y": y, "excluded_rows": 0, **summary})
+        # Rows missing either value do not enter the table; say how many.
+        chart = chart.model_copy(update={"excluded_rows": data.dataset.row_count - chart.total})
+        notes = []
+        if chart.expected_below_5 / chart.cells > 0.2:
+            notes.append(
+                f"{chart.expected_below_5 / chart.cells:.0%} of expected frequencies are below 5; "
+                "the chi-square approximation may be unreliable."
+            )
+        return _chart_output(chart, [x, y], chart.total, notes)
 
 
 class BoxPlotTool(DatasetTool):

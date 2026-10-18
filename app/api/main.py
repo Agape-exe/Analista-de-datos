@@ -22,6 +22,9 @@ from app.modules.analysis.application.use_cases.analyze_dataset import AnalyzeDa
 from app.modules.analysis.application.use_cases.analyze_uploaded_dataset import (
     AnalyzeUploadedDataset,
 )
+from app.modules.critical_review.adapters.grounded_query_routes import (
+    router as grounded_queries_router,
+)
 from app.modules.data_intake.adapters.datasource.upload_storage import TemporaryUploadStorage
 from app.modules.data_intake.adapters.http.routes import router as intake_router
 from app.modules.exploration.adapters.http.routes import router as exploration_router
@@ -95,6 +98,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.include_router(local_analysis_router)
     application.include_router(intake_router)
     application.include_router(exploration_router)
+    application.include_router(grounded_queries_router)
     return application
 
 
