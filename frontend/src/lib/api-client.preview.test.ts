@@ -67,8 +67,10 @@ describe("AUD-010 cliente de preview", () => {
   it("mantiene el rechazo por cancelación", async () => {
     const controller = new AbortController();
     const failure = new DOMException("Aborted", "AbortError");
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(failure));
-    controller.abort();
+    vi.stubGlobal("fetch", vi.fn(() => {
+      controller.abort();
+      return Promise.reject(failure);
+    }));
     await expect(getDatasetPreview("dataset-a", {}, controller.signal)).rejects.toBe(failure);
   });
 

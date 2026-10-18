@@ -159,10 +159,11 @@ it("la herramienta se consulta después de finalizar las solicitudes dependiente
   const fetchMock = vi.fn(async (url: string) => url.endsWith("/outliers") ? response(result())
     : new Promise<Response>((done) => pending.push(() => done(response(toolFixtures[url.split("/tools/")[1]])))));
   vi.stubGlobal("fetch", fetchMock); render(explorer());
-  expect(fetchMock).toHaveBeenCalledTimes(3);
-  await act(async () => pending.forEach((done) => done(response({}))));
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  while (pending.length > 0) await act(async () => pending.shift()?.(response({})));
   await screen.findByRole("rowheader", { name: "Registro 4" });
   expect(fetchMock).toHaveBeenCalledTimes(4);
+  expect(fetchMock.mock.calls.at(-1)?.[0]).toMatch(/\/outliers$/);
   const section = screen.getByRole("region", { name: "Ejemplos de valores atípicos" });
   expect(within(section).getByRole("table")).toBeInTheDocument();
 });
