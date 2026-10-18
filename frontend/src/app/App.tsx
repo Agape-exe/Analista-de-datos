@@ -8,10 +8,12 @@ import { DataDictionaryPage } from "../features/dataset/DataDictionaryPage";
 import { DataQualityPage } from "../features/quality/DataQualityPage";
 import { ReportPage } from "../features/reports/ReportPage";
 import { ReportProvider } from "../features/reports/ReportProvider";
+import { SummaryPage } from "../features/summary/SummaryPage";
 
 export function App() {
   return <IntakeProvider><ReportProvider><Routes><Route element={<AppShell />}>
     <Route index element={<NewAnalysisPage />} />
+    <Route path="summary" element={<SummaryPage />} />
     <Route path="report" element={<ReportPage />} />
     <Route path="dataset" element={<DatasetOverviewPage />} />
     <Route path="dictionary" element={<DataDictionaryPage />} />

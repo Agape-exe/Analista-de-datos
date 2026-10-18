@@ -6,7 +6,7 @@ import { useIntake } from "../../features/data-intake/IntakeProvider";
 import { Button } from "../ui/button";
 
 const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: string }[] }[] = [
-  { links: [{ label: "Resumen", icon: LayoutDashboard }] },
+  { links: [{ label: "Resumen", icon: LayoutDashboard, to: "/summary" }] },
   { label: "Datos", links: [
     { label: "Dataset", icon: Database, to: "/dataset" },
     { label: "Calidad de datos", icon: ShieldCheck, to: "/quality" }, { label: "Diccionario de datos", icon: BookOpen, to: "/dictionary" },
