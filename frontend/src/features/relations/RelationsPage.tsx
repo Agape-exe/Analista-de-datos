@@ -7,7 +7,7 @@ import { useReport } from "../reports/ReportProvider";
 import { PartialCorrelationControl } from "./PartialCorrelationControl";
 
 export function RelationsPage() {
-  const { report, loading } = useReport();
+  const { report, loading, generate, error } = useReport();
   const { result: activeDataset } = useIntake();
 
   // ==========================================================
@@ -269,6 +269,12 @@ export function RelationsPage() {
                   datasetId={datasetId}
                   numericColumns={numericColumns}
                   variables={assessment.variables}
+                  reportLoading={loading}
+                  reportError={error?.message}
+                  onGenerateReport={(selection) => generate(
+                    `Evaluar ${selection.variables.join(" y ")} controlando por ${selection.control_variable}.`,
+                    undefined, selection,
+                  )}
                 />
               ) : (
                 <p>

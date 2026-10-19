@@ -13,9 +13,11 @@ from app.shared.application.errors import (
 from app.shared.contracts.analysis_input import (
     AnalysisConfiguration,
     AnalysisInput,
+    PartialCorrelationSelection,
     StoredSourceSpec,
 )
 from app.shared.contracts.intake import IntakeOptions
+from app.shared.domain.enums.semantic_type import SemanticType
 from app.shared.domain.models.base import DomainModel
 from app.shared.domain.models.report import AnalysisReport
 
@@ -51,6 +53,7 @@ class StoredConfiguration(DomainModel):
 class StoredAnalysisRequest(DomainModel):
     user_question: str | None = None
     configuration: StoredConfiguration = Field(default_factory=StoredConfiguration)
+    control_selection: PartialCorrelationSelection | None = None
 
 
 @local_router.post("/analysis", response_model=AnalysisReport)
@@ -102,7 +105,7 @@ async def analysis_stored(
     """Analyze a dataset already uploaded through intake, without re-reading or re-profiling."""
     await enforce_request_limit(request, "upload")
     try:
-        await request.app.state.datasets.get(dataset_id)
+        registered = await request.app.state.datasets.get(dataset_id)
     except DatasetNotFoundError as error:
         raise HTTPException(
             404,
@@ -112,11 +115,23 @@ async def analysis_stored(
             },
         ) from error
     question = body.user_question.strip() if body and body.user_question else None
+    selection = body.control_selection if body else None
+    if selection is not None:
+        numeric = set(registered.columns_of_type(SemanticType.NUMERIC))
+        if not set([*selection.variables, selection.control_variable]).issubset(numeric):
+            raise HTTPException(
+                422,
+                detail={
+                    "code": "CONTROL_SELECTION_INVALID",
+                    "message": "Targets and control must be numeric columns of this dataset.",
+                },
+            )
     async with reserve_operation_capacity(request):
         return await request.app.state.analysis_use_case.execute(
             AnalysisInput(
                 source=StoredSourceSpec(dataset_id=dataset_id),
                 user_question=question or None,
+                control_selection=selection,
                 configuration=AnalysisConfiguration.model_validate(
                     body.configuration.model_dump(exclude_unset=True) if body else {}
                 ),

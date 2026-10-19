@@ -147,3 +147,17 @@ Consulta [Critic e Insight con evidencia calculada](critic-evidence-pipeline.md)
 - potentially_spurious=True: alerta preliminar sustentada en las reglas de sensibilidad de correlación parcial.
 - Toda evaluación debe conservar referencias a sus evidencias y advertencias sobre sus limitaciones.
 - SUCCESS no implica causalidad ni validación experimental.
+
+## Procedencia del screening y control elegido
+
+Critic consume el canal real `screening_summary`, con ID, ranking, advertencias y
+número de pruebas, además de admitir el formato anterior de resultado de ranking.
+La corrección de p corresponde al conjunto de pruebas del screening; no se atribuye
+a los resultados de un retesteo. No se fabrica Evidence para un ranking que no sea
+un resultado de Analysis. Los resúmenes históricos sin ID verificable no inventan
+procedencia.
+
+Relaciones conserva la consulta exploratoria de correlación parcial y permite
+generar un nuevo reporte con el control explícito. El nuevo plan contiene Pearson
+y un paso parcial dependiente, revisado por Critic y persistido con su traza.
+Véase [corrección de integración](integration-preservation-fix.md).
