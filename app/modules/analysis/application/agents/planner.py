@@ -34,12 +34,19 @@ class PlannerAgent(SkeletonAgent):
                 errors=[str(error)],
             )
         if outcome.plan is None:
+            selection = context.input.control_selection
+            requested_control = (
+                {"variables": selection.variables, "control_variable": selection.control_variable}
+                if selection is not None
+                else {}
+            )
             return AgentResult(
                 agent_name=self.name,
                 status=AnalysisStatus.SKIPPED,
                 update=AgentUpdate(
                     planning_decisions=[
-                        {"selected": False, "reason": warning} for warning in outcome.warnings
+                        {"selected": False, "reason": warning} | requested_control
+                        for warning in outcome.warnings
                     ]
                 ),
                 warnings=outcome.warnings,

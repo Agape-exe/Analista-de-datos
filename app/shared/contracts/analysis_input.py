@@ -93,6 +93,20 @@ class EffectiveConfiguration(DomainModel):
     performance: PerformanceSettings
 
 
+class PartialCorrelationSelection(DomainModel):
+    """Explicit user selection; never inferred from column-name text in a question."""
+
+    variables: list[str] = Field(min_length=2, max_length=2)
+    control_variable: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def distinct_numeric_names(self) -> "PartialCorrelationSelection":
+        names = [*self.variables, self.control_variable]
+        if any(not name.strip() for name in names) or len(set(names)) != 3:
+            raise ValueError("Select two distinct variables and a different control")
+        return self
+
+
 class AnalysisInput(DomainModel):
     model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
 
@@ -101,6 +115,7 @@ class AnalysisInput(DomainModel):
     data_dictionary: DataDictionary | None = None
     user_question: str | None = None
     configuration: AnalysisConfiguration = Field(default_factory=AnalysisConfiguration)
+    control_selection: PartialCorrelationSelection | None = None
 
 
 def resolve_configuration(

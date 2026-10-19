@@ -277,6 +277,7 @@ export interface components {
             /** User Question */
             user_question?: string | null;
             configuration?: components["schemas"]["AnalysisConfiguration"];
+            control_selection?: components["schemas"]["PartialCorrelationSelection"] | null;
         };
         /** AnalysisOverrides */
         AnalysisOverrides: {
@@ -815,6 +816,16 @@ export interface components {
             profiling_time: number;
         };
         JsonValue: unknown;
+        /**
+         * PartialCorrelationSelection
+         * @description Explicit user selection; never inferred from column-name text in a question.
+         */
+        PartialCorrelationSelection: {
+            /** Variables */
+            variables: string[];
+            /** Control Variable */
+            control_variable: string;
+        };
         /** PerformanceOverrides */
         PerformanceOverrides: {
             /** Timeout Seconds */
@@ -921,6 +932,7 @@ export interface components {
             /** User Question */
             user_question?: string | null;
             configuration?: components["schemas"]["StoredConfiguration"];
+            control_selection?: components["schemas"]["PartialCorrelationSelection"] | null;
         };
         /** StoredConfiguration */
         StoredConfiguration: {

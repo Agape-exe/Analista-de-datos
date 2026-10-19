@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { DatasetExpiredError, getReport, runStoredAnalysis, type AnalysisReport, type StoredConfiguration } from "../../lib/api-client";
+import { DatasetExpiredError, getReport, runStoredAnalysis, type AnalysisReport, type StoredConfiguration, type PartialCorrelationSelection } from "../../lib/api-client";
 import { useIntake } from "../data-intake/IntakeProvider";
 
 export interface ReportError {
@@ -34,7 +34,7 @@ interface ReportContextValue {
   notice: string | null;
   loading: boolean;
   error: ReportError | null;
-  generate: (question: string, configuration?: StoredConfiguration) => Promise<void>;
+  generate: (question: string, configuration?: StoredConfiguration, controlSelection?: PartialCorrelationSelection) => Promise<void>;
   recover: (runId: string) => Promise<void>;
 }
 
@@ -134,9 +134,9 @@ export function ReportProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function generate(question: string, configuration?: StoredConfiguration) {
+  async function generate(question: string, configuration?: StoredConfiguration, controlSelection?: PartialCorrelationSelection) {
     if (!datasetId) return;
-    await load("generate", (signal) => runStoredAnalysis(datasetId, question, signal, configuration), datasetId);
+    await load("generate", (signal) => runStoredAnalysis(datasetId, question, signal, configuration, controlSelection), datasetId);
   }
 
   async function recover(runId: string) {

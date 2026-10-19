@@ -29,6 +29,11 @@ class AssociationAgent:
         if result.status != AnalysisStatus.SUCCESS or not isinstance(result.result, dict):
             return self._skipped(*(f"Association screening: {item}" for item in result.warnings))
         top = result.result.get("top_relationships")
+        summary = result.result | {
+            "analysis_id": result.analysis_id,
+            "warnings": list(result.warnings),
+            "tests_performed": result.metadata.get("tests_performed"),
+        }
         ranked = (
             [RankedRelationship.model_validate(item) for item in top]
             if isinstance(top, list)
@@ -38,16 +43,14 @@ class AssociationAgent:
             return AgentResult(
                 agent_name=self.name,
                 status=AnalysisStatus.SKIPPED,
-                update=AgentUpdate(screening_summary=result.result),
+                update=AgentUpdate(screening_summary=summary),
                 warnings=result.warnings
                 + ["Association screening found no significant relationships."],
             )
         return AgentResult(
             agent_name=self.name,
             status=AnalysisStatus.SUCCESS,
-            update=AgentUpdate(
-                associations=to_associations(ranked), screening_summary=result.result
-            ),
+            update=AgentUpdate(associations=to_associations(ranked), screening_summary=summary),
             warnings=result.warnings,
         )
 
