@@ -1,4 +1,3 @@
-
 """AUD-039: API de preguntas fundamentadas."""
 
 from fastapi import APIRouter, HTTPException, Request

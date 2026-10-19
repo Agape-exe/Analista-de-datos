@@ -1,4 +1,3 @@
-
 import asyncio
 
 from fastapi.testclient import TestClient
@@ -126,9 +125,7 @@ def test_measured_zero_is_preserved():
 
 
 def test_http_query_uses_saved_report(client: TestClient):
-    asyncio.run(
-        client.app.state.report_repository.save(make_report())
-    )
+    asyncio.run(client.app.state.report_repository.save(make_report()))
 
     response = client.post(
         "/reports/aud039-test/questions",

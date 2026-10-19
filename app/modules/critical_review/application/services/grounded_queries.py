@@ -1,4 +1,3 @@
-
 """AUD-039: Consultas determinísticas sobre reportes existentes."""
 
 from typing import Literal
@@ -88,8 +87,7 @@ def answer_grounded_query(
             )
 
         descriptions = [
-            f"{result.method} ({', '.join(result.variables)})"
-            for _, result in completed[:10]
+            f"{result.method} ({', '.join(result.variables)})" for _, result in completed[:10]
         ]
         return GroundedAnswer(
             question=question,
@@ -120,9 +118,7 @@ def answer_grounded_query(
         descriptions = []
         references = []
 
-        for index, assessment in enumerate(
-            report.relationship_assessments[:10]
-        ):
+        for index, assessment in enumerate(report.relationship_assessments[:10]):
             label = (
                 "potencialmente espuria"
                 if assessment.potentially_spurious is True
@@ -132,11 +128,7 @@ def answer_grounded_query(
             )
             pair = " y ".join(assessment.variables)
             descriptions.append(f"{pair}: {label}")
-            references.append(
-                GroundedReference(
-                    path=f"/relationship_assessments/{index}"
-                )
-            )
+            references.append(GroundedReference(path=f"/relationship_assessments/{index}"))
 
         return GroundedAnswer(
             question=question,
@@ -151,9 +143,7 @@ def answer_grounded_query(
 
     if question == "evidencias":
         successful_ids = {
-            result.analysis_id
-            for result in report.analysis_results
-            if result.status == "SUCCESS"
+            result.analysis_id for result in report.analysis_results if result.status == "SUCCESS"
         }
         valid = [
             (index, item)
@@ -170,9 +160,8 @@ def answer_grounded_query(
         return GroundedAnswer(
             question=question,
             status="ANSWERED",
-            answer="Evidencias registradas: " + "; ".join(
-                item.description for _, item in valid[:10]
-            ),
+            answer="Evidencias registradas: "
+            + "; ".join(item.description for _, item in valid[:10]),
             references=[
                 GroundedReference(
                     path=f"/evidence/{index}",
@@ -195,13 +184,9 @@ def answer_grounded_query(
         return GroundedAnswer(
             question=question,
             status="ANSWERED",
-            answer="Métricas registradas: " + "; ".join(
-                f"{name}={value}" for name, value in measured.items()
-            ),
-            references=[
-                GroundedReference(path=f"/metrics/{name}")
-                for name in measured
-            ],
+            answer="Métricas registradas: "
+            + "; ".join(f"{name}={value}" for name, value in measured.items()),
+            references=[GroundedReference(path=f"/metrics/{name}") for name in measured],
         )
 
     if not report.warnings:
@@ -215,7 +200,6 @@ def answer_grounded_query(
         status="ANSWERED",
         answer="Advertencias: " + "; ".join(report.warnings),
         references=[
-            GroundedReference(path=f"/warnings/{index}")
-            for index in range(len(report.warnings))
+            GroundedReference(path=f"/warnings/{index}") for index in range(len(report.warnings))
         ],
     )

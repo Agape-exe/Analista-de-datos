@@ -131,6 +131,12 @@ export async function runTool(
 
 export type AnalysisReport = components["schemas"]["AnalysisReport"];
 export type StoredConfiguration = components["schemas"]["StoredConfiguration"];
+export type GroundedAnswer = components["schemas"]["GroundedAnswer"];
+export type GroundedReference = components["schemas"]["GroundedReference"];
+
+export interface QuestionCatalog {
+  questions: Record<string, string>;
+}
 
 export async function runStoredAnalysis(
   datasetId: string, userQuestion: string, signal?: AbortSignal, configuration?: StoredConfiguration,
@@ -144,6 +150,39 @@ export async function runStoredAnalysis(
 
 export async function getReport(runId: string, signal?: AbortSignal): Promise<AnalysisReport> {
   return request<AnalysisReport>(`/reports/${encodeURIComponent(runId.trim())}`, { signal });
+}
+
+export async function getQuestionCatalog(signal?: AbortSignal): Promise<QuestionCatalog> {
+  const payload = await request<unknown>("/questions/catalog", { signal });
+  if (!payload || typeof payload !== "object" || !("questions" in payload)
+    || !payload.questions || typeof payload.questions !== "object" || Array.isArray(payload.questions)
+    || !Object.entries(payload.questions).every(([key, value]) => key.length > 0 && typeof value === "string" && value.length > 0)) {
+    throw new ApiError("El catálogo de preguntas es inválido.", undefined, "INVALID_RESPONSE");
+  }
+  return payload as QuestionCatalog;
+}
+
+export async function askGroundedQuestion(
+  runId: string, question: string, signal?: AbortSignal,
+): Promise<GroundedAnswer> {
+  const expectedQuestion = question.trim();
+  const payload = await request<unknown>(`/reports/${encodeURIComponent(runId)}/questions`, {
+    method: "POST", body: JSON.stringify({ question: expectedQuestion }),
+    headers: { "Content-Type": "application/json" }, signal,
+  });
+  if (!payload || typeof payload !== "object") {
+    throw new ApiError("La respuesta fundamentada es inválida.", undefined, "INVALID_RESPONSE");
+  }
+  const answer = payload as Partial<GroundedAnswer>;
+  const references = answer.references ?? [];
+  if (answer.question !== expectedQuestion || !["ANSWERED", "ABSTAINED"].includes(String(answer.status))
+    || typeof answer.answer !== "string" || !Array.isArray(references)
+    || references.some((reference) => !reference || typeof reference.path !== "string")
+    || (answer.status === "ANSWERED" && references.length === 0)
+    || (answer.status === "ABSTAINED" && references.length > 0)) {
+    throw new ApiError("La respuesta fundamentada no conserva referencias verificables.", undefined, "INVALID_RESPONSE");
+  }
+  return { ...answer, references } as GroundedAnswer;
 }
 
 /**

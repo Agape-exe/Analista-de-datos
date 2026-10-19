@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Activity, BookOpen, ChartNoAxesCombined, CircleHelp, Database, GitBranch, Layers,
   LayoutDashboard, ListChecks, MessageSquare, Plus, ScanSearch, ShieldCheck, Sparkles, TriangleAlert,
   type LucideIcon } from "lucide-react";
@@ -6,7 +6,7 @@ import { useIntake } from "../../features/data-intake/IntakeProvider";
 import { Button } from "../ui/button";
 
 const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: string }[] }[] = [
-  { links: [{ label: "Resumen", icon: LayoutDashboard }] },
+  { links: [{ label: "Resumen", icon: LayoutDashboard, to: "/summary" }] },
   { label: "Datos", links: [
     { label: "Dataset", icon: Database, to: "/dataset" },
     { label: "Calidad de datos", icon: ShieldCheck, to: "/quality" }, { label: "Diccionario de datos", icon: BookOpen, to: "/dictionary" },
@@ -19,20 +19,20 @@ const groups: { label?: string; links: { label: string; icon: LucideIcon; to?: s
     { label: "Relaciones", icon: GitBranch, to: "/relations" }, { label: "Hallazgos", icon: Sparkles, to: "/report" },
   ] },
   { label: "Evaluación", links: [
-    { label: "Traza", icon: ListChecks, to: "/trace" }, { label: "Métricas", icon: Activity },
+    { label: "Traza", icon: ListChecks, to: "/trace" }, { label: "Métricas", icon: Activity, to: "/metrics" },
   ] },
-  { label: "Asistente", links: [{ label: "Chat", icon: MessageSquare }] },
+  { label: "Asistente", links: [{ label: "Chat", icon: MessageSquare, to: "/chat" }] },
 ];
 
 export function Sidebar() {
-  const { reset, loading } = useIntake();
+  const { reset } = useIntake();
   const navigate = useNavigate();
   return <aside className="sidebar">
-    <a className="brand" href="/" aria-label="Inicio de Analista de Datos IA">
+    <Link className="brand" to="/" aria-label="Inicio de Analista de Datos IA">
       <span className="brand-icon"><ChartNoAxesCombined size={17} /></span>
       <span className="sidebar-label">Analista de Datos IA</span>
-    </a>
-    <Button className="new-analysis" aria-label="Nuevo análisis" disabled={loading} onClick={() => { reset(); navigate("/"); }}>
+    </Link>
+    <Button className="new-analysis" aria-label="Nuevo análisis" onClick={() => { reset(); navigate("/"); }}>
       <Plus size={15} /><span className="sidebar-label">Nuevo análisis</span>
     </Button>
     <nav aria-label="Navegación principal">

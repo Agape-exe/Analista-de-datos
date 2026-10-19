@@ -19,8 +19,9 @@ describe("intake workflow", () => {
     expect(screen.getByRole("link", { name: "Anomalías" })).toHaveAttribute("href", "/anomalies");
     expect(screen.getByRole("link", { name: "Patrones" })).toHaveAttribute("href", "/patterns");
     expect(screen.getByRole("link", { name: "Asociaciones" })).toHaveAttribute("href", "/associations");
-    expect(screen.getByRole("link", { name: "Configurar Hallazgos" })).toHaveAttribute("href", "/report");
+    expect(screen.getByRole("link", { name: "Hallazgos" })).toHaveAttribute("href", "/report");
     expect(screen.getByRole("link", { name: "Traza" })).toHaveAttribute("href", "/trace");
+    expect(screen.getByRole("link", { name: "Chat" })).toHaveAttribute("href", "/chat");
   });
 
   it("uploads a dataset with options and dictionary, renders metadata and downloads JSON", async () => {
