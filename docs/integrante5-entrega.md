@@ -1,14 +1,6 @@
 # Revisión de entrega I5 — AUD-007, Métricas y Traza
 
-Actualización: la [comparación Linux PR/develop](integrante5-integracion-linux.md)
-reproduce los tres fallos E2E pendientes en ambas revisiones y precisa sus
-causas. Sustituye la incertidumbre de atribución indicada en las secciones
-históricas inferiores; CI sigue fallida y el PR continúa en borrador.
-
-Revisión del 18 de octubre de 2026. **PR preparado para revisión; no aprobado**.
-Actions real termina en fallo; los recorridos nuevos de Métricas/Traza pasan en
-Chromium Linux. Los fallos obligatorios no se excluyen. Render continúa pendiente de medición del staging
-desplegado. No se ejecuta ningún despliegue.
+Actualización final: la CI del PR #41 [39180032725](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39180032725) terminó en **success** sobre `2e45555379febb49087304b49728c6916af7c55b`, con los nueve jobs obligatorios aprobados, incluido E2E Chromium Linux. El PR continúa en borrador para revisión y aprobación; no se hizo merge ni despliegue en Render. Las secciones históricas inferiores documentan fallos ya resueltos y no representan el estado de cierre actual.
 
 ## Base y atribución
 
@@ -320,14 +312,12 @@ la descripción del PR después del push.
 - Frontend: suite global Vitest con 291/291 aprobadas en 28 archivos (0 fallidas).
 - Compatibilidad e integración: configuración pública de reporte restaurada en `ReportPage.tsx`, desambiguación de selectores E2E en `report.spec.ts`, y compatibilidad completa en `TracePage.tsx` integrando el plan de auditoría, eventos reales y enlaces contextuales a resultados.
 - Build, typecheck y ESLint: correctos.
-- E2E Windows: 16 casos no ejecutaron aserciones por `spawn UNKNOWN`; quedan
-  pendientes los resultados Linux de la nueva CI.
+- E2E Windows: 16 casos no ejecutaron aserciones por `spawn UNKNOWN`; la
+  validación concluyente se realizó en Chromium Linux mediante la CI aprobada.
 
 ### Estado de cierre
 
-AUD-008 sigue **pendiente**: no existe staging autorizado/medido en esta
-continuación y no se desplegó Render. AUD-046 sigue **pendiente** hasta que los
-nueve jobs de la cabecera final, incluidas las E2E Linux de Chat y Relaciones,
-terminen y se revisen sus artefactos. Se conserva el límite de **2.097.152
-bytes**, no hubo merge del PR, cierre, despliegue, benchmarks ni cambios de
-algoritmos ajenos.
+AUD-008 sigue **pendiente** porque no existe staging autorizado/medido y no se
+desplegó Render. AUD-046 queda validado para revisión: los nueve jobs de la
+cabecera final, incluidas las E2E Linux de Chat y Relaciones, aprobaron en la
+ejecución [39180032725](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39180032725). Se conserva el límite de **2.097.152 bytes**; no hubo merge del PR, cierre, despliegue, benchmarks ni cambios de algoritmos ajenos.

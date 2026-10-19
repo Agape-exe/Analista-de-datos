@@ -1,5 +1,9 @@
 # I5: comparación reproducible de los fallos de integración
 
+## Estado final
+
+La comparación de este documento es evidencia histórica. La validación final del PR #41 fue la CI [39180032725](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39180032725), que terminó en **success** con sus nueve jobs obligatorios, incluido E2E Chromium Linux, sobre `2e45555379febb49087304b49728c6916af7c55b`. Por ello AUD-007 y AUD-046 no permanecen pendientes por CI; el PR sigue en borrador para revisión y no hubo merge ni despliegue.
+
 ## Revisiones y condiciones
 
 Comparación realizada el 18 de octubre de 2026 mediante Actions real:
@@ -168,7 +172,9 @@ Uvicorn/Vite, pero Chromium 1248 falló en cada caso con `spawn UNKNOWN` antes d
 la primera aserción. Este resultado solo valida descubrimiento/configuración;
 no sustituye Linux.
 
-La comparación Linux definitiva se ejecutará mediante el workflow CI del PR,
-que aísla cada archivo E2E en un proceso nuevo. Hasta registrar esa URL y sus
-jobs, AUD-007 y AUD-046 permanecen pendientes. No hubo cambios de límites,
-reintentos, locks, despliegue ni configuración de Render.
+La comparación Linux definitiva se ejecutó mediante el workflow CI del PR, que
+aisla cada archivo E2E en un proceso nuevo. La ejecución
+[39180032725](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39180032725)
+aprobó los nueve jobs; AUD-007 y AUD-046 ya no permanecen pendientes por CI.
+No hubo cambios de límites, reintentos, locks, despliegue ni configuración de
+Render.

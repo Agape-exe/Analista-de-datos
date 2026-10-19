@@ -1,5 +1,11 @@
 # AUD-007 — Integración continua
 
+## Estado final verificado
+
+La ejecución final del PR #41, [39180032725](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39180032725), terminó en **success** sobre el SHA `2e45555379febb49087304b49728c6916af7c55b`: los nueve jobs obligatorios aprobaron, incluido E2E Chromium Linux. AUD-007 queda validado para revisión del equipo. Las referencias a fallos o validaciones pendientes que aparecen más abajo se conservan como historial de ejecuciones anteriores y no describen el estado actual.
+
+No se hizo merge, cierre del PR ni despliegue en Render. El límite E2E se mantiene en **2.097.152 bytes (2 MiB)**.
+
 ## Revisión del PR #41 antes de publicar la siguiente ejecución
 
 Revisión local del 18 de octubre de 2026 sobre `codex/i5-aud007-metricas-traza`,
@@ -451,8 +457,5 @@ fusionados recibieron únicamente el formato mecánico de Ruff.
 
 Se preservó la compatibilidad de configuración pública del reporte (`ReportPage.tsx`, `ReportProvider.tsx`), la desambiguación de navegación en `report.spec.ts` y la integración completa en `TracePage.tsx` («Plan y decisiones», «Eventos reales», enlaces contextuales a resultados con ancla `#result-*` y «Volver al reporte»).
 
-La validación funcional E2E y el estado final de AUD-007 dependen de la nueva
-ejecución Ubuntu 24.04 tras publicar estos commits. El workflow conserva nueve
-jobs obligatorios, locks, acciones por SHA, Chromium Linux, artefactos y el
-límite E2E de **2.097.152 bytes**. No se añadieron retries, `continue-on-error`,
-exclusiones ni aumentos de capacidad.
+La validación funcional E2E y el estado final de AUD-007 quedaron confirmados
+por la ejecución Ubuntu 24.04 [39180032725](https://github.com/Alexander20L/Analista-de-datos/actions/runs/39180032725): los nueve jobs obligatorios aprobaron. El workflow conserva locks, acciones por SHA, Chromium Linux, artefactos y el límite E2E de **2.097.152 bytes**. No se añadieron retries, `continue-on-error`, exclusiones ni aumentos de capacidad.
