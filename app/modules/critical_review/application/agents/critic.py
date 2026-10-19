@@ -545,7 +545,11 @@ class CriticAgent(SkeletonAgent):
         review_measured_results(context.analysis_results, new_evidence, new_assessments)
 
         # AUD-036: Conservar la procedencia en las evaluaciones existentes
-        attach_screening_provenance(context.analysis_results, new_assessments)
+        attach_screening_provenance(
+            context.analysis_results,
+            new_assessments,
+            screening_summary=context.screening_summary,
+        )
 
         # 15. Omitir si no existe evidencia evaluable
         if not new_assessments:

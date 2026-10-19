@@ -24,6 +24,23 @@ beforeEach(() => {
   vi.resetAllMocks();
 });
 
+test("requests a new persisted report explicitly without replacing the exploratory action", async () => {
+  const onGenerateReport = vi.fn().mockResolvedValue(undefined);
+  const user = userEvent.setup();
+  const view = render(<PartialCorrelationControl datasetId="dataset-001" numericColumns={numericColumns}
+    variables={variables} onGenerateReport={onGenerateReport} />);
+  await user.selectOptions(screen.getByRole("combobox", { name: "Variable de control" }), "campaña");
+  await user.click(screen.getByRole("button", { name: "Generar nuevo reporte con este control" }));
+  expect(onGenerateReport).toHaveBeenCalledWith({ variables, control_variable: "campaña" });
+  expect(runTool).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Solicitar correlación parcial" })).toBeEnabled();
+  view.rerender(<PartialCorrelationControl datasetId="dataset-001" numericColumns={numericColumns}
+    variables={variables} onGenerateReport={onGenerateReport} reportLoading />);
+  expect(screen.getByRole("combobox", { name: "Variable de control" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Generando reporte con control…" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Solicitar correlación parcial" })).toBeDisabled();
+});
+
 // PRUEBA 1: Enviar correctamente la variable de control
 test("AUD-038: solicita correlacion parcial con el control elegido", async () => {
   const user = userEvent.setup();

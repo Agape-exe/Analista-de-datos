@@ -1,6 +1,6 @@
 """Conserva la procedencia de asociaciones calculadas por screening."""
 
-from pydantic import Field
+from pydantic import Field, JsonValue, ValidationError
 
 from app.shared.domain.enums.statuses import AnalysisStatus
 from app.shared.domain.models.analysis import (
@@ -21,6 +21,7 @@ class ScreeningProvenance(DomainModel):
     skipped_pairs: list[dict[str, str]] = Field(default_factory=list)
     excluded_columns: dict[str, str] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+    tests_performed: int | None = Field(default=None, ge=0)
 
 
 def extract_screening_provenance(
@@ -52,21 +53,51 @@ def extract_screening_provenance(
         skipped_pairs=data.get("skipped_pairs", []),
         excluded_columns=data.get("excluded_columns", {}),
         warnings=list(analysis.warnings),
+        tests_performed=analysis.metadata.get("tests_performed"),
     )
+
+
+def extract_screening_summary(
+    summary: dict[str, JsonValue],
+) -> ScreeningProvenance | None:
+    """Read the real Association channel without manufacturing an Analysis result."""
+    analysis_id = summary.get("analysis_id")
+    relationships = summary.get("top_relationships")
+    if not isinstance(analysis_id, str) or not analysis_id or not isinstance(relationships, list):
+        return None
+    try:
+        return ScreeningProvenance(
+            analysis_id=analysis_id,
+            relationships=relationships,
+            correction=summary.get("correction"),
+            significance_level=summary.get("significance_level"),
+            skipped_pairs=summary.get("skipped_pairs", []),
+            excluded_columns=summary.get("excluded_columns", {}),
+            warnings=summary.get("warnings", []),
+            tests_performed=summary.get("tests_performed"),
+        )
+    except ValidationError:
+        # Historical summaries may lack the current shape; never invent provenance.
+        return None
 
 
 def attach_screening_provenance(
     results: list[AnalysisResult],
     assessments: list[RelationshipAssessment],
+    *,
+    screening_summary: dict[str, JsonValue] | None = None,
 ) -> None:
     """Añade procedencia del screening a evaluaciones existentes."""
 
+    summaries = {}
     for analysis in results:
-        provenance = extract_screening_provenance(analysis)
+        if (provenance := extract_screening_provenance(analysis)) is not None:
+            summaries[provenance.analysis_id] = provenance
+    if screening_summary:
+        if (provenance := extract_screening_summary(screening_summary)) is not None:
+            summaries[provenance.analysis_id] = provenance
 
-        if provenance is None:
-            continue
-
+    for provenance in summaries.values():
         for relationship in provenance.relationships:
             assessment = next(
                 (
@@ -89,9 +120,15 @@ def attach_screening_provenance(
                 f"p ajustado={relationship.adjusted_p_value}; "
                 f"corrección={provenance.correction or 'no informada'}."
             )
+            note += (
+                " El ajuste corresponde a las pruebas del screening; "
+                "los análisis posteriores son un retesteo independiente."
+            )
+            if provenance.tests_performed is not None:
+                note += f" Pruebas en el ajuste: {provenance.tests_performed}."
 
             supporting = [
-                f"{item.method} (r={item.strength}, p={item.p_value})"
+                f"{item.method} (valor={item.strength}, p={item.p_value})"
                 for item in relationship.supporting
             ]
 

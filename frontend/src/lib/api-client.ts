@@ -131,6 +131,7 @@ export async function runTool(
 
 export type AnalysisReport = components["schemas"]["AnalysisReport"];
 export type StoredConfiguration = components["schemas"]["StoredConfiguration"];
+export type PartialCorrelationSelection = components["schemas"]["PartialCorrelationSelection"];
 export type GroundedAnswer = components["schemas"]["GroundedAnswer"];
 export type GroundedReference = components["schemas"]["GroundedReference"];
 
@@ -140,10 +141,12 @@ export interface QuestionCatalog {
 
 export async function runStoredAnalysis(
   datasetId: string, userQuestion: string, signal?: AbortSignal, configuration?: StoredConfiguration,
+  controlSelection?: PartialCorrelationSelection,
 ): Promise<AnalysisReport> {
   return request<AnalysisReport>(`/analysis/datasets/${encodeURIComponent(datasetId)}`, {
     method: "POST", body: JSON.stringify({ user_question: userQuestion.trim() || null,
-      ...(configuration ? { configuration } : {}) }),
+      ...(configuration ? { configuration } : {}),
+      ...(controlSelection ? { control_selection: controlSelection } : {}) }),
     headers: { "Content-Type": "application/json" }, signal,
   });
 }

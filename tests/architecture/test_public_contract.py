@@ -69,7 +69,8 @@ def test_public_http_contract_is_unchanged_by_architecture_migration() -> None:
             "screening_summary",
         },
         "ExperimentMetrics": {"screening_calls"},
-        "StoredAnalysisRequest": {"configuration"},
+        "StoredAnalysisRequest": {"configuration", "control_selection"},
+        "AnalysisInput": {"control_selection"},
     }
     for name, properties in additions.items():
         for prop in properties:
@@ -86,6 +87,7 @@ def test_public_http_contract_is_unchanged_by_architecture_migration() -> None:
         "StoredConfiguration",
         "StoredAnalysisOptions",
         "StoredPerformanceOptions",
+        "PartialCorrelationSelection",
     ):
         assert name not in baseline["components"]["schemas"]
         schemas.pop(name)

@@ -76,6 +76,36 @@ class DeterministicAnalysisPlanner:
             )
 
         typed_columns, warnings = self._typed_columns(context)
+        selection = context.input.control_selection
+        if selection is not None:
+            selected_names = [*selection.variables, selection.control_variable]
+            if not set(selected_names).issubset(typed_columns[SemanticType.NUMERIC]):
+                raise ValueError("Selected targets and control must be eligible numeric columns")
+            if configuration.max_tool_calls < 2:
+                return PlanningOutcome(
+                    None,
+                    warnings
+                    + ["The selected control requires a budget of at least two tool calls."],
+                )
+            candidate = _Candidate(
+                family="numeric",
+                variables=tuple(selection.variables),
+                methods=("pearson", "partial_correlation"),
+                statement=(
+                    f"Evaluate {selection.variables[0]} and {selection.variables[1]} "
+                    f"controlling for {selection.control_variable}."
+                ),
+                control_variable=selection.control_variable,
+            )
+            plan = self._bounded_plan(
+                [candidate],
+                dataset_id,
+                configuration.max_hypotheses,
+                configuration.max_tool_calls,
+                configuration.mode,
+            )
+            plan.decisions[0]["reason"] = "explicit user selection of targets and control"
+            return PlanningOutcome(plan, warnings)
         candidates = self._candidates(
             typed_columns,
             context.input.user_question,
@@ -172,6 +202,8 @@ class DeterministicAnalysisPlanner:
 
     def anova_pairs(self, context: AgentContext) -> list[tuple[str, str]]:
         """List only bounded, metadata-compatible pairs for local count summaries."""
+        if context.input.control_selection is not None:
+            return []
         profile = context.dataset_profile
         if (
             profile is None
@@ -409,7 +441,8 @@ class DeterministicAnalysisPlanner:
                 dependencies = (
                     [baseline_step_id]
                     if baseline_step_id is not None
-                    and method in {"correlation_without_outliers", "analyze_subgroups"}
+                    and method
+                    in {"partial_correlation", "correlation_without_outliers", "analyze_subgroups"}
                     else []
                 )
                 steps.append(

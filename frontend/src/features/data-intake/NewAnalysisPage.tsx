@@ -1,6 +1,6 @@
 import { ArrowRight, CheckCircle2, Database, Info, LoaderCircle, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -29,7 +29,7 @@ export function NewAnalysisPage() {
     <Card className="intake-card"><form key={contextRevision} onSubmit={submit}>
       <DatasetUpload file={draft.file} disabled={loading} onChange={(file) => updateDraft({ file })} />
       <div className="upload-caption"><span><Database size={13} />Conectar a SQL <Badge>Próximamente</Badge></span>
-        <span>Tu dataset se procesa localmente con Python.</span></div>
+        <span>Tu dataset se procesa en el servidor con Python.</span></div>
       <div className="reading-options">
         <div className="field"><label htmlFor="delimiter">Separador CSV</label>
           <select id="delimiter" value={draft.delimiter} disabled={loading || draft.file?.name.toLowerCase().endsWith(".tsv")}
@@ -46,14 +46,12 @@ export function NewAnalysisPage() {
         </div>
       </div>
       <DataDictionaryUpload file={draft.dictionary} disabled={loading} onChange={(dictionary) => updateDraft({ dictionary })} />
-      <div className="field planned-question"><label htmlFor="question">¿Qué te gustaría investigar? <Badge>Próximamente</Badge></label>
-        <textarea id="question" disabled placeholder="Las preguntas de investigación estarán disponibles con el planificador de análisis." rows={2} />
-      </div>
+      <div className="field"><p>Después de comprender el dataset puedes indicar tu pregunta y configurar el planificador en <Link to="/report">Configurar Hallazgos</Link>.</p></div>
       <fieldset className="mode-fieldset"><legend>Modo de análisis</legend><div className="mode-options">
         <div className="mode-card selected"><div><span className="eyebrow">Ingesta</span><CheckCircle2 size={16} /></div>
           <strong>Comprende tu dataset</strong><p>Valida el archivo, clasifica las columnas y construye un diccionario de datos.</p></div>
-        <div className="mode-card unavailable-mode"><div><span className="eyebrow">Rápido / Profundo</span><Badge>Próximamente</Badge></div>
-          <strong>Explora la evidencia</strong><p>Herramientas estadísticas, controles y análisis multiagente en una próxima etapa.</p></div>
+        <div className="mode-card"><div><span className="eyebrow">Rápido / Estándar</span><Badge>Disponible en Hallazgos</Badge></div>
+          <strong>Explora la evidencia</strong><p>Tras la ingesta, ejecuta herramientas estadísticas, controles y revisión de evidencia. Consulta el plan y los eventos en Traza.</p></div>
       </div></fieldset>
       {error && <div className="error-panel" role="alert"><TriangleAlert size={19} /><div>
         <strong>No se pudo procesar el dataset</strong><p>{error.message}</p>

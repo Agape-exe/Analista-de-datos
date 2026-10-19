@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Button } from "../../components/ui/button";
-import { runTool } from "../../lib/api-client";
+import { runTool, type PartialCorrelationSelection } from "../../lib/api-client";
 import type { AnalysisResult } from "../../types/exploration";
 import {
   eligibleControls,
@@ -13,12 +13,18 @@ interface Props {
   datasetId: string;
   numericColumns: string[];
   variables: string[];
+  onGenerateReport?: (selection: PartialCorrelationSelection) => Promise<void>;
+  reportLoading?: boolean;
+  reportError?: string;
 }
 
 export function PartialCorrelationControl({
   datasetId,
   numericColumns,
   variables,
+  onGenerateReport,
+  reportLoading = false,
+  reportError,
 }: Props) {
   const [control, setControl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -112,7 +118,7 @@ export function PartialCorrelationControl({
             id="partial-control"
             aria-label="Variable de control"
             value={control}
-            disabled={loading}
+            disabled={loading || reportLoading}
             onChange={(event) => {
               setControl(event.target.value);
               setResult(null);
@@ -130,7 +136,7 @@ export function PartialCorrelationControl({
 
           <Button
             type="submit"
-            disabled={loading || !control}
+            disabled={loading || reportLoading || !control}
           >
             {loading
               ? "Calculando..."
@@ -140,6 +146,19 @@ export function PartialCorrelationControl({
       )}
 
       {error && <p role="alert">{error}</p>}
+      {onGenerateReport && options.length > 0 && <div>
+        <Button type="button" variant="outline" disabled={loading || reportLoading || !control}
+          onClick={() => {
+            const validation = validateControlSelection(numericColumns, variables, control);
+            if (validation) { setError(validation); return; }
+            void onGenerateReport({ variables: [...variables], control_variable: control });
+          }}>
+          {reportLoading ? "Generando reporte con control…" : "Generar nuevo reporte con este control"}
+        </Button>
+        <p>Genera una nueva ejecución con Pearson y correlación parcial, con plan, evidencia y traza guardados. El reporte anterior conserva su ID.</p>
+        {reportLoading && <p role="status">La ejecución se está guardando en el contexto del reporte.</p>}
+        {reportError && <p role="alert">{reportError}</p>}
+      </div>}
 
       {result && result.status === "SUCCESS" && (
         <div role="status">
@@ -179,7 +198,7 @@ export function PartialCorrelationControl({
       )}
 
       <p>
-        Esta consulta es exploratoria e independiente del reporte.
+        La consulta exploratoria es independiente del reporte.
         No actualiza automáticamente la clasificación de Critic
         ni demuestra causalidad.
       </p>

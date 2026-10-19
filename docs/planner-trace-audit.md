@@ -1,5 +1,12 @@
 # Planner, contratos EDA y Traza — contrato de auditoría v1
 
+Actualización de integración: la selección explícita `control_selection` en
+análisis almacenado permite generar un nuevo plan Pearson → correlación parcial
+sin interpretar nombres desde la pregunta. Respeta el presupuesto, la muestra
+mínima y las dependencias, y conserva el run anterior. La procedencia del
+screening llega a Critic por su canal real. Detalle y validaciones en
+[corrección de integración](integration-preservation-fix.md).
+
 ## Alcance implementado
 
 | Auditoría | Implementación |
