@@ -315,10 +315,10 @@ la descripción del PR después del push.
 ### Resultados actuales
 
 - Arquitectura: checker correcto y 24/24 pruebas.
-- Backend: 24/24 pruebas afectadas y 690/690 integración+unidad.
+- Backend: 24/24 pruebas afectadas y 690/690 integración+unidad (100% aprobadas).
 - Calidad: Ruff check y format correctos.
-- Frontend: 40/40 afectadas y 69/69 focales; suite global 288 aprobadas y un
-  timeout transitorio en App, luego App aislado 5/5 sin cambios.
+- Frontend: suite global Vitest con 291/291 aprobadas en 28 archivos (0 fallidas).
+- Compatibilidad e integración: configuración pública de reporte restaurada en `ReportPage.tsx`, desambiguación de selectores E2E en `report.spec.ts`, y compatibilidad completa en `TracePage.tsx` integrando el plan de auditoría, eventos reales y enlaces contextuales a resultados.
 - Build, typecheck y ESLint: correctos.
 - E2E Windows: 16 casos no ejecutaron aserciones por `spawn UNKNOWN`; quedan
   pendientes los resultados Linux de la nueva CI.

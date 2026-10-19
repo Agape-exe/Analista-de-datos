@@ -443,12 +443,13 @@ fusionados recibieron únicamente el formato mecánico de Ruff.
 | Checker de arquitectura | Correcto, 178 archivos |
 | `tests/architecture` | 24 aprobadas |
 | Backend I5/reportes/AUD-039 | 24 aprobadas |
-| `tests/integration tests/unit` | 690 aprobadas |
+| `tests/integration tests/unit` | 690 aprobadas (100%) |
 | Ruff check / Ruff format | Correctos; 289 archivos formateados |
-| Vitest focal de I5 | 69 aprobadas |
-| Vitest completo | 288 aprobadas y 1 timeout transitorio; el archivo aislado aprobó 5/5 sin cambios |
+| Vitest completo (suite global) | 291 aprobadas en 28 archivos (0 fallidas) |
 | ESLint / TypeScript / Vite build | Correctos |
 | E2E Windows seleccionadas | 16/16 bloqueadas antes de aserciones por `spawn UNKNOWN`; no es validación funcional |
+
+Se preservó la compatibilidad de configuración pública del reporte (`ReportPage.tsx`, `ReportProvider.tsx`), la desambiguación de navegación en `report.spec.ts` y la integración completa en `TracePage.tsx` («Plan y decisiones», «Eventos reales», enlaces contextuales a resultados con ancla `#result-*` y «Volver al reporte»).
 
 La validación funcional E2E y el estado final de AUD-007 dependen de la nueva
 ejecución Ubuntu 24.04 tras publicar estos commits. El workflow conserva nueve

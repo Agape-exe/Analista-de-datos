@@ -493,3 +493,8 @@ La E2E local de Windows no alcanzó aserciones por el bloqueo conocido
 `browserType.launch: spawn UNKNOWN`. Las E2E de Chat y Relaciones quedan
 pendientes de la CI Linux de la cabecera publicada; no se presentan como
 validadas localmente.
+
+Adicionalmente, se integró en `TracePage.tsx` y `ReportPage.tsx` el bloque de
+«Plan y decisiones», «Eventos reales» con tabla de llamadas instrumentadas,
+enlaces contextuales a resultados con ancla `#result-*` y «Volver al reporte»,
+alcanzando 291/291 pruebas aprobadas en la suite completa de Vitest (28 archivos).
