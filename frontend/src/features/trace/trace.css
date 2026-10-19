@@ -1,0 +1,5 @@
+.trace-page .trace-events-table { min-width: 760px; }
+.trace-page .table-scroll:focus-visible { outline: 2px solid var(--primary, #6366f1); outline-offset: 3px; }
+.trace-page dl, .trace-page dd { margin: 0; }
+.trace-page dt { font-weight: 600; }
+.trace-page dd { white-space: pre-wrap; overflow-wrap: anywhere; }

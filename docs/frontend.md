@@ -425,6 +425,21 @@ La comparación completa de línea base/backend consta en eda-association.md.
 No se identificaron regresiones nuevas en las comprobaciones ejecutadas; no
 se presentan las suites generales como completamente aprobadas.
 
+## AUD-021 — Contingencia categórica
+
+En Asociaciones, un par de columnas categóricas muestra la tabla de
+`chart_contingency` en lugar del antiguo placeholder: conteos con sombreado de un
+solo tono (el número siempre visible), totales por fila y columna, y modos «% de
+fila», «% de columna» y «% del total»; el margen que no es la base del
+porcentaje muestra la distribución global. Las celdas con frecuencia esperada
+menor que 5 llevan †. Las advertencias se redactan desde los contadores
+estructurados (frecuencias esperadas < 5 y < 1, combinaciones ausentes, filas
+excluidas, categorías agrupadas en «Otras») y siempre recuerdan que una
+asociación no implica causalidad. `contingency-contract.ts` lee el resultado con
+`edaOutcome` (AUD-022): la tabla es de un par, así que solo acepta un resultado
+completo y trata uno parcial como no válido. `src/test/contingency-fixture.ts`
+contiene el resultado de ejemplo y el e2e usa `tests/fixtures/contingency.csv`.
+
 ## AUD-017 — Anomalías
 
 Ruta `/anomalies` («Anomalías» en la barra lateral). Una sola consulta
@@ -447,6 +462,29 @@ Ruta `/anomalies` («Anomalías» en la barra lateral). Una sola consulta
 
 Respuestas anteriores sin el detalle MAD siguen funcionando: los límites MAD se
 indican como no disponibles y solo se muestran ejemplos IQR.
+
+## AUD-035 — Revisión de afirmaciones estadísticas
+
+Criterio: sección 8 de critic-contract.md (AUD-002). En Asociaciones, Patrones,
+Anomalías y la tabla de contingencia se distinguen cuatro niveles:
+
+| Nivel | Qué se afirma | Dónde se dice |
+|---|---|---|
+| Descripción | Magnitud en estos datos: puntaje 0–1, tamaño del efecto, conteos, centro y dispersión | Aviso de Asociaciones, cabeceras «Puntaje (0–1)» y «Tamaño del efecto», Patrones |
+| Asociación | Las columnas varían juntas en este dataset | Aviso de Asociaciones, contingencia |
+| Significancia | p ajustado (Benjamini-Hochberg) en el ranking; el resto de p son «sin corregir» | Aviso, heatmap, pares fuera del ranking |
+| Causalidad | Nunca se infiere; la robustez se revisa en Relaciones y Hallazgos | Aviso, contingencia, recta de dispersión |
+
+Cambios: un ranking vacío aclara que no demuestra ausencia de asociación; los
+p de la matriz y de pruebas individuales se presentan como sin corregir; la
+recta de dispersión se presenta como ajuste lineal descriptivo; «Evidencia de
+apoyo» pasa a «Otras medidas del mismo par»; los avisos en inglés de las tools
+de exploración se traducen solo al mostrarse (`notes.ts`, el original se
+conserva si no se reconoce). Atípicos: Anomalías y los ejemplos IQR mantienen
+que un atípico no es necesariamente un error y no se corrige ni elimina.
+
+Fuera de alcance (código compartido de reportes): `result_descriptions.py`
+escribe «Valor p» sin indicar si está corregido.
 
 ## Transporte de herramientas y capacidad del backend
 

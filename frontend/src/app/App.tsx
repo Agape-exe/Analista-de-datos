@@ -1,28 +1,37 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
-import { AnomaliesPage } from "../features/anomalies/AnomaliesPage";
 import { AssociationsPage } from "../features/associations/AssociationsPage";
+import { AnomaliesPage } from "../features/anomalies/AnomaliesPage";
+import { ChatPage } from "../features/chat/ChatPage";
+import { ChatProvider } from "../features/chat/ChatProvider";
 import { IntakeProvider } from "../features/data-intake/IntakeProvider";
 import { NewAnalysisPage } from "../features/data-intake/NewAnalysisPage";
 import { DatasetOverviewPage } from "../features/dataset/DatasetOverviewPage";
 import { DataDictionaryPage } from "../features/dataset/DataDictionaryPage";
 import { DataQualityPage } from "../features/quality/DataQualityPage";
+import { MetricsPage } from "../features/metrics/MetricsPage";
+import { TracePage } from "../features/trace/TracePage";
 import { PatternsPage } from "../features/patterns/PatternsPage";
+import { RelationsPage } from "../features/relations/RelationsPage";
 import { ReportPage } from "../features/reports/ReportPage";
 import { ReportProvider } from "../features/reports/ReportProvider";
-import { TracePage } from "../features/reports/TracePage";
+import { SummaryPage } from "../features/summary/SummaryPage";
 
 export function App() {
-  return <IntakeProvider><ReportProvider><Routes><Route element={<AppShell />}>
+  return <IntakeProvider><ReportProvider><ChatProvider><Routes><Route element={<AppShell />}>
     <Route index element={<NewAnalysisPage />} />
-    <Route path="report" element={<ReportPage />} />
+    <Route path="summary" element={<SummaryPage />} />
+    <Route path="metrics" element={<MetricsPage />} />
     <Route path="trace" element={<TracePage />} />
+    <Route path="patterns" element={<PatternsPage />} />
+    <Route path="report" element={<ReportPage />} />
     <Route path="dataset" element={<DatasetOverviewPage />} />
     <Route path="dictionary" element={<DataDictionaryPage />} />
     <Route path="quality" element={<DataQualityPage />} />
     <Route path="associations" element={<AssociationsPage />} />
-    <Route path="patterns" element={<PatternsPage />} />
+    <Route path="relations" element={<RelationsPage />} />
+    <Route path="chat" element={<ChatPage />} />
     <Route path="anomalies" element={<AnomaliesPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Route></Routes></ReportProvider></IntakeProvider>;
+  </Route></Routes></ChatProvider></ReportProvider></IntakeProvider>;
 }

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./api-diagnostics";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 

@@ -37,7 +37,7 @@ export function CorrelationHeatmap({ chart, onSelect, stale }: {
           const y = chart.columns[i];
           const rows = [
             { label: method, value: formatValue(value) },
-            { label: "valor p", value: i === j ? "—" : formatPValue(chart.p_values[i][j]) },
+            { label: "valor p sin corregir", value: i === j ? "—" : formatPValue(chart.p_values[i][j]) },
             { label: "pares", value: formatValue(chart.sample_sizes[i][j], 0) },
           ];
           const interactive = i !== j && value != null && onSelect;

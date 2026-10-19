@@ -15,7 +15,8 @@ const json = (payload: unknown, status = 200) => new Response(JSON.stringify(pay
 
 const successReport = {
   run_id: "run-1", status: "SUCCESS", metrics: {}, insights: [], evidence: [], analysis_results: [],
-  stage_statuses: { DataUnderstanding: "SUCCESS" }, stage_durations: {}, warnings: [], errors: [],
+  stage_statuses: { DataUnderstanding: "SUCCESS", Association: "SUCCESS", Planner: "SUCCESS",
+    Analysis: "SUCCESS", Critic: "SUCCESS", Insight: "SUCCESS" }, stage_durations: {}, warnings: [], errors: [],
 };
 
 function renderReport() {
@@ -27,7 +28,7 @@ async function openInsightsAfterIntake() {
   render(<MemoryRouter><App /></MemoryRouter>);
   await user.upload(screen.getByLabelText("Archivo del dataset"), new File(["a\n1\n"], "sales.csv"));
   await user.click(screen.getByRole("button", { name: "Comprender dataset" }));
-  await screen.findByRole("link", { name: "Explorar asociaciones" });
+  await screen.findByRole("link", { name: "Explorar asociaciones" }, { timeout: 5000 });
   await user.click(screen.getByRole("link", { name: "Hallazgos" }));
   return user;
 }
@@ -43,7 +44,10 @@ test("null metrics stay unmeasured and no insights are invented", async () => {
   await screen.findByText("Estado: Pendiente");
   expect(screen.getByText("Sin medición")).toBeInTheDocument();
   expect(screen.getByText("0", { exact: true })).toBeInTheDocument();
-  expect(screen.getByText("No hay hallazgos respaldados por evidencia disponibles.")).toBeInTheDocument();
+  expect(
+  screen.getByText("No hay hallazgos respaldados por evidencia disponibles.")
+).toBeInTheDocument();
+
 });
 
 test("missing report shows server error and enables retry", async () => {
@@ -64,13 +68,17 @@ test("without an intake dataset it points to New Analysis instead of asking for 
 
 test("analyzes the intake dataset once and keeps the report across tabs", async () => {
   const fetchMock = vi.fn(async (url: string) =>
-    url.endsWith("/intake") ? json(intakeFixture) : json(successReport));
+    url.endsWith("/intake") ? json(intakeFixture)
+      : url.includes("/preview?") ? json(intakePreviewFixture) : json(successReport));
   vi.stubGlobal("fetch", fetchMock);
   const user = await openInsightsAfterIntake();
   expect(screen.getByText(/Dataset: sales\.csv · 2 filas · 3 columnas/)).toBeInTheDocument();
   await user.type(screen.getByLabelText("Pregunta del análisis"), "¿Qué varía?");
   await user.click(screen.getByRole("button", { name: "Generar reporte" }));
   await screen.findByText("Estado: Completado");
+  for (const stage of ["Comprensión de datos", "Asociaciones", "Planificación", "Análisis", "Revisión crítica", "Hallazgos"]) {
+    expect(screen.getByRole("cell", { name: stage })).toBeInTheDocument();
+  }
   const analyses = fetchMock.mock.calls.filter(([url]) => url.includes("/analysis"));
   expect(analyses).toHaveLength(1);
   const [url, init] = analyses[0] as unknown as [string, RequestInit];
@@ -83,6 +91,23 @@ test("analyzes the intake dataset once and keeps the report across tabs", async 
   expect(screen.getByLabelText("ID de ejecución")).toHaveValue("run-1");
   expect(screen.getByRole("button", { name: "Volver a generar" })).toBeEnabled();
   expect(fetchMock.mock.calls.filter(([url]) => url.includes("/analysis"))).toHaveLength(1);
+});
+
+test("stored analysis keeps the public operational overrides from develop", async () => {
+  const fetchMock = vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture)
+    : url.includes("/preview?") ? json(intakePreviewFixture) : json(successReport));
+  vi.stubGlobal("fetch", fetchMock);
+  const user = await openInsightsAfterIntake();
+  await user.click(screen.getByLabelText("Personalizar configuración"));
+  await user.selectOptions(screen.getByLabelText("Modo de planificación"), "standard");
+  await user.type(screen.getByLabelText("Presupuesto de herramientas"), "2");
+  await user.click(screen.getByRole("button", { name: "Generar reporte" }));
+  await screen.findByText("Estado: Completado");
+  const call = fetchMock.mock.calls.find(([url]) => url.includes("/analysis/")) as unknown as [string, RequestInit];
+  expect(JSON.parse(String(call[1].body)).configuration).toEqual({
+    analysis: { mode: "standard", max_tool_calls: 2 },
+  });
+  expect(screen.queryByLabelText(/Paralelismo/)).not.toBeInTheDocument();
 });
 
 test("a failed run shows its cause and an expired dataset asks for a new upload", async () => {
@@ -99,47 +124,78 @@ test("a failed run shows its cause and an expired dataset asks for a new upload"
   expect(await screen.findByText(/ya no está en memoria/)).toBeInTheDocument();
 });
 
-test("stored analysis sends only selected operational overrides", async () => {
-  const fetchMock = vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture) : json(successReport));
-  vi.stubGlobal("fetch", fetchMock);
+
+test("a recovered report from another dataset is visibly separated from the active dataset", async () => {
+  const historical = { ...successReport, run_id: "historical", dataset_profile: {
+    ...intakeFixture.profile, dataset_id: "other-dataset",
+  } };
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture)
+    : url.includes("/preview?") ? json(intakePreviewFixture) : json(historical)));
   const user = await openInsightsAfterIntake();
-  await user.click(screen.getByLabelText("Personalizar configuración"));
-  await user.selectOptions(screen.getByLabelText("Modo de planificación"), "standard");
-  await user.type(screen.getByLabelText("Presupuesto de herramientas"), "2");
+  await user.type(screen.getByLabelText("ID de ejecución"), "historical");
+  await user.click(screen.getByRole("button", { name: "Consultar" }));
+  expect(await screen.findByRole("heading", { name: "Reporte recuperado" })).toBeInTheDocument();
+  expect(screen.getByText("Este reporte pertenece a otro dataset. No describe el dataset activo.")).toBeInTheDocument();
+  expect(screen.getByText("Dataset del reporte: other-dataset")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Generar reporte" })).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Volver a generar" })).not.toBeInTheDocument();
+});
+
+test("a failed regeneration labels the retained report as previous", async () => {
+  let count = 0;
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => url.endsWith("/intake") ? json(intakeFixture)
+    : url.includes("/preview?") ? json(intakePreviewFixture)
+      : ++count === 1 ? json(successReport) : json({ detail: "Service unavailable" }, 503)));
+  const user = await openInsightsAfterIntake();
   await user.click(screen.getByRole("button", { name: "Generar reporte" }));
   await screen.findByText("Estado: Completado");
-  const call = fetchMock.mock.calls.find(([url]) => url.includes("/analysis/")) as unknown as [string, RequestInit];
-  expect(JSON.parse(String(call[1].body)).configuration).toEqual({ analysis: { mode: "standard", max_tool_calls: 2 } });
-  expect(screen.queryByLabelText(/Paralelismo/)).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Volver a generar" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Service unavailable");
+  expect(screen.getByRole("status")).toHaveTextContent("La regeneración falló. Se muestra el reporte anterior, no un resultado nuevo.");
+  expect(screen.getByText("Ejecución: run-1")).toBeInTheDocument();
 });
 
-test("trace explicitly marks historical reports and keeps their own context", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ ...successReport, dataset_profile: { dataset_id: "old-dataset" } })));
-  const user = userEvent.setup();
-  render(<MemoryRouter initialEntries={["/report"]}><App /></MemoryRouter>);
-  await user.type(screen.getByLabelText("ID de ejecución"), "run-1");
-  await user.click(screen.getByRole("button", { name: "Consultar" }));
-  await screen.findByText("Estado: Completado");
-  await user.click(screen.getByRole("link", { name: "Traza" }));
-  expect(screen.getByRole("heading", { name: "Reporte histórico sin instrumentación verificable" })).toBeInTheDocument();
-  expect(screen.getByText(/Dataset del reporte: old-dataset/)).toBeInTheDocument();
-  expect(screen.getByText("No hay eventos instrumentados disponibles.")).toBeInTheDocument();
+test("a recovered legacy report explains that dataset identity is unavailable", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => json(successReport)));
+  renderReport();
+  await userEvent.type(screen.getByLabelText("ID de ejecución"), "run-1");
+  await userEvent.click(screen.getByRole("button", { name: "Consultar" }));
+  expect(await screen.findByText("Consulta histórica: no hay un dataset activo asociado.")).toBeInTheDocument();
+  expect(screen.getByText("Dataset del reporte: Identidad no disponible en este reporte histórico")).toBeInTheDocument();
 });
 
-test("trace links actual tool events to their report results", async () => {
-  const report = { ...successReport, audit_version: "1", dataset_id: "audited", user_question: "Compare x and y",
-    analysis_results: [{ analysis_id: "result-1", method: "pearson", status: "SUCCESS", variables: ["x", "y"], result: { correlation: 0.5 } }],
-    execution_trace: [{ event_id: "event-1", kind: "tool", scope: "analysis", agent: "Analysis", step_id: "step-1", analysis_id: "result-1", method: "pearson", status: "SUCCESS", duration_seconds: 0.01 }],
-    metrics: { tool_calls: 1, screening_calls: 1 },
+test("insight references navigate to evidence and its measured result without inventing links", async () => {
+  const report = {
+    ...successReport,
+    insights: [{ insight_id: "ins-1", statement: "Relación observada", evidence_ids: ["ev-1", "ev-missing"], limitations: ["No demuestra causalidad."] }],
+    analysis_results: [{ analysis_id: "analysis-1", method: "pearson", variables: ["sales", "margin"], status: "SUCCESS", result: { coefficient: 0.4 }, warnings: ["Resultado descriptivo."], completeness: "partial" }],
+    evidence: [{ evidence_id: "ev-1", analysis_id: "analysis-1", description: "Coeficiente medido", limitations: ["Muestra observacional."] }],
+    relationship_assessments: [{ variables: ["sales", "margin"], evidence_ids: ["ev-1"],
+      potentially_spurious: null, rationale: "No hay controles suficientes.",
+      limitations: ["Screening ranking-1: método=pearson; n=20; p crudo=0.02; p ajustado=0.04; corrección=benjamini-hochberg."] }],
+    warnings: ["Se omitió una etapa."], errors: [],
   };
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(report)));
-  const user = userEvent.setup();
-  render(<MemoryRouter initialEntries={["/report"]}><App /></MemoryRouter>);
-  await user.type(screen.getByLabelText("ID de ejecución"), "run-1");
-  await user.click(screen.getByRole("button", { name: "Consultar" }));
-  await screen.findByText("Estado: Completado");
-  await user.click(screen.getByRole("link", { name: "Traza" }));
-  expect(screen.queryByRole("heading", { name: /Reporte histórico/ })).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Ver resultado result-1" })).toHaveAttribute("href", "/report#result-result-1");
-  expect(screen.getByText(/Paso: step-1/)).toBeInTheDocument();
+  renderReport();
+  await userEvent.type(screen.getByLabelText("ID de ejecución"), "run-1");
+  await userEvent.click(screen.getByRole("button", { name: "Consultar" }));
+
+  expect(await screen.findByRole("heading", { name: "Relación observada" })).toBeInTheDocument();
+  await userEvent.click(screen.getByText("Ver referencias y limitaciones"));
+  expect(screen.getAllByRole("link", { name: "ev-1" })).toHaveLength(2);
+  for (const link of screen.getAllByRole("link", { name: "ev-1" })) {
+    expect(link).toHaveAttribute("href", "#evidence-ev-1");
+  }
+  expect(screen.getByText((content) => content.includes("ev-missing"))).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Correlación de Pearson · Completado" })).toHaveAttribute("id", "analysis-analysis-1");
+  expect(screen.getByRole("link", { name: "analysis-1" })).toHaveAttribute("href", "#analysis-analysis-1");
+  expect(screen.getByText("Resultado descriptivo.")).toBeInTheDocument();
+  expect(screen.getByText("No demuestra causalidad.")).toBeInTheDocument();
+  expect(screen.getByText("Muestra observacional.")).toBeInTheDocument();
+  expect(screen.getByText("Clasificación: Indeterminada")).toBeInTheDocument();
+  expect(screen.getByText("No hay controles suficientes.")).toBeInTheDocument();
+  expect(screen.getByText(/Screening ranking-1: método=pearson/)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ver Relaciones" })).toHaveAttribute("href", "/relations");
+  expect(screen.getByRole("link", { name: "Consultar en Chat" })).toHaveAttribute("href", "/chat");
+  expect(screen.getByText("Se omitió una etapa.")).toBeInTheDocument();
 });

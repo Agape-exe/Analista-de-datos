@@ -32,6 +32,26 @@ def test_public_http_contract_is_unchanged_by_architecture_migration() -> None:
         "path": current["paths"].pop("/datasets/{dataset_id}/preview"),
         "schema": current["components"]["schemas"].pop("DatasetPreview"),
     }
+    # AUD-039: nuevos endpoints y esquemas aditivos.
+    grounded_paths = {
+        path: current["paths"].pop(path)
+        for path in (
+            "/questions/catalog",
+            "/reports/{run_id}/questions",
+        )
+    }
+    grounded_schemas = {
+        name: current["components"]["schemas"].pop(name)
+        for name in (
+            "GroundedAnswer",
+            "GroundedQueryRequest",
+            "GroundedReference",
+        )
+    }
+    assert "get" in grounded_paths["/questions/catalog"]
+    assert "post" in grounded_paths["/reports/{run_id}/questions"]
+    assert all(grounded_schemas.values())
+
     # Additive audit contracts preserve every pre-existing property and route.
     schemas = current["components"]["schemas"]
     additions = {
