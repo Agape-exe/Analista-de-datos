@@ -456,4 +456,3 @@ ejecución Ubuntu 24.04 tras publicar estos commits. El workflow conserva nueve
 jobs obligatorios, locks, acciones por SHA, Chromium Linux, artefactos y el
 límite E2E de **2.097.152 bytes**. No se añadieron retries, `continue-on-error`,
 exclusiones ni aumentos de capacidad.
-
