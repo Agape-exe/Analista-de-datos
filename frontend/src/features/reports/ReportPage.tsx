@@ -129,7 +129,7 @@ export function ReportPage() {
       <Card className="quality-card" id="results-and-evidence"><h2>Resultados y evidencia</h2>
         {(report.analysis_results || []).map((value, index) => {
           const resultId = value.analysis_id ?? `${value.method}-${index}`;
-          return <article key={resultId}>
+          return <article key={resultId} id={`result-${encodeURIComponent(resultId)}`}>
           <h3 id={analysisAnchor(resultId)}>{methodLabel(value.method)} · {statusLabel(value.status)}</h3>
           <p>{value.variables?.join(" / ") || "Variables no especificadas"}</p>
           <p>Estado del resultado: {statusLabel(value.status)}{value.completeness === "partial" ? " · Parcial" : ""}</p>

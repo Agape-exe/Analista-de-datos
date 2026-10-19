@@ -23,12 +23,14 @@ export function TracePage() {
   const { result, loading: intakeLoading } = useIntake();
   const { report, loading, error, notice } = useReport();
   const events = report?.execution_trace;
+  const resultIds = new Set(report?.analysis_results?.map((item) => item.analysis_id));
   const stages = [...new Set([
     ...Object.keys(report?.stage_statuses ?? {}), ...Object.keys(report?.stage_durations ?? {}),
   ])];
   return <div className="dataset-page report-page trace-page">
     <div className="page-heading"><p className="eyebrow">Evaluación / Traza</p>
-      <h1>Traza de ejecución</h1><p>Llamadas registradas e información de etapas del reporte.</p></div>
+      <h1>Traza de ejecución</h1><p>Llamadas registradas e información de etapas del reporte.</p>
+      <Link to="/report">Volver al reporte</Link></div>
     <Card className="quality-card"><h2>Dataset activo</h2>
       <p>{result ? `${result.filename} · ID: ${result.profile.dataset_id}` : "Sin dataset activo"}</p>
       {intakeLoading && <p role="status">Carga del dataset pendiente.</p>}
@@ -49,7 +51,20 @@ export function TracePage() {
         {report.status === "FAILED" && <p>La ejecución falló; el reporte se cargó correctamente y puede contener información parcial.</p>}
         <p>Los estados de etapas describen sus resultados, no transiciones. No disponible indica un valor nulo u omitido, nunca un cero.</p>
       </Card>
-      <Card className="quality-card" aria-label="Entradas de la traza"><h2>Entradas de la traza</h2>
+      <Card className="quality-card"><h2>Plan y decisiones</h2>
+        {report.analysis_plan ? <><p>Política: {report.analysis_plan.policy_version}</p><ol>
+          {report.analysis_plan.steps?.map((step) => <li key={step.step_id}>
+            <strong>{step.step_id}</strong>: {step.request.method} · {step.request.variables?.join(" / ")}
+            <p>Hipótesis: {step.hypothesis_id ?? "No registrada"} · Dependencias: {step.depends_on?.join(", ") || "Ninguna"}</p>
+            <pre>{JSON.stringify(step.request.parameters ?? {}, null, 2)}</pre></li>)}</ol></>
+          : <p>No hay plan registrado.</p>}
+        <ul>{(report.planning_decisions ?? report.analysis_plan?.decisions ?? []).map((decision, index) => <li key={index}>
+          <strong>{decision.selected ? "Seleccionada" : "Omitida"}</strong>: {Array.isArray(decision.variables)
+            ? decision.variables.join(" / ") : "Planificación"}
+          <p>{String(decision.reason ?? "Sin motivo registrado")}</p>
+          <details><summary>Detalle de la decisión</summary><pre>{JSON.stringify(decision, null, 2)}</pre></details></li>)}</ul>
+      </Card>
+      <Card className="quality-card" aria-label="Entradas de la traza"><h2>Eventos reales</h2>
         <p>Orden recibido del backend. La posición no es una marca de tiempo ni garantiza cronología de inicio.
           Las llamadas no incluyen un identificador de etapa; no se vinculan a las etapas por su posición.</p>
         {events == null ? <p>Este reporte no proporciona execution_trace.</p>
@@ -64,7 +79,10 @@ export function TracePage() {
                 <td>{valueText(event.method)}</td><td>{statusText(event.status)}</td><td>{seconds(event.duration_seconds)}</td>
                 <td>{details.length ? <dl>{details.map(([key, value]) => <div key={key}>
                   <dt>{key}</dt><dd>{valueText(value)}</dd>
-                </div>)}</dl> : "Sin detalles proporcionados"}</td></tr>;
+                </div>)}</dl> : "Sin detalles proporcionados"}
+                {typeof event.analysis_id === "string" && resultIds.has(event.analysis_id)
+                  && <p><Link to={`/report#result-${encodeURIComponent(event.analysis_id)}`}>Ver resultado {event.analysis_id}</Link></p>}
+                </td></tr>;
             })}</tbody></table></div>}
       </Card>
       <Card className="quality-card" aria-label="Información de etapas"><h2>Información de etapas</h2>

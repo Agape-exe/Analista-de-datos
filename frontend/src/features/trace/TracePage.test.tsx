@@ -54,6 +54,24 @@ test("real call shapes keep received order, raw seconds, zero and stage results 
   expect(screen.getByText(/el reporte se cargó correctamente/)).toBeInTheDocument();
 });
 
+test("audit plan and event result links remain available with the detailed trace table", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => json({
+    ...traceFixture,
+    analysis_plan: { policy_version: "1", steps: [], decisions: [] },
+    analysis_results: [{ analysis_id: "analysis-1", method: "pearson", variables: ["x", "y"],
+      status: "SUCCESS", result: { coefficient: 0.5 } }],
+    execution_trace: [{ kind: "tool", method: "pearson", status: "SUCCESS", duration_seconds: 0,
+      analysis_id: "analysis-1" }],
+  })));
+  const user = setup();
+  await recover(user);
+  expect(screen.getByRole("heading", { name: "Plan y decisiones" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Eventos reales" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ver resultado analysis-1" }))
+    .toHaveAttribute("href", "/report#result-analysis-1");
+  expect(screen.getByRole("link", { name: "Volver al reporte" })).toHaveAttribute("href", "/report");
+});
+
 test.each([
   { label: "missing", trace: undefined }, { label: "empty", trace: [] },
 ])("historical $label trace does not manufacture stage events", async ({ trace }) => {
